@@ -1,0 +1,89 @@
+{
+  "grid_name": "jezero_western_delta_20m",
+  "processed_utc": "2026-11-10T21:23:37.926149+00:00",
+  "profile": {
+    "max_slope_deg": 25.0,
+    "max_tri_m": 8.0,
+    "forbid_unknown": true,
+    "slope_safe_deg": 8.0,
+    "slope_critical_deg": 25.0,
+    "tri_safe_m": 0.5,
+    "tri_critical_m": 6.0,
+    "w_slope": 0.35,
+    "w_roughness": 0.2,
+    "w_boulder": 0.15,
+    "w_sand": 0.15,
+    "w_crater": 0.1,
+    "w_uncertainty": 0.05
+  },
+  "statistics": {
+    "total_cells": 212132,
+    "hard_impassable_cells": 774,
+    "impassable_percentage": 0.3648671581845266,
+    "mean_overall_hazard": 0.18725666403770447,
+    "max_overall_hazard": 1.0,
+    "min_overall_hazard": 0.09052074700593948
+  },
+  "layers": [
+    {
+      "id": "h_slope",
+      "name": "Slope Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "DERIVED"
+    },
+    {
+      "id": "h_roughness",
+      "name": "Roughness Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "DERIVED"
+    },
+    {
+      "id": "h_boulder",
+      "name": "Boulder Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "DERIVED"
+    },
+    {
+      "id": "h_sand",
+      "name": "Loose Sand Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "h_crater",
+      "name": "Crater Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "overall_hazard",
+      "name": "Composite Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "hard_impassable",
+      "name": "Hard Impassable Mask",
+      "type": "bool",
+      "epistemic": "HEURISTIC"
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+# ---------------------------------------------------------------
+# Marswalk Planner .gitignore
+# ---------------------------------------------------------------
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# --- Secrets / local config ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+.ipynb_checkpoints/
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+npm-debug.log*
+playwright-report/
+test-results/
+
+# --- Data lake: keep structure + metadata, never the large files ---
+data/raw/*
+!data/raw/README.md
+data/interim/*
+!data/interim/README.md
+data/processed/*
+!data/processed/README.md
+data/sample/*
+!data/sample/README.md
+# data/catalog/ and data/manifests/ ARE tracked (small JSON metadata).
+
+# --- Planetary / raster / spectral file types (anywhere in the repo) ---
+*.tif
+*.tiff
+*.TIF
+*.img
+*.IMG
+*.jp2
+*.JP2
+*.cub
+*.CUB
+*.lbl.bak
+*.vrt.tmp
+*.aux.xml
+*.ovr
+*.h5
+*.nc
+*.las
+*.laz
+*.gpkg-journal
+
+# --- ML artefacts ---
+ml/models/*.pt
+ml/models/*.pth
+ml/models/*.ckpt
+ml/models/*.onnx
+runs/
+wandb/
+mlruns/
+
+# --- Logs ---
+logs/
+*.log
+

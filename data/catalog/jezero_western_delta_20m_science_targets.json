@@ -1,0 +1,384 @@
+{
+  "type": "FeatureCollection",
+  "name": "jezero_western_delta_20m_ranked_science_targets",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "IAU_2015:49900"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "SCI-01-KODIAK",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.408313,
+          18.459456,
+          -2514.4
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-01-KODIAK",
+        "name": "Kodiak Isolated Delta Remnant Butte",
+        "rank": 1,
+        "composite_score": 0.4854,
+        "primary_science_theme": "Delta Architecture & Stratigraphy",
+        "breakdown": {
+          "mineralogy": 0.438,
+          "diversity": 0.144,
+          "layered_features": 0.898,
+          "delta_context": 0.0,
+          "rover_proximity": 0.907,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Exposes classic topset, foreset, and bottomset cross-bedding strata and clays.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-02-HAWKSBILL",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.353315,
+          18.502982,
+          -2421.7
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-02-HAWKSBILL",
+        "name": "Hawksbill Gap Delta Front Scarp",
+        "rank": 2,
+        "composite_score": 0.4822,
+        "primary_science_theme": "Aqueous Smectite Clays",
+        "breakdown": {
+          "mineralogy": 0.309,
+          "diversity": 0.095,
+          "layered_features": 0.872,
+          "delta_context": 0.509,
+          "rover_proximity": 0.631,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Continuous stratigraphic exposure of smectite clays and fine-grained mudstones.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-03-CARBONATE-UNCONF",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.398191,
+          18.454394,
+          -2506.8
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-03-CARBONATE-UNCONF",
+        "name": "Marginal Carbonate Unconformity",
+        "rank": 3,
+        "composite_score": 0.4816,
+        "primary_science_theme": "Marginal Carbonates & Paleolake",
+        "breakdown": {
+          "mineralogy": 0.404,
+          "diversity": 0.176,
+          "layered_features": 0.925,
+          "delta_context": 0.0,
+          "rover_proximity": 0.865,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Ancient Mg-carbonate precipitate contact along the western crater rim wall.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-04-BELVA-CRATER",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.409325,
+          18.440898,
+          -2488.2
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-04-BELVA-CRATER",
+        "name": "Belva Crater Ejecta & Layered Wall",
+        "rank": 4,
+        "composite_score": 0.4451,
+        "primary_science_theme": "Impact Exposure of Fluvial Channels",
+        "breakdown": {
+          "mineralogy": 0.278,
+          "diversity": 0.394,
+          "layered_features": 0.981,
+          "delta_context": 0.0,
+          "rover_proximity": 0.358,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Post-delta impact crater exposing cross-sections of conglomerate channels.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-05-THREE-FORKS",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.352303,
+          18.512767,
+          -2407.6
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-05-THREE-FORKS",
+        "name": "Three Forks Distal Bottomset Mudstones",
+        "rank": 5,
+        "composite_score": 0.4382,
+        "primary_science_theme": "Lacustrine Mudstones & Clays",
+        "breakdown": {
+          "mineralogy": 0.335,
+          "diversity": 0.137,
+          "layered_features": 0.806,
+          "delta_context": 0.456,
+          "rover_proximity": 0.211,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Distal lacustrine mudstones with maximal organic matter preservation potential.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-06-SEITAH-CONTACT",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.356689,
+          18.475651,
+          -2426.6
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-06-SEITAH-CONTACT",
+        "name": "S\u00e9\u00edtah Formation & Cumulate Olivine Floor",
+        "rank": 6,
+        "composite_score": 0.4232,
+        "primary_science_theme": "Igneous Cumulates & Stratigraphy",
+        "breakdown": {
+          "mineralogy": 0.301,
+          "diversity": 0.044,
+          "layered_features": 0.897,
+          "delta_context": 0.275,
+          "rover_proximity": 0.482,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Mafic igneous floor unit meeting delta front; igneous petrology reference.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-07-NERETVA-APEX",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.396841,
+          18.473964,
+          -2471.2
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-07-NERETVA-APEX",
+        "name": "Neretva Vallis Inflow Channel Apex",
+        "rank": 7,
+        "composite_score": 0.4222,
+        "primary_science_theme": "Fluvial Hydrodynamics & Floods",
+        "breakdown": {
+          "mineralogy": 0.185,
+          "diversity": 0.101,
+          "layered_features": 1.0,
+          "delta_context": 0.031,
+          "rover_proximity": 0.918,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Coarse gravels, cobble conglomerates, and high-energy river flood deposits.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-08-ENCHANTED-LAKE",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.371198,
+          18.481725,
+          -2437.3
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-08-ENCHANTED-LAKE",
+        "name": "Enchanted Lake Stratigraphic Base",
+        "rank": 8,
+        "composite_score": 0.4219,
+        "primary_science_theme": "Laminated Lacustrine Shales",
+        "breakdown": {
+          "mineralogy": 0.145,
+          "diversity": 0.082,
+          "layered_features": 0.941,
+          "delta_context": 0.288,
+          "rover_proximity": 0.776,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Thinly laminated mudstone outcrop at the bottomset-foreset transition.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-09-SKINNER-RIDGE",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.383007,
+          18.468566,
+          -2463.0
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-09-SKINNER-RIDGE",
+        "name": "Skinner Ridge Abrasion & Sampling Section",
+        "rank": 9,
+        "composite_score": 0.419,
+        "primary_science_theme": "Documented In-Situ Rover Observation",
+        "breakdown": {
+          "mineralogy": 0.164,
+          "diversity": 0.133,
+          "layered_features": 0.976,
+          "delta_context": 0.114,
+          "rover_proximity": 0.797,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Extensively documented rover science station with verified aqueous alteration.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-10-WESTERN-RIM-WALL",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.352303,
+          18.481725,
+          -2417.1
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-10-WESTERN-RIM-WALL",
+        "name": "Western Crater Rim Basement Wall",
+        "rank": 10,
+        "composite_score": 0.401,
+        "primary_science_theme": "Noachian Crustal Basement",
+        "breakdown": {
+          "mineralogy": 0.333,
+          "diversity": 0.037,
+          "layered_features": 0.593,
+          "delta_context": 0.313,
+          "rover_proximity": 0.829,
+          "confidence": 0.75
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "Pre-impact Noachian crustal basement unconformity bounding the Jezero basin.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-11-TARGET",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.363437,
+          18.42504,
+          -2492.4
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-11-TARGET",
+        "name": "Jezero Candidate Target #11",
+        "rank": 11,
+        "composite_score": 0.3996,
+        "primary_science_theme": "Composite Science Interest",
+        "breakdown": {
+          "mineralogy": 0.454,
+          "diversity": 0.086,
+          "layered_features": 0.973,
+          "delta_context": 0.0,
+          "rover_proximity": 0.005,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "High-priority multi-criteria opportunity target identified by peak scoring.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SCI-12-TARGET",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.358376,
+          18.465529,
+          -2429.7
+        ]
+      },
+      "properties": {
+        "target_id": "SCI-12-TARGET",
+        "name": "Jezero Candidate Target #12",
+        "rank": 12,
+        "composite_score": 0.385,
+        "primary_science_theme": "Composite Science Interest",
+        "breakdown": {
+          "mineralogy": 0.292,
+          "diversity": 0.092,
+          "layered_features": 0.909,
+          "delta_context": 0.177,
+          "rover_proximity": 0.162,
+          "confidence": 1.0
+        },
+        "epistemic_class": "INTERPRETED",
+        "rationale": "High-priority multi-criteria opportunity target identified by peak scoring.",
+        "safety_caveat": "SAFETY CAVEAT: Perseverance rover telemetry documents authentic robotic exploration history. Rover tracks do NOT prove terrain is safe for human extravehicular foot travel. All terrain hazards must be independently evaluated via the Hazard Intelligence Engine.",
+        "life_inference_warning": "SCIENTIFIC INTEGRITY NOTICE: Mineral detections (smectite clays, carbonates, sulfates) indicate abiotic aqueous alteration and high organic preservation potential. They do NOT infer or confirm the existence of past or present extraterrestrial life."
+      }
+    }
+  ]
+}

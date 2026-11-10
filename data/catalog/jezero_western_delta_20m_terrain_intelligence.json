@@ -1,0 +1,55 @@
+{
+  "grid_name": "jezero_western_delta_20m",
+  "processed_utc": "2026-11-10T21:20:37.068066+00:00",
+  "layers": [
+    {
+      "layer_id": "slope",
+      "name": "Horn's Slope",
+      "units": "degrees",
+      "min_val": 0.008187334053218365,
+      "max_val": 35.19856262207031,
+      "mean_val": 4.135812759399414,
+      "method": "Horn (1981) 3x3 convolution",
+      "source_layer": "jezero_western_delta_20m_elevation.tif",
+      "epistemic_class": "DERIVED"
+    },
+    {
+      "layer_id": "tri",
+      "name": "Terrain Ruggedness Index",
+      "units": "metres",
+      "min_val": 0.027529222890734673,
+      "max_val": 12.913668632507324,
+      "mean_val": 1.361854910850525,
+      "method": "Riley et al. (1999) 3x3 RMS delta",
+      "source_layer": "jezero_western_delta_20m_elevation.tif",
+      "epistemic_class": "DERIVED"
+    },
+    {
+      "layer_id": "classification",
+      "name": "Terrain Classification",
+      "units": "unit_id",
+      "min_val": 0.0,
+      "max_val": 5.0,
+      "mean_val": null,
+      "method": "Rule-based heuristic segmentation with physical limits",
+      "source_layer": "multisensor",
+      "epistemic_class": "HEURISTIC"
+    }
+  ],
+  "class_legend": {
+    "0": "UNKNOWN_NO_DATA",
+    "1": "SMOOTH_REGOLITH",
+    "2": "SAND_RIPPLES_DUNES",
+    "3": "BOULDER_FIELD_ROCK",
+    "4": "STEEP_SCARP_CLIFF",
+    "5": "CRATER_DEPRESSION"
+  },
+  "class_distribution": {
+    "UNKNOWN_NO_DATA": 0,
+    "SMOOTH_REGOLITH": 73622,
+    "SAND_RIPPLES_DUNES": 81403,
+    "BOULDER_FIELD_ROCK": 56468,
+    "STEEP_SCARP_CLIFF": 638,
+    "CRATER_DEPRESSION": 1
+  }
+}

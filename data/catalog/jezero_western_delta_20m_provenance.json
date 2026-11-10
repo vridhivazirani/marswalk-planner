@@ -1,0 +1,31 @@
+{
+  "layer_id": "jezero_western_delta_20m_elevation",
+  "source_products": [
+    "10.5066/P9REJ9JN",
+    "10.5066/P906QQT8"
+  ],
+  "source_files": [
+    "HiRISE_DTM_Delta_Jezero_DL_1m.tif",
+    "JEZ_ctx_B_soc_008_DTM_20m.tif"
+  ],
+  "target_grid": "jezero_western_delta_20m",
+  "target_resolution_m": 20.0,
+  "resampling_method": "bilinear (continuous elevation)",
+  "crs": "ESRI:103885",
+  "nodata_value": -9999.0,
+  "output_shape": [
+    586,
+    362
+  ],
+  "valid_pixel_count": 212132,
+  "nodata_pixel_count": 0,
+  "coverage_fraction": 1.0,
+  "min_value": -2598.9443359375,
+  "max_value": -2240.466796875,
+  "mean_value": -2481.738037109375,
+  "processed_utc": "2026-11-10T21:11:12.267735+00:00",
+  "software_versions": {
+    "rasterio": "1.5.2",
+    "gdal": "3.12.2"
+  }
+}

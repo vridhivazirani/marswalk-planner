@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marswalk-backend"
+version = "0.1.0"
+description = "Marswalk Planner backend: Mars geospatial processing and EVA route-planning research prototype (not NASA-certified)."
+readme = "README.md"
+requires-python = ">=3.11"
+# License intentionally not set yet: to be chosen by the project owner.
+
+# Only essential runtime dependencies for Phase 0.
+# - fastapi / uvicorn / pydantic-settings: the web API layer.
+# - numpy: array maths, used by every raster module.
+# - pyproj: Mars coordinate reference systems (bundled PROJ includes the IAU_2015 authority).
+# - rasterio: raster IO; its wheels bundle GDAL, so no system GDAL install is needed yet.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic-settings>=2.4",
+    "numpy>=2.0",
+    "scipy>=1.14",
+    "pyproj>=3.7",
+    "rasterio>=1.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx2>=2.0",   # HTTP client used by FastAPI/Starlette's TestClient (replaces httpx)
+    "ruff>=0.6",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N"]
