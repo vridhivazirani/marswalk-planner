@@ -178,7 +178,7 @@ function App() {
           {error && (
             <div className="page-container">
               <div className="card status-error">
-                Telemetry link unavailable: {error}. Confirm backend is running at http://127.0.0.1:8000.
+                Backend API connection unavailable: {error}. Confirm backend is running at http://127.0.0.1:8000.
               </div>
             </div>
           )}

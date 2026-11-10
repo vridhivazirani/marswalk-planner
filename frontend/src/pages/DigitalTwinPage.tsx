@@ -55,7 +55,7 @@ export const DigitalTwinPage: React.FC<DigitalTwinPageProps> = ({
             Jezero Crater Planetary Digital Twin
           </h2>
           <small style={{ color: '#a89f97' }}>
-            Authentic HiRISE DTM (1.0m) & ORI (0.25m) • Mars Equirectangular IAU_2015:49900
+            Authentic USGS TRN HiRISE DTM (1.0m fused to 20m) & CTX Mosaic (6m) • Mars Equirectangular IAU_2015:49900
           </small>
         </div>
 

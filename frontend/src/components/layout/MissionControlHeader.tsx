@@ -27,9 +27,9 @@ export const MissionControlHeader: React.FC<MissionControlHeaderProps> = ({
       </div>
 
       <div className="header-telemetry-row">
-        {/* Backend Connectivity Status */}
+        {/* Backend API Connectivity Status */}
         <div className="telemetry-item">
-          <span className="telemetry-label">TELEMETRY LINK:</span>
+          <span className="telemetry-label">BACKEND API STATUS:</span>
           <span
             className={`status-pill ${
               isBackendHealthy === true ? 'online' : isBackendHealthy === false ? 'offline' : 'checking'

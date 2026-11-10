@@ -149,7 +149,12 @@ export function MarsMap2D({
             const geoLayer = L.geoJSON(data, {
               style: (feature) => {
                 if (feature?.geometry.type === 'LineString') {
-                  return { color: '#ff3d00', weight: 3, opacity: 0.9 }
+                  return {
+                    color: '#ffab00',
+                    weight: 3,
+                    opacity: 0.95,
+                    dashArray: '7, 6',
+                  }
                 }
                 return {}
               },
@@ -163,7 +168,7 @@ export function MarsMap2D({
                   opacity: 1,
                   fillOpacity: 0.9,
                 }).bindTooltip(
-                  `Perseverance Sol ${sol} (Elev: ${feature.properties?.elev_geoid ?? '?'}m)`
+                  `🤖 Perseverance Sol ${sol} (Historical Robotic Traverse - Observed | Elev: ${feature.properties?.elev_geoid ?? '?'}m)`
                 )
               },
             })
@@ -323,6 +328,54 @@ export function MarsMap2D({
   return (
     <div className="map2d-wrapper">
       <div ref={mapContainerRef} className="leaflet-map-canvas" />
+
+      {/* Map Traversal & Footprint Legend */}
+      <div
+        className="map-traversal-legend"
+        style={{
+          position: 'absolute',
+          bottom: '12px',
+          left: '12px',
+          zIndex: 1000,
+          background: 'rgba(17, 24, 39, 0.92)',
+          border: '1px solid #374151',
+          borderRadius: '6px',
+          padding: '0.5rem 0.75rem',
+          fontSize: '0.75rem',
+          color: '#e5e7eb',
+          pointerEvents: 'auto',
+          maxWidth: '330px',
+          lineHeight: 1.4,
+          backdropFilter: 'blur(4px)',
+        }}
+      >
+        <div style={{ fontWeight: 600, color: '#f28c52', marginBottom: '0.3rem', letterSpacing: '0.5px' }}>
+          TRAVERSAL & COVERAGE GUIDE
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: '2px dashed #00e5ff' }} />
+          <span>20m DTM Study Boundary (Analysis Extent)</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: '3px solid #00e676' }} />
+          <span>Planned EVA Route (Strictly Inside Footprint)</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: '3px dashed #ffab00' }} />
+          <span>Perseverance Traverse (Observed, Extends West)</span>
+        </div>
+        <div
+          style={{
+            fontSize: '0.7rem',
+            color: '#9ca3af',
+            marginTop: '0.3rem',
+            borderTop: '1px solid #374151',
+            paddingTop: '0.3rem',
+          }}
+        >
+          Terrain outside cyan boundary is unmapped regional basin (NoData — EVA entry prohibited).
+        </div>
+      </div>
 
       {/* Layer Control Panel */}
       <div className="layer-control-panel">

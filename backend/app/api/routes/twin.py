@@ -50,11 +50,14 @@ def get_layers() -> dict[str, Any]:
         "layers": [
             {
                 "id": "ortho_imagery",
-                "name": "CTX Orthorectified Surface Reflectance (6m/20m)",
+                "name": "CTX Orthorectified Surface Reflectance (6m aligned to 20m)",
                 "type": "raster",
                 "epistemic_class": "OBSERVED",
                 "url": "/api/v1/twin/raster/ortho.png",
-                "description": "Controlled visible surface mosaic of delta scarp and floor.",
+                "description": (
+                    "USGS TRN CTX controlled visible surface mosaic "
+                    "(6m native, resampled to 20m grid)."
+                ),
             },
             {
                 "id": "elevation_colormap",
@@ -74,7 +77,7 @@ def get_layers() -> dict[str, Any]:
             },
             {
                 "id": "terrain_classes",
-                "name": "Terrain Classification Units (Heuristic ML)",
+                "name": "Terrain Geomorphic Units (Heuristic Rule-Based)",
                 "type": "raster",
                 "epistemic_class": "HEURISTIC",
                 "url": "/api/v1/twin/raster/classes.png",
@@ -114,11 +117,14 @@ def get_layers() -> dict[str, Any]:
             },
             {
                 "id": "perseverance_traverse",
-                "name": "Perseverance Rover Traverse & Waypoints",
+                "name": "Perseverance Rover Historical Traverse (Observed)",
                 "type": "vector",
                 "epistemic_class": "OBSERVED",
                 "url": "/api/v1/twin/vector/perseverance",
-                "description": "Authentic telemetry from Octavia E. Butler Landing to delta top.",
+                "description": (
+                    "Authentic historical rover telemetry (Sols 0–1000+). Extends west "
+                    "beyond the 20m delta DTM study footprint into regional Jezero crater floor."
+                ),
             },
         ],
     }

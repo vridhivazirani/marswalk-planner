@@ -28,6 +28,20 @@ def test_twin_layers_endpoint():
     assert "source_coverage" in layer_ids
     assert "perseverance_traverse" in layer_ids
 
+    # Scientific integrity: verify no heuristic rule is falsely labeled as "ML"
+    for layer in data["layers"]:
+        assert "ML" not in layer["name"], f"Layer {layer['id']} incorrectly contains 'ML'"
+        assert "machine learning" not in layer["name"].lower()
+
+    # Specific layer checks
+    classes_layer = next(lyr for lyr in data["layers"] if lyr["id"] == "terrain_classes")
+    assert classes_layer["epistemic_class"] == "HEURISTIC"
+    assert "Rule-Based" in classes_layer["name"]
+
+    rover_layer = next(lyr for lyr in data["layers"] if lyr["id"] == "perseverance_traverse")
+    assert rover_layer["epistemic_class"] == "OBSERVED"
+    assert "Historical" in rover_layer["name"]
+
 
 def test_twin_raster_layer_serving():
     for name in ["ortho", "elevation", "coverage"]:
