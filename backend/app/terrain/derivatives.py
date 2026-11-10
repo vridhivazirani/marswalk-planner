@@ -29,9 +29,23 @@ def compute_slope_aspect_horn(
       slope_deg = degrees(slope_rad)
     """
     valid_mask = (dem != nodata) & ~np.isnan(dem)
+    if not np.any(valid_mask):
+        empty = np.full_like(dem, nodata, dtype=np.float32)
+        return empty, empty.copy()
+
+    # To prevent sentinel values (e.g. -9999.0) from creating artificial 7000m cliffs
+    # at data boundaries, fill invalid cells with their nearest valid neighbor elevation
+    # before convolution gradient estimation.
+    if np.all(valid_mask):
+        dem_clean = dem
+    else:
+        indices = ndimage.distance_transform_edt(
+            ~valid_mask, return_distances=False, return_indices=True
+        )
+        dem_clean = dem[tuple(indices)]
 
     # Replicate edges for valid padding
-    padded = np.pad(dem, pad_width=1, mode="edge")
+    padded = np.pad(dem_clean, pad_width=1, mode="edge")
 
     # Convolution kernels for 8*dx weighting
     # a b c
@@ -75,20 +89,30 @@ def compute_terrain_ruggedness_index(
 ) -> np.ndarray:
     """Compute Riley et al. (1999) Terrain Ruggedness Index (TRI) in elevation units (metres).
 
-    TRI = sqrt( sum( (z_ij - z_center)^2 ) / 8 ) over 3x3 neighborhood.
+    TRI = sqrt( sum( (z_ij - z_center)^2 ) / N_valid ) over 3x3 neighborhood.
+    Ignores NoData neighbors so boundary cells do not acquire artificial multi-kilometre roughness.
     """
     valid_mask = (dem != nodata) & ~np.isnan(dem)
-    padded = np.pad(dem, pad_width=1, mode="edge")
+    if not np.any(valid_mask):
+        return np.full_like(dem, nodata, dtype=np.float32)
+
+    dem_masked = np.where(valid_mask, dem, np.nan)
+    padded = np.pad(dem_masked, pad_width=1, mode="edge")
 
     sq_diff_sum = np.zeros_like(dem, dtype=np.float32)
+    valid_count = np.zeros_like(dem, dtype=np.float32)
+
     for dy in [-1, 0, 1]:
         for dx in [-1, 0, 1]:
             if dx == 0 and dy == 0:
                 continue
             shifted = padded[1 + dy : 1 + dy + dem.shape[0], 1 + dx : 1 + dx + dem.shape[1]]
-            sq_diff_sum += (shifted - dem) ** 2
+            is_valid_neighbor = ~np.isnan(shifted)
+            diff = np.where(is_valid_neighbor, shifted - dem, 0.0)
+            sq_diff_sum += np.where(valid_mask, diff**2, 0.0)
+            valid_count += is_valid_neighbor
 
-    tri = np.sqrt(sq_diff_sum / 8.0)
+    tri = np.where(valid_count > 0, np.sqrt(sq_diff_sum / np.maximum(1.0, valid_count)), 0.0)
     tri = np.where(valid_mask, tri, nodata)
     return tri.astype(np.float32)
 

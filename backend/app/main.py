@@ -6,6 +6,7 @@ Run locally (from the ``backend/`` directory, with the virtual environment activ
 """
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api.router import api_router
@@ -24,6 +25,14 @@ def create_app() -> FastAPI:
             f"for Jezero Crater.\n\n**{DISCLAIMER}**"
         ),
         debug=settings.debug,
+    )
+    # Enable CORS for local development and mission control frontend integration
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.include_router(api_router, prefix=settings.api_prefix)
     return app

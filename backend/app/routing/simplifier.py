@@ -26,12 +26,21 @@ def line_of_sight_clear(
         return graph.is_passable(r1, c1)
 
     steps = int(math.ceil(dist * 4.0))  # Sample every 0.25 pixels
+    prev_cell = (r1, c1)
     for k in range(steps + 1):
         t = k / steps
         r_sample = int(round(r1 + t * dr))
         c_sample = int(round(c1 + t * dc))
         if not graph.is_passable(r_sample, c_sample):
             return False
+
+        # Prevent diagonal corner-cutting during line-of-sight check
+        if (r_sample, c_sample) != prev_cell:
+            pr, pc = prev_cell
+            if r_sample != pr and c_sample != pc:
+                if not (graph.is_passable(r_sample, pc) and graph.is_passable(pr, c_sample)):
+                    return False
+            prev_cell = (r_sample, c_sample)
 
     return True
 

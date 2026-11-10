@@ -149,9 +149,11 @@ def compute_delta_context_layer(
     """
     # Apex of Neretva Vallis inlet
     apex_lat, apex_lon = 18.510, 77.345
+    # Mars meters per degree of latitude: (pi * R_MARS / 180.0) ≈ 59,274.7 m/deg
+    mars_m_per_deg = (math.pi * 3_396_190.0) / 180.0
     dist_from_apex = np.sqrt(
-        ((lat_grid - apex_lat) * 111_000.0) ** 2
-        + ((lon_grid - apex_lon) * 111_000.0 * math.cos(math.radians(18.45))) ** 2
+        ((lat_grid - apex_lat) * mars_m_per_deg) ** 2
+        + ((lon_grid - apex_lon) * mars_m_per_deg * math.cos(math.radians(18.45))) ** 2
     )
 
     # Fan radius ~ 6000m

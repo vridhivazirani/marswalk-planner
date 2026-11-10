@@ -174,6 +174,22 @@ def test_route_simplification():
     assert simplified[-1] == (0, 6)
 
 
+def test_simplifier_corner_cut_prevention():
+    """Verify that route simplification does not string-pull across pinch-point vertices."""
+    from app.routing.simplifier import line_of_sight_clear
+
+    shape = (3, 3)
+    cost = np.ones(shape, dtype=np.float32)
+    blocked = np.zeros(shape, dtype=bool)
+    blocked[0, 1] = True
+    blocked[1, 0] = True
+    graph = GridGraph(cost, blocked, cell_size_m=20.0)
+
+    # Direct diagonal from (0,0) to (1,1) cuts between blocked (0,1) and (1,0)
+    assert not line_of_sight_clear(graph, 0, 0, 1, 1)
+
+
+
 def test_jezero_suite_route_profiles():
     """Test computing comparative routes across Jezero Western Delta study area."""
     engine = RouteOptimizationEngine()

@@ -114,3 +114,22 @@ def test_terrain_classifier_rules():
     assert classes[3, 3] == TerrainClass.UNKNOWN_NO_DATA
     assert conf[3, 3] == 0.0
     assert classes[0, 0] == TerrainClass.SMOOTH_REGOLITH
+
+
+def test_nodata_boundary_handling():
+    """Verify that NoData pixels (-9999.0) do not cause artificial 7000m cliffs in slope or TRI."""
+    dem = np.full((7, 7), -2500.0, dtype=np.float32)
+    # Set right boundary to NoData
+    dem[:, -1] = -9999.0
+
+    slope, _ = compute_slope_aspect_horn(dem, res_m=20.0, nodata=-9999.0)
+    tri = compute_terrain_ruggedness_index(dem, nodata=-9999.0)
+
+    # Valid cells bordering the NoData column must remain near zero slope and zero TRI
+    assert np.allclose(slope[:, :-1], 0.0, atol=1e-2)
+    assert np.allclose(tri[:, :-1], 0.0, atol=1e-2)
+
+    # NoData column itself must preserve the NoData sentinel
+    assert np.all(slope[:, -1] == -9999.0)
+    assert np.all(tri[:, -1] == -9999.0)
+

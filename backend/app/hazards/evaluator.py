@@ -102,11 +102,10 @@ def compute_hazard_bundle(
     tri_cells = valid_mask & (tri >= profile.max_tri_m)
     impassable_mask |= tri_cells
     # If cell already flagged by slope, combine codes
-    for r in range(valid_mask.shape[0]):
-        for c in range(valid_mask.shape[1]):
-            if tri_cells[r, c]:
-                curr = restriction_codes[r, c]
-                restriction_codes[r, c] = f"{curr}+TRI_GT_MAX" if curr else "TRI_GT_MAX"
+    tri_r, tri_c = np.where(tri_cells)
+    for r, c in zip(tri_r, tri_c, strict=True):
+        curr = restriction_codes[r, c]
+        restriction_codes[r, c] = f"{curr}+TRI_GT_MAX" if curr else "TRI_GT_MAX"
 
     # -------------------------------------------------------------
     # 3. Overall Composite Hazard Score (Weighted Sum)
