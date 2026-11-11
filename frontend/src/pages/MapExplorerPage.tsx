@@ -107,6 +107,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
   // Detailed Dossier Modal / Drawer
   const [activeDossier, setActiveDossier] = useState<AtlasMapEntry | null>(null)
   const [loadingDossier, setLoadingDossier] = useState<boolean>(false)
+  const [selectedRegionId, setSelectedRegionId] = useState<string>('reg-jezero')
 
   // Local layer toggle fallback
   const [localLayers, setLocalLayers] = useState<Record<string, boolean>>({
@@ -410,7 +411,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           }}
         >
           <span>🛰️</span>
-          <span>JEZERO REGIONAL ATLAS (Western Basin & Delta)</span>
+          <span>MULTI-REGION ATLAS (12 Priority Regions)</span>
         </button>
 
         <button
@@ -444,6 +445,11 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
         <div style={{ height: 'calc(100vh - 200px)', minHeight: '680px', marginBottom: '1.5rem' }}>
           <GlobalMarsGlobe3D
             onEnterJezero={() => {
+              setSelectedRegionId('reg-jezero')
+              setExplorerTab('REGIONAL_MAP')
+            }}
+            onEnterRegion={(regionId) => {
+              setSelectedRegionId(regionId)
               setExplorerTab('REGIONAL_MAP')
             }}
             onSelectCoordinates={onSelectCoords}
@@ -458,6 +464,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
         <div style={{ height: 'calc(100vh - 200px)', minHeight: '680px', marginBottom: '1.5rem' }}>
           <GlobalMarsMap
             onEnterJezero={() => {
+              setSelectedRegionId('reg-jezero')
               setExplorerTab('REGIONAL_MAP')
             }}
             onSelectCoordinates={onSelectCoords}
@@ -466,11 +473,12 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
       )}
 
       {/* =========================================================================
-          TAB 2: REGIONAL JEZERO CRATER MAP VIEW (MILESTONE 2.2)
+          TAB 2: MULTI-REGION EXPLORATION ENVIRONMENT (STAGE B — 12 PRIORITY REGIONS)
           ========================================================================= */}
       {explorerTab === 'REGIONAL_MAP' && (
         <div style={{ height: 'calc(100vh - 200px)', minHeight: '680px', marginBottom: '1.5rem' }}>
           <RegionalMarsMap
+            initialRegionId={selectedRegionId}
             onBackToGlobal={() => setExplorerTab('GLOBAL_GLOBE')}
             onEnterLocalTwin={() => {
               if (onNavigateToPage) onNavigateToPage('digital-twin')

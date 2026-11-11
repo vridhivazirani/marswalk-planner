@@ -66,11 +66,30 @@ function vector3ToLatLon(v: THREE.Vector3): { lat: number; lon: number } {
 
 interface GlobalMarsGlobe3DProps {
   onEnterJezero?: () => void
+  onEnterRegion?: (regionId: string) => void
   onSelectCoordinates?: (coords: { lat: number; lon: number }) => void
+}
+
+function getRegionIdForEntity(name: string): string | null {
+  const n = name.toLowerCase()
+  if (n.includes('jezero')) return 'reg-jezero'
+  if (n.includes('gale')) return 'reg-gale'
+  if (n.includes('valles marineris')) return 'reg-valles-marineris'
+  if (n.includes('olympus')) return 'reg-olympus-mons'
+  if (n.includes('tharsis')) return 'reg-tharsis'
+  if (n.includes('hellas')) return 'reg-hellas'
+  if (n.includes('utopia')) return 'reg-utopia'
+  if (n.includes('elysium')) return 'reg-elysium'
+  if (n.includes('arcadia')) return 'reg-arcadia'
+  if (n.includes('gusev')) return 'reg-gusev'
+  if (n.includes('north polar') || n.includes('boreum')) return 'reg-north-polar'
+  if (n.includes('south polar') || n.includes('australe')) return 'reg-south-polar'
+  return null
 }
 
 export function GlobalMarsGlobe3D({
   onEnterJezero,
+  onEnterRegion,
   onSelectCoordinates,
 }: GlobalMarsGlobe3DProps) {
   const mountRef = useRef<HTMLDivElement | null>(null)
@@ -1343,46 +1362,59 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
                   </div>
                 </div>
 
-                {/* Regional Transition CTA for Jezero Crater */}
-                {selectedEntity.data.name.toLowerCase().includes('jezero') ? (
-                  <div style={{ marginTop: '1rem', borderTop: '1px solid #27272a', paddingTop: '1rem' }}>
-                    <div style={{ color: '#22d3ee', fontSize: '0.68rem', fontWeight: 700, marginBottom: '0.4rem' }}>
-                      HIGH-RESOLUTION REGIONAL DATA ACTIVE
+                {/* Regional Transition CTA for Features */}
+                {(() => {
+                  const matchedReg = getRegionIdForEntity(selectedEntity.data.name)
+                  if (matchedReg) {
+                    const isJezero = matchedReg === 'reg-jezero'
+                    return (
+                      <div style={{ marginTop: '1rem', borderTop: '1px solid #27272a', paddingTop: '1rem' }}>
+                        <div style={{ color: '#22d3ee', fontSize: '0.68rem', fontWeight: 700, marginBottom: '0.4rem' }}>
+                          {isJezero ? 'HIGH-RESOLUTION REGIONAL DATA ACTIVE' : 'REGIONAL EXPLORATION DOSSIER AVAILABLE'}
+                        </div>
+                        <div style={{ color: '#a1a1aa', fontSize: '0.65rem', lineHeight: 1.35, marginBottom: '0.75rem' }}>
+                          {isJezero
+                            ? 'Descent into Level 2: 6m CTX controlled mosaic, 20m photogrammetric DTM, USGS SIM-3464 geological formations, MRO CRISM mineralogy, and Perseverance traverse telemetry.'
+                            : `Explore the regional scientific dossier, geological setting, elevation span, and verified orbital datasets for ${selectedEntity.data.name}.`}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (onEnterRegion) {
+                              onEnterRegion(matchedReg)
+                            } else if (onEnterJezero) {
+                              onEnterJezero()
+                            }
+                          }}
+                          style={{
+                            width: '100%',
+                            background: '#22d3ee',
+                            color: '#000000',
+                            border: 'none',
+                            padding: '0.55rem',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            borderRadius: '2px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem',
+                          }}
+                        >
+                          <span>🪐</span>
+                          <span>{isJezero ? 'ENTER JEZERO REGIONAL ATLAS →' : `ENTER ${selectedEntity.data.name.toUpperCase()} DOSSIER →`}</span>
+                        </button>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div style={{ marginTop: '1rem', borderTop: '1px solid #27272a', paddingTop: '1rem' }}>
+                      <div style={{ color: '#71717a', fontSize: '0.65rem', lineHeight: 1.35 }}>
+                        Global MOLA altimetry (463m) and orbital imagery active for this quadrant.
+                      </div>
                     </div>
-                    <div style={{ color: '#a1a1aa', fontSize: '0.65rem', lineHeight: 1.35, marginBottom: '0.75rem' }}>
-                      Descent into Level 2: 6m CTX controlled mosaic, 20m photogrammetric DTM, USGS SIM-3464 geological
-                      formations, MRO CRISM mineralogy, and Perseverance traverse telemetry.
-                    </div>
-                    <button
-                      onClick={onEnterJezero}
-                      style={{
-                        width: '100%',
-                        background: '#22d3ee',
-                        color: '#000000',
-                        border: 'none',
-                        padding: '0.55rem',
-                        fontWeight: 700,
-                        fontSize: '0.75rem',
-                        borderRadius: '2px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.4rem',
-                      }}
-                    >
-                      <span>🪐</span>
-                      <span>ENTER JEZERO REGIONAL ATLAS →</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ marginTop: '1rem', borderTop: '1px solid #27272a', paddingTop: '1rem' }}>
-                    <div style={{ color: '#71717a', fontSize: '0.65rem', lineHeight: 1.35 }}>
-                      Global MOLA altimetry (463m) and orbital imagery active for this quadrant. Sub-meter DTM and
-                      regional multi-layer exploration is currently configured for Jezero Crater.
-                    </div>
-                  </div>
-                )}
+                  )
+                })()}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.72rem' }}>
@@ -1427,25 +1459,37 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
                   </div>
                 </div>
 
-                {selectedEntity.data.mission.toLowerCase().includes('2020') && (
-                  <button
-                    onClick={onEnterJezero}
-                    style={{
-                      width: '100%',
-                      marginTop: '1rem',
-                      background: '#22d3ee',
-                      color: '#000000',
-                      border: 'none',
-                      padding: '0.55rem',
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      borderRadius: '2px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    INSPECT PERSEVERANCE TRAVERSE →
-                  </button>
-                )}
+                {(() => {
+                  const regId = getRegionIdForEntity(selectedEntity.data.target_region || selectedEntity.data.mission)
+                  if (regId) {
+                    return (
+                      <button
+                        onClick={() => {
+                          if (onEnterRegion) {
+                            onEnterRegion(regId)
+                          } else if (onEnterJezero) {
+                            onEnterJezero()
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          marginTop: '1rem',
+                          background: '#22d3ee',
+                          color: '#000000',
+                          border: 'none',
+                          padding: '0.55rem',
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          borderRadius: '2px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        EXPLORE {selectedEntity.data.target_region.toUpperCase()} REGIONAL DOSSIER →
+                      </button>
+                    )
+                  }
+                  return null
+                })()}
               </div>
             )}
           </div>

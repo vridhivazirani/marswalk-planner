@@ -23,13 +23,24 @@ import {
   type LayerComparisonResult,
   type GeoJSONFeatureCollection,
 } from '../api/atlas'
+import {
+  fetchRegions,
+  fetchRegionDossier,
+  type RegionSummaryDTO,
+  type RegionMetadata,
+} from '../api/regions'
 
 interface RegionalMarsMapProps {
   onBackToGlobal?: () => void
   onEnterLocalTwin?: () => void
+  initialRegionId?: string
 }
 
-export function RegionalMarsMap({ onBackToGlobal, onEnterLocalTwin }: RegionalMarsMapProps) {
+export function RegionalMarsMap({
+  onBackToGlobal,
+  onEnterLocalTwin,
+  initialRegionId = 'reg-jezero',
+}: RegionalMarsMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
 
@@ -47,7 +58,12 @@ export function RegionalMarsMap({ onBackToGlobal, onEnterLocalTwin }: RegionalMa
   const transectLineRef = useRef<L.Polyline | null>(null)
 
   // Data states
-  const [studyArea, setStudyArea] = useState<RegionalStudyArea | null>(null)
+  const [regionsList, setRegionsList] = useState<RegionSummaryDTO[]>([])
+  const [selectedRegionId, setSelectedRegionId] = useState<string>(initialRegionId)
+  const [activeRegionDossier, setActiveRegionDossier] = useState<RegionMetadata | null>(null)
+  const [loadingRegionDossier, setLoadingRegionDossier] = useState<boolean>(false)
+
+  const [_studyArea, setStudyArea] = useState<RegionalStudyArea | null>(null)
   const [categories, setCategories] = useState<RegionalLayerCategory[]>([])
   const [layers, setLayers] = useState<RegionalLayer[]>([])
   const [geologyUnits, setGeologyUnits] = useState<RegionalGeologicUnit[]>([])
@@ -167,6 +183,57 @@ export function RegionalMarsMap({ onBackToGlobal, onEnterLocalTwin }: RegionalMa
       cancelled = true
     }
   }, [])
+
+  // Load regions list on mount
+  useEffect(() => {
+    fetchRegions()
+      .then((res) => setRegionsList(res.regions || []))
+      .catch((err) => console.warn('Failed to load regions list:', err))
+  }, [])
+
+  // Sync selectedRegionId when initialRegionId changes (React render phase state adjustment)
+  const [prevInitialId, setPrevInitialId] = useState(initialRegionId)
+  if (initialRegionId !== prevInitialId) {
+    setPrevInitialId(initialRegionId)
+    setSelectedRegionId(initialRegionId)
+    if (initialRegionId !== 'reg-jezero') {
+      setLoadingRegionDossier(true)
+    }
+  }
+
+  // Load region dossier when selectedRegionId changes and is not Jezero
+  useEffect(() => {
+    if (selectedRegionId === 'reg-jezero') {
+      return
+    }
+    let cancelled = false
+    fetchRegionDossier(selectedRegionId)
+      .then((dossier) => {
+        if (!cancelled) {
+          setActiveRegionDossier(dossier)
+          setLoadingRegionDossier(false)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.warn('Failed to fetch region dossier:', err)
+          setLoadingRegionDossier(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedRegionId])
+
+  const handleSelectRegion = (id: string) => {
+    setSelectedRegionId(id)
+    if (id === 'reg-jezero') {
+      setActiveRegionDossier(null)
+      setLoadingRegionDossier(false)
+    } else {
+      setLoadingRegionDossier(true)
+    }
+  }
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -593,7 +660,7 @@ export function RegionalMarsMap({ onBackToGlobal, onEnterLocalTwin }: RegionalMa
     <div className="regional-mars-map-wrapper">
       {/* TOP REGIONAL HEADER & MULTI-SCALE BREADCRUMBS */}
       <div className="regional-mars-map-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, flexWrap: 'wrap' }}>
           {/* Breadcrumbs */}
           <button
             onClick={onBackToGlobal}
@@ -616,52 +683,62 @@ export function RegionalMarsMap({ onBackToGlobal, onEnterLocalTwin }: RegionalMa
             <span>GLOBAL ATLAS</span>
           </button>
           <span style={{ color: '#404040' }}>/</span>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.74rem',
-            }}
-          >
-            <span
+
+          {/* Region Selector Dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.7rem', color: '#a3a3a3', fontWeight: 700 }}>REGION:</span>
+            <select
+              value={selectedRegionId}
+              onChange={(e) => handleSelectRegion(e.target.value)}
               style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: '#4ade80',
+                background: '#141414',
+                border: '1px solid #3f3f46',
+                color: '#ffffff',
+                fontSize: '0.74rem',
+                fontFamily: 'var(--font-mono)',
+                padding: '0.2rem 0.4rem',
+                borderRadius: '2px',
+                cursor: 'pointer',
               }}
-            />
-            <span>
-              {studyArea
-                ? `${studyArea.name.toUpperCase()} (31.9 × 30.2 km | 51.2% of 49 km Basin)`
-                : 'JEZERO REGIONAL ATLAS (Western Basin & Delta | 51.2% Coverage)'}
-            </span>
+            >
+              {regionsList.length > 0 ? (
+                regionsList.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} {r.has_local_digital_twin ? '★' : ''}
+                  </option>
+                ))
+              ) : (
+                <option value="reg-jezero">Jezero Crater (Western Basin & Delta) ★</option>
+              )}
+            </select>
           </div>
-          <span style={{ color: '#404040' }}>/</span>
-          <button
-            onClick={onEnterLocalTwin}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              background: '#202020',
-              border: '1px solid #404040',
-              color: '#ffffff',
-              padding: '0.25rem 0.55rem',
-              borderRadius: '2px',
-              cursor: 'pointer',
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              fontFamily: 'var(--font-mono)',
-            }}
-            title="Dive into 1m Local Digital Twin"
-          >
-            <span>🔭</span>
-            <span>LOCAL DIGITAL TWIN (1m) →</span>
-          </button>
+
+          {selectedRegionId === 'reg-jezero' && (
+            <>
+              <span style={{ color: '#404040' }}>/</span>
+              <button
+                onClick={onEnterLocalTwin}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  background: '#202020',
+                  border: '1px solid #404040',
+                  color: '#ffffff',
+                  padding: '0.25rem 0.55rem',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  fontFamily: 'var(--font-mono)',
+                }}
+                title="Dive into 1m Local Digital Twin"
+              >
+                <span>🔭</span>
+                <span>LOCAL DIGITAL TWIN (1m) →</span>
+              </button>
+            </>
+          )}
         </div>
 
         <div
@@ -671,6 +748,7 @@ export function RegionalMarsMap({ onBackToGlobal, onEnterLocalTwin }: RegionalMa
             gap: '0.6rem',
             fontSize: '0.72rem',
             color: '#a3a3a3',
+            flexWrap: 'wrap',
           }}
         >
           <div
@@ -691,43 +769,285 @@ export function RegionalMarsMap({ onBackToGlobal, onEnterLocalTwin }: RegionalMa
           >
             DATUM: <span style={{ color: '#ffffff', fontFamily: 'var(--font-mono)' }}>MOLA Areoid</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <button
-              onClick={() => setIsProfilingActive(!isProfilingActive)}
-              style={{
-                padding: '0.25rem 0.6rem',
-                border: isProfilingActive ? '1px solid #ffffff' : '1px solid #404040',
-                background: isProfilingActive ? '#ffffff' : '#181818',
-                color: isProfilingActive ? '#000000' : '#f5f5f5',
-                fontWeight: 700,
-                fontSize: '0.72rem',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-mono)',
-              }}
-            >
-              📐 {isProfilingActive ? 'EXIT TRANSECT' : 'ELEVATION TRANSECT'}
-            </button>
-            <button
-              onClick={() => setShowCompareTool(!showCompareTool)}
-              style={{
-                padding: '0.25rem 0.6rem',
-                border: showCompareTool ? '1px solid #ffffff' : '1px solid #404040',
-                background: showCompareTool ? '#ffffff' : '#181818',
-                color: showCompareTool ? '#000000' : '#f5f5f5',
-                fontWeight: 700,
-                fontSize: '0.72rem',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-mono)',
-              }}
-            >
-              ⚖️ {showCompareTool ? 'HIDE COMPARISON' : 'LAYER COMPARISON'}
-            </button>
-          </div>
+          {selectedRegionId === 'reg-jezero' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <button
+                onClick={() => setIsProfilingActive(!isProfilingActive)}
+                style={{
+                  padding: '0.25rem 0.6rem',
+                  border: isProfilingActive ? '1px solid #ffffff' : '1px solid #404040',
+                  background: isProfilingActive ? '#ffffff' : '#181818',
+                  color: isProfilingActive ? '#000000' : '#f5f5f5',
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                📐 {isProfilingActive ? 'EXIT TRANSECT' : 'ELEVATION TRANSECT'}
+              </button>
+              <button
+                onClick={() => setShowCompareTool(!showCompareTool)}
+                style={{
+                  padding: '0.25rem 0.6rem',
+                  border: showCompareTool ? '1px solid #ffffff' : '1px solid #404040',
+                  background: showCompareTool ? '#ffffff' : '#181818',
+                  color: showCompareTool ? '#000000' : '#f5f5f5',
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                ⚖️ {showCompareTool ? 'HIDE COMPARISON' : 'LAYER COMPARISON'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* MAIN REGIONAL WORKSPACE: SIDEBAR + MAP + BOTTOM PANELS */}
-      <div className="regional-mars-map-body">
+      {/* CONDITIONAL BODY: JEZERO 16-LAYER DIGITAL TWIN vs MULTI-REGION SCIENTIFIC DOSSIER */}
+      {selectedRegionId !== 'reg-jezero' ? (
+        <div
+          style={{
+            flex: 1,
+            background: '#0a0a0d',
+            padding: '1.5rem',
+            overflowY: 'auto',
+            color: '#f4f4f5',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {loadingRegionDossier && (
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#a1a1aa' }}>
+              Loading scientific exploration dossier...
+            </div>
+          )}
+
+          {!loadingRegionDossier && activeRegionDossier && (
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+              {/* Region Hero Banner */}
+              <div
+                style={{
+                  background: '#121217',
+                  border: '1px solid #27272a',
+                  borderRadius: '4px',
+                  padding: '1.25rem 1.5rem',
+                  marginBottom: '1.5rem',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+                      <span className="badge badge-observed">
+                        {activeRegionDossier.canonical_feature_name.toUpperCase()}
+                      </span>
+                      <span className="badge badge-derived">
+                        GEODESY: IAU_2015:49900
+                      </span>
+                      <span className="badge badge-interpreted">
+                        ERA: {activeRegionDossier.formation_period}
+                      </span>
+                    </div>
+                    <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0 0 0.3rem 0', color: '#ffffff' }}>
+                      {activeRegionDossier.name}
+                    </h2>
+                    <div style={{ fontSize: '0.78rem', color: '#a1a1aa' }}>
+                      Physiographic Province: <strong style={{ color: '#ffffff' }}>{activeRegionDossier.physiographic_province}</strong>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={onBackToGlobal}
+                      style={{
+                        background: '#18181b',
+                        color: '#ffffff',
+                        border: '1px solid #3f3f46',
+                        padding: '0.45rem 0.9rem',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        borderRadius: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                      }}
+                    >
+                      <span>🪐</span>
+                      <span>FLY TO ON 3D MARS GLOBE</span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedRegionId('reg-jezero')}
+                      style={{
+                        background: '#22d3ee',
+                        color: '#000000',
+                        border: 'none',
+                        padding: '0.45rem 0.9rem',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        borderRadius: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                      }}
+                    >
+                      <span>🛰️</span>
+                      <span>OPEN JEZERO DIGITAL TWIN (16 LAYERS)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Telemetry Metrics Cards */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gap: '1rem',
+                  marginBottom: '1.5rem',
+                }}
+              >
+                <div style={{ background: '#121217', border: '1px solid #27272a', padding: '1rem', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#a1a1aa', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    CENTER COORDINATES & BOUNDS
+                  </div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>
+                    {activeRegionDossier.center[0] > 0 ? `${activeRegionDossier.center[0].toFixed(2)}°N` : `${Math.abs(activeRegionDossier.center[0]).toFixed(2)}°S`},{' '}
+                    {activeRegionDossier.center[1] > 0 ? `${activeRegionDossier.center[1].toFixed(2)}°E` : `${Math.abs(activeRegionDossier.center[1]).toFixed(2)}°W`}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#71717a', marginTop: '0.3rem' }}>
+                    Lat: [{activeRegionDossier.bounds.lat_min}°, {activeRegionDossier.bounds.lat_max}°] • Lon: [{activeRegionDossier.bounds.lon_min}°, {activeRegionDossier.bounds.lon_max}°]
+                  </div>
+                </div>
+
+                <div style={{ background: '#121217', border: '1px solid #27272a', padding: '1rem', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#a1a1aa', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    REGIONAL EXTENT & AREA
+                  </div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>
+                    {activeRegionDossier.dimensions.width_km.toLocaleString()} × {activeRegionDossier.dimensions.height_km.toLocaleString()} km
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#71717a', marginTop: '0.3rem' }}>
+                    Total Study Area: {activeRegionDossier.dimensions.area_km2.toLocaleString()} km²
+                    {activeRegionDossier.dimensions.diameter_km ? ` (D = ${activeRegionDossier.dimensions.diameter_km} km)` : ''}
+                  </div>
+                </div>
+
+                <div style={{ background: '#121217', border: '1px solid #27272a', padding: '1rem', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#a1a1aa', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    AREOID TOPOGRAPHY SPAN
+                  </div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>
+                    {activeRegionDossier.elevation_range.min_elevation_m > 0 ? `+${activeRegionDossier.elevation_range.min_elevation_m}m` : `${activeRegionDossier.elevation_range.min_elevation_m}m`} to{' '}
+                    {activeRegionDossier.elevation_range.max_elevation_m > 0 ? `+${activeRegionDossier.elevation_range.max_elevation_m}m` : `${activeRegionDossier.elevation_range.max_elevation_m}m`}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#71717a', marginTop: '0.3rem' }}>
+                    Vertical Datum: Mars Gravitational Areoid
+                  </div>
+                </div>
+
+                <div style={{ background: '#121217', border: '1px solid #27272a', padding: '1rem', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#a1a1aa', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    SURFACE MISSIONS & DATASETS
+                  </div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>
+                    {activeRegionDossier.missions.length} Missions • {activeRegionDossier.available_datasets.length} Products
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#71717a', marginTop: '0.3rem' }}>
+                    {activeRegionDossier.missions.map((m) => m.spacecraft).join(', ') || 'No landed robotic assets to date'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Two Column Detailed Breakdown */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                {/* Left Column: Geology & Highlights */}
+                <div style={{ background: '#121217', border: '1px solid #27272a', padding: '1.25rem', borderRadius: '4px' }}>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
+                    GEOLOGICAL SETTING & STRATIGRAPHY
+                  </h3>
+                  <p style={{ fontSize: '0.78rem', lineHeight: '1.6', color: '#d4d4d8', marginBottom: '1.2rem' }}>
+                    {activeRegionDossier.geological_setting}
+                  </p>
+
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
+                    PRIMARY SCIENTIFIC OBJECTIVES & HIGHLIGHTS
+                  </h3>
+                  <ul style={{ paddingLeft: '1.2rem', margin: 0, fontSize: '0.76rem', color: '#d4d4d8', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                    {activeRegionDossier.scientific_highlights.map((item, idx) => (
+                      <li key={idx} style={{ lineHeight: '1.5' }}>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {activeRegionDossier.missions.length > 0 && (
+                    <div style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid #27272a' }}>
+                      <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.6rem' }}>
+                        ROBOTIC EXPLORATION ASSETS
+                      </h3>
+                      {activeRegionDossier.missions.map((m, idx) => (
+                        <div key={idx} style={{ fontSize: '0.74rem', color: '#a1a1aa', marginBottom: '0.3rem' }}>
+                          <strong style={{ color: '#ffffff' }}>{m.spacecraft}</strong> ({m.mission_name}) • Landed: {m.landing_date} •{' '}
+                          <span style={{ color: m.status.includes('Active') ? '#22c55e' : '#a1a1aa' }}>{m.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: Available Datasets */}
+                <div style={{ background: '#121217', border: '1px solid #27272a', padding: '1.25rem', borderRadius: '4px' }}>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.75rem', letterSpacing: '0.04em' }}>
+                    AVAILABLE PLANETARY DATASETS ({activeRegionDossier.available_datasets.length})
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    {activeRegionDossier.available_datasets.map((ds) => (
+                      <div
+                        key={ds.product_id}
+                        style={{
+                          background: '#18181b',
+                          border: '1px solid #27272a',
+                          padding: '0.75rem',
+                          borderRadius: '2px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#ffffff' }}>{ds.name}</span>
+                          <span className={`badge ${ds.storage_type === 'VERIFIED_LOCAL' ? 'badge-observed' : 'badge-derived'}`} style={{ fontSize: '0.65rem' }}>
+                            {ds.storage_type}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#a1a1aa', display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                          <span>ID: <code style={{ color: '#ffffff' }}>{ds.product_id}</code></span>
+                          <span>Resolution: <strong style={{ color: '#ffffff' }}>{ds.resolution}</strong></span>
+                          <span>Instrument: {ds.instrument_mission}</span>
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#71717a', marginTop: '0.25rem' }}>
+                          Portal: {ds.source_portal} • Scope: {ds.coverage_type}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* MAIN REGIONAL WORKSPACE: SIDEBAR + MAP + BOTTOM PANELS */}
+          <div className="regional-mars-map-body">
         {/* LEFT CONTROL PANEL: 8-CATEGORY LAYER REGISTRY & ROVER TIMELINE */}
         <div className="regional-mars-sidebar">
           {/* Category Filter Tabs */}
@@ -1492,6 +1812,8 @@ export function RegionalMarsMap({ onBackToGlobal, onEnterLocalTwin }: RegionalMa
             </svg>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   )

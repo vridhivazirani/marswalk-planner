@@ -11,6 +11,7 @@ from app.api.routes import (
     hazards,
     health,
     mission,
+    regions,
     routing,
     science,
     terrain,
@@ -20,6 +21,7 @@ from app.api.routes import (
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["system"])
 api_router.include_router(atlas.router)
+api_router.include_router(regions.router)
 api_router.include_router(catalog.router)
 api_router.include_router(twin.router)
 api_router.include_router(terrain.router)
