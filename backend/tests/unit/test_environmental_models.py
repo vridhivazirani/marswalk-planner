@@ -98,3 +98,4 @@ def test_compute_dust_climatology_cycle() -> None:
 
     assert mean_perihelion_regional > mean_aphelion_regional
     assert any(p.storm_probability_pct > 50.0 for p in perihelion_pts)
+

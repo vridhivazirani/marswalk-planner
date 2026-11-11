@@ -148,3 +148,4 @@ In strict adherence to `AGENTS.md`:
 
 > **RESEARCH AND EDUCATION PROTOTYPE ONLY**  
 > Marswalk Planner is an academic and educational decision-support prototype. It is **not NASA software**, has **not been validated, certified, or endorsed** by NASA, ESA, USGS, or any space agency, and must **never** be used to assert operational astronaut safety, extravehicular life-support compliance, or mission-critical planetary operations.
+

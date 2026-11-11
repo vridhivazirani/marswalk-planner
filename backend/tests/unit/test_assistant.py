@@ -99,3 +99,4 @@ def test_explain_map_viewport() -> None:
     assert "CRISM_BD2210" in data["scientific_summary"]
     assert data["epistemic_class"] == "INTERPRETED"
     assert "disclaimer" in data
+

@@ -256,3 +256,4 @@ export function AIMarsResearchAssistant({ currentContext }: AIMarsResearchAssist
     </div>
   )
 }
+

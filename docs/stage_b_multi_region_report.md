@@ -64,3 +64,4 @@ Stage B expands Marswalk beyond Jezero Crater by establishing the architectural 
 | Frontend Code Quality (`oxlint`) | **PASS** | 0 warnings, 0 errors across 44 files |
 | Frontend Type Check & Build (`tsc -b && vite build`) | **PASS** | Clean production bundle generated in 304ms |
 | Live API Handshake (`/api/v1/regions`) | **PASS** | Authentic JSON returned with 12 regions |
+

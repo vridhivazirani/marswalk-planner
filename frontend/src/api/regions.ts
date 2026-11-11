@@ -114,3 +114,4 @@ export async function lookupRegionByCoords(
   const data = await res.json()
   return data.id ? (data as RegionMetadata) : null
 }
+

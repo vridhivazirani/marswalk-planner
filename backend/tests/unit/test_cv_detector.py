@@ -130,3 +130,4 @@ def test_detect_impact_craters_synthetic_bowl() -> None:
     assert 55 <= top_crater.center_row <= 65
     assert 55 <= top_crater.center_col <= 65
     assert top_crater.depth_m > 5.0
+

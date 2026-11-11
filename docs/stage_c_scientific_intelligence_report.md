@@ -61,3 +61,4 @@ Stage C advances Marswalk's scientific capabilities by introducing an explainabl
 | Frontend Code Quality (`oxlint`) | **PASS** | 0 warnings, 0 errors across 45 files |
 | Frontend Type Check & Build (`tsc -b && vite build`) | **PASS** | Production client bundle built in 301ms |
 | Live API Handshake | **PASS** | Authentic JSON returned from all new endpoints |
+
