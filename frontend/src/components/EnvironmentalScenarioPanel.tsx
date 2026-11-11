@@ -228,6 +228,41 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
         )}
       </div>
 
+      {/* 10 Quick-Select What-If Scenario Pills */}
+      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+        {scenarios.map((s, idx) => {
+          const isSelected = selectedScenarioId === s.scenario_id
+          const icons = ['☀️', '💨', '🌪️', '❄️', '🌑', '☢️', '📡', '🌡️', '🏖️', '🚨']
+          return (
+            <button
+              key={s.scenario_id}
+              type="button"
+              onClick={() => {
+                setSelectedScenarioId(s.scenario_id)
+                setCurrentScenario(s)
+                evaluateScenario(s)
+              }}
+              style={{
+                background: isSelected ? '#18181b' : '#0d0d0f',
+                border: isSelected ? '1px solid #00e5ff' : '1px solid #27272a',
+                color: isSelected ? '#00e5ff' : '#a1a1aa',
+                fontSize: '0.68rem',
+                fontFamily: 'var(--font-mono)',
+                padding: '0.2rem 0.45rem',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+              }}
+            >
+              <span>{icons[idx] || '⚙️'}</span>
+              <span>{s.title.split(' ')[0]}</span>
+            </button>
+          )
+        })}
+      </div>
+
       {error && (
         <div className="card status-error" style={{ marginTop: '0.6rem', padding: '0.5rem' }}>
           {error}

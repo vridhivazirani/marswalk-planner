@@ -57,7 +57,7 @@ def test_curated_scenarios_authenticity() -> None:
     engine = EnvironmentalScenarioEngine()
     scenarios = engine.get_curated_scenarios()
 
-    assert len(scenarios) == 4
+    assert len(scenarios) == 10
     clear_midday = scenarios[0]
     assert clear_midday.data_origin == DataOriginCategory.HISTORICAL_OBSERVED
     assert clear_midday.epistemic_class == EpistemicClass.OBSERVED
@@ -145,7 +145,7 @@ def test_api_environmental_endpoints(client: TestClient) -> None:
     resp_scen = client.get("/api/v1/environmental/scenarios")
     assert resp_scen.status_code == 200
     scenarios = resp_scen.json()["scenarios"]
-    assert len(scenarios) == 4
+    assert len(scenarios) == 10
 
     # 3. Assess scenario
     assess_payload = {
@@ -166,7 +166,7 @@ def test_api_environmental_endpoints(client: TestClient) -> None:
     resp_comp = client.post("/api/v1/environmental/compare", json=comp_payload)
     assert resp_comp.status_code == 200
     comps = resp_comp.json()["comparisons"]
-    assert len(comps) == 4
+    assert len(comps) == len(scenarios)
     first_score = comps[0]["suitability"]["overall_suitability_score"]
     last_score = comps[-1]["suitability"]["overall_suitability_score"]
     assert first_score >= last_score
