@@ -42,7 +42,7 @@ export function MarsMap3D({ metadata }: Map3DProps) {
 
     // 1. Scene & Camera
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x181310) // Dark Martian ambient sky
+    scene.background = new THREE.Color(0x090909) // Pure dark aerospace monochrome
     sceneRef.current = scene
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 5000)
@@ -52,10 +52,10 @@ export function MarsMap3D({ metadata }: Map3DProps) {
     cameraRef.current = camera
 
     // 2. Ambient & Directional Sun Light (simulating Martian oblique illumination)
-    const ambientLight = new THREE.AmbientLight(0xffecd0, 0.6)
+    const ambientLight = new THREE.AmbientLight(0xd4d4d4, 0.65)
     scene.add(ambientLight)
 
-    const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.2)
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.2)
     sunLight.position.set(-200, -300, 400)
     scene.add(sunLight)
 

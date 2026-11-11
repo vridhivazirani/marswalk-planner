@@ -20,10 +20,10 @@ export const RouteComparisonPage: React.FC<RouteComparisonPageProps> = ({
       {/* Header */}
       <div className="twin-header" style={{ marginBottom: '1rem' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f28c52', fontSize: '1.3rem' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.3rem' }}>
             Multi-Objective Route Comparison & Trade-Off Analysis
           </h2>
-          <small style={{ color: '#a89f97' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             Comparative Evaluation of Safety-First, Science-First, and Balanced Traversal Options
           </small>
         </div>

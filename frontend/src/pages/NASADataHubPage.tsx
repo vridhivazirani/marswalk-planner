@@ -37,10 +37,10 @@ export const NASADataHubPage: React.FC = () => {
       {/* Page Header */}
       <div className="twin-header" style={{ marginBottom: '1rem' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f28c52', fontSize: '1.3rem' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.3rem' }}>
             NASA & International Planetary Data Hub
           </h2>
-          <small style={{ color: '#a89f97' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             Authentic Archived Planetary Products for Jezero Crater • NASA PDS & USGS Astrogeology
           </small>
         </div>
@@ -79,16 +79,16 @@ export const NASADataHubPage: React.FC = () => {
                 style={{
                   cursor: 'pointer',
                   padding: '0.8rem',
-                  borderLeft: `4px solid ${
-                    prod.decision === 'ACCEPT' ? '#00e676' : '#ffd700'
+                  borderLeft: `3px solid ${
+                    prod.decision === 'ACCEPT' ? 'var(--accent-primary)' : 'var(--accent-muted)'
                   }`,
-                  background: isSelected ? '#1e2832' : '#141a20',
-                  borderColor: isSelected ? '#00bcd4' : '#28333e',
+                  background: isSelected ? 'var(--bg-panel-elevated)' : 'var(--bg-panel)',
+                  borderColor: isSelected ? 'var(--border-active)' : 'var(--border-default)',
                   transition: 'all 0.15s ease',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#eceff1' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                     {prod.title}
                   </span>
                   <span
@@ -99,10 +99,10 @@ export const NASADataHubPage: React.FC = () => {
                     {prod.decision}
                   </span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#80cbc4', marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
                   Agency: {prod.agency} • Resolution: {prod.resolution}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#90a4ae', marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                   DOI/URN: {prod.doiOrUrn}
                 </div>
               </div>
@@ -112,60 +112,60 @@ export const NASADataHubPage: React.FC = () => {
 
         {/* Selected Product Detail Dossier */}
         {selectedProduct && (
-          <div className="card" style={{ padding: '1rem', background: '#161c22', border: '1px solid #283440' }}>
-            <div style={{ borderBottom: '1px solid #283440', paddingBottom: '0.6rem', marginBottom: '0.8rem' }}>
+          <div className="card" style={{ padding: '1rem', background: 'var(--bg-panel)', border: '1px solid var(--border-default)' }}>
+            <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.6rem', marginBottom: '0.8rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="badge badge-observed">AUTHENTIC ARCHIVED PRODUCT</span>
-                <span style={{ fontSize: '0.75rem', color: '#80cbc4', fontWeight: 600 }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                   Status: {selectedProduct.isIngested ? 'INGESTED & PROCESSED' : 'ARCHIVED REFERENCE'}
                 </span>
               </div>
-              <h3 style={{ margin: '0.4rem 0 0.2rem 0', color: '#f28c52', fontSize: '1.15rem' }}>
+              <h3 style={{ margin: '0.4rem 0 0.2rem 0', color: 'var(--text-primary)', fontSize: '1.15rem' }}>
                 {selectedProduct.title}
               </h3>
-              <div style={{ fontSize: '0.8rem', color: '#cfd8dc' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                 Instrument: {selectedProduct.instrument}
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.8rem', fontSize: '0.8rem', color: '#cfd8dc' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.8rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               <div>
-                <strong style={{ color: '#90a4ae' }}>Originating Agency:</strong>
+                <strong style={{ color: 'var(--text-muted)' }}>Originating Agency:</strong>
                 <div>{selectedProduct.agency}</div>
               </div>
               <div>
-                <strong style={{ color: '#90a4ae' }}>DOI / PDS URN:</strong>
+                <strong style={{ color: 'var(--text-muted)' }}>DOI / PDS URN:</strong>
                 <div style={{ wordBreak: 'break-all' }}>{selectedProduct.doiOrUrn}</div>
               </div>
               <div>
-                <strong style={{ color: '#90a4ae' }}>Spatial Post Spacing:</strong>
-                <div style={{ color: '#80cbc4', fontWeight: 600 }}>{selectedProduct.resolution}</div>
+                <strong style={{ color: 'var(--text-muted)' }}>Spatial Post Spacing:</strong>
+                <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{selectedProduct.resolution}</div>
               </div>
               <div>
-                <strong style={{ color: '#90a4ae' }}>File Format:</strong>
+                <strong style={{ color: 'var(--text-muted)' }}>File Format:</strong>
                 <div>{selectedProduct.fileFormat}</div>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <strong style={{ color: '#90a4ae' }}>Coordinate Reference System:</strong>
+                <strong style={{ color: 'var(--text-muted)' }}>Coordinate Reference System:</strong>
                 <div>{selectedProduct.crs}</div>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <strong style={{ color: '#90a4ae' }}>Vertical Elevation Datum:</strong>
+                <strong style={{ color: 'var(--text-muted)' }}>Vertical Elevation Datum:</strong>
                 <div>{selectedProduct.verticalDatum}</div>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <strong style={{ color: '#90a4ae' }}>Analysis Role:</strong>
-                <div style={{ color: '#ffb74d' }}>{selectedProduct.role}</div>
+                <strong style={{ color: 'var(--text-muted)' }}>Analysis Role:</strong>
+                <div style={{ color: 'var(--accent-secondary)' }}>{selectedProduct.role}</div>
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <strong style={{ color: '#ef5350' }}>Documented Physical Caveats:</strong>
-                <div style={{ color: '#ffcdd2', fontSize: '0.75rem', marginTop: '0.2rem' }}>
+                <strong style={{ color: 'var(--status-critical)' }}>Documented Physical Caveats:</strong>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.2rem' }}>
                   {selectedProduct.caveats}
                 </div>
               </div>
             </div>
 
-            <div style={{ marginTop: '1rem', borderTop: '1px solid #283440', paddingTop: '0.8rem' }}>
+            <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.8rem' }}>
               <a
                 href={selectedProduct.officialUrl}
                 target="_blank"
@@ -173,8 +173,9 @@ export const NASADataHubPage: React.FC = () => {
                 className="mode-btn"
                 style={{
                   display: 'inline-block',
-                  background: '#00695c',
-                  color: '#fff',
+                  background: 'var(--bg-panel-elevated)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--text-primary)',
                   textDecoration: 'none',
                   fontSize: '0.8rem',
                   padding: '0.4rem 0.8rem',

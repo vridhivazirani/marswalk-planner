@@ -83,10 +83,10 @@ export const TerrainIntelligencePage: React.FC<TerrainIntelligencePageProps> = (
       {/* Header */}
       <div className="twin-header" style={{ marginBottom: '1rem' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f28c52', fontSize: '1.3rem' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.3rem' }}>
             Terrain Intelligence Engine
           </h2>
-          <small style={{ color: '#a89f97' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             Explainable Computer Vision & Geospatial Geomorphology Metrics • Native 1.0m HiRISE Grid
           </small>
         </div>
@@ -96,18 +96,18 @@ export const TerrainIntelligencePage: React.FC<TerrainIntelligencePageProps> = (
       {/* Metrics Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '0.9rem' }}>
         {terrainMetrics.map((m) => (
-          <div key={m.name} className="card" style={{ padding: '0.9rem', background: '#161c22' }}>
+          <div key={m.name} className="card" style={{ padding: '0.9rem', background: 'var(--bg-panel)', border: '1px solid var(--border-default)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h4 style={{ margin: 0, color: '#80cbc4', fontSize: '0.95rem' }}>{m.name}</h4>
+              <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{m.name}</h4>
               <span className="badge badge-derived">{m.epistemic}</span>
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#ffb74d', marginTop: '0.3rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--accent-secondary)', marginTop: '0.3rem' }}>
               Method: {m.method}
             </div>
-            <p style={{ fontSize: '0.8rem', color: '#cfd8dc', margin: '0.4rem 0' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0.4rem 0' }}>
               {m.description}
             </p>
-            <div style={{ fontSize: '0.75rem', color: '#90a4ae' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               <strong>Observed Range: </strong>{m.range}
             </div>
           </div>
@@ -115,11 +115,11 @@ export const TerrainIntelligencePage: React.FC<TerrainIntelligencePageProps> = (
       </div>
 
       {/* Interactive Terrain Query Inspector */}
-      <div className="card" style={{ marginTop: '1.2rem', padding: '1rem', background: '#171e25' }}>
-        <h3 style={{ margin: '0 0 0.6rem 0', color: '#ff9800', fontSize: '1.05rem' }}>
+      <div className="card" style={{ marginTop: '1.2rem', padding: '1rem', background: 'var(--bg-panel)', border: '1px solid var(--border-default)' }}>
+        <h3 style={{ margin: '0 0 0.6rem 0', color: 'var(--text-primary)', fontSize: '1.05rem' }}>
           Interactive Terrain Intelligence Coordinate Inspector
         </h3>
-        <p style={{ fontSize: '0.8rem', color: '#90a4ae', margin: '0 0 0.8rem 0' }}>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 0.8rem 0' }}>
           Query any planetary coordinate within the Jezero study footprint to inspect slope, roughness TRI, rock density, and elevation datum.
         </p>
 
@@ -159,9 +159,9 @@ export const TerrainIntelligencePage: React.FC<TerrainIntelligencePageProps> = (
         )}
 
         {inspection && (
-          <div style={{ marginTop: '0.8rem', borderTop: '1px solid #283440', paddingTop: '0.8rem' }}>
+          <div style={{ marginTop: '0.8rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.8rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#eceff1' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Query Result: {inspection.coordinate.lat.toFixed(5)}°N, {inspection.coordinate.lon.toFixed(5)}°E
               </span>
               <span className={`passability-badge ${inspection.is_passable ? 'passable' : 'impassable'}`}>
@@ -176,7 +176,7 @@ export const TerrainIntelligencePage: React.FC<TerrainIntelligencePageProps> = (
               </div>
               <div className="hazard-stat-box">
                 <div className="stat-label">Overall Hazard Score</div>
-                <div className="stat-value" style={{ color: inspection.is_passable ? '#81c784' : '#ef5350' }}>
+                <div className="stat-value" style={{ color: inspection.is_passable ? 'var(--text-primary)' : 'var(--status-critical)' }}>
                   {inspection.overall_hazard_score ? `${(inspection.overall_hazard_score * 100).toFixed(1)}%` : 'N/A'}
                 </div>
               </div>

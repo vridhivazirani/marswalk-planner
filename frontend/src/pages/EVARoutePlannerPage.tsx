@@ -65,10 +65,10 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
       {/* Header */}
       <div className="twin-header" style={{ marginBottom: '1rem' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f28c52', fontSize: '1.3rem' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.3rem' }}>
             EVA Route Optimization Engine
           </h2>
-          <small style={{ color: '#a89f97' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             A* & Dijkstra Constraint-Satisfying Traversal • 8-Directional Kinematic Graph Search
           </small>
         </div>
@@ -95,8 +95,8 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
       {error && <div className="card status-error" style={{ marginBottom: '0.8rem' }}>{error}</div>}
 
       {/* Coordinate & Profile Controls */}
-      <div className="card" style={{ padding: '1rem', background: '#161c22', marginBottom: '1rem' }}>
-        <h4 style={{ margin: '0 0 0.6rem 0', color: '#00e5ff', fontSize: '0.95rem' }}>
+      <div className="card" style={{ padding: '1rem', background: 'var(--bg-panel)', border: '1px solid var(--border-default)', marginBottom: '1rem' }}>
+        <h4 style={{ margin: '0 0 0.6rem 0', color: 'var(--text-primary)', fontSize: '0.95rem' }}>
           Mission Coordinates & Profile Selection
         </h4>
 
@@ -187,16 +187,16 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
             style={{
               marginTop: '0.8rem',
               padding: '0.8rem',
-              background: '#12171c',
+              background: 'var(--bg-panel-elevated)',
               borderRadius: '4px',
-              border: '1px dashed #37474f',
+              border: '1px dashed var(--border-default)',
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
               gap: '0.8rem',
             }}
           >
             <div>
-              <div style={{ fontSize: '0.75rem', color: '#ffb74d', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                 <span>Terrain Difficulty:</span>
                 <strong>{weights.w_terrain.toFixed(2)}</strong>
               </div>
@@ -207,12 +207,12 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
                 step="0.05"
                 value={weights.w_terrain}
                 onChange={(e) => onWeightChange('w_terrain', parseFloat(e.target.value))}
-                style={{ width: '100%', accentColor: '#ffb74d' }}
+                style={{ width: '100%', accentColor: 'var(--text-primary)' }}
               />
             </div>
 
             <div>
-              <div style={{ fontSize: '0.75rem', color: '#e57373', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                 <span>Environmental Hazard:</span>
                 <strong>{weights.w_hazard.toFixed(2)}</strong>
               </div>
@@ -223,12 +223,12 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
                 step="0.05"
                 value={weights.w_hazard}
                 onChange={(e) => onWeightChange('w_hazard', parseFloat(e.target.value))}
-                style={{ width: '100%', accentColor: '#e57373' }}
+                style={{ width: '100%', accentColor: 'var(--text-primary)' }}
               />
             </div>
 
             <div>
-              <div style={{ fontSize: '0.75rem', color: '#ba68c8', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                 <span>Topographic Uncertainty:</span>
                 <strong>{weights.w_uncertainty.toFixed(2)}</strong>
               </div>
@@ -239,12 +239,12 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
                 step="0.05"
                 value={weights.w_uncertainty}
                 onChange={(e) => onWeightChange('w_uncertainty', parseFloat(e.target.value))}
-                style={{ width: '100%', accentColor: '#ba68c8' }}
+                style={{ width: '100%', accentColor: 'var(--text-primary)' }}
               />
             </div>
 
             <div>
-              <div style={{ fontSize: '0.75rem', color: '#81c784', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                 <span>Science Opportunity Yield:</span>
                 <strong>{weights.w_science.toFixed(2)}</strong>
               </div>
@@ -255,7 +255,7 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
                 step="0.05"
                 value={weights.w_science}
                 onChange={(e) => onWeightChange('w_science', parseFloat(e.target.value))}
-                style={{ width: '100%', accentColor: '#81c784' }}
+                style={{ width: '100%', accentColor: 'var(--text-primary)' }}
               />
             </div>
           </div>
@@ -264,13 +264,13 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
 
       {/* Calculated Route Telemetry Display */}
       {activeRoute ? (
-        <div className="card" style={{ padding: '1rem', background: '#161c22' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #283440', paddingBottom: '0.6rem' }}>
+        <div className="card" style={{ padding: '1rem', background: 'var(--bg-panel)', border: '1px solid var(--border-default)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.6rem' }}>
             <div>
-              <h3 style={{ margin: 0, color: '#eceff1', fontSize: '1.15rem' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.15rem' }}>
                 Plan Generated: {activeRoute.properties.route_id}
               </h3>
-              <small style={{ color: '#90a4ae' }}>
+              <small style={{ color: 'var(--text-secondary)' }}>
                 Algorithm: {activeRoute.properties.algorithm.toUpperCase()} • Simplified: {activeRoute.properties.is_simplified ? 'Yes' : 'No'}
               </small>
             </div>
@@ -280,50 +280,50 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
           <div className="hazard-breakdown-grid" style={{ marginTop: '0.8rem' }}>
             <div className="hazard-stat-box">
               <div className="stat-label">Total Traverse Length</div>
-              <div className="stat-value" style={{ color: '#00e5ff' }}>
+              <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
                 {(activeRoute.properties.metrics.total_distance_m / 1000).toFixed(2)} km
               </div>
-              <small style={{ color: '#90a4ae' }}>{activeRoute.properties.metrics.total_distance_m.toFixed(0)} meters</small>
+              <small style={{ color: 'var(--text-muted)' }}>{activeRoute.properties.metrics.total_distance_m.toFixed(0)} meters</small>
             </div>
 
             <div className="hazard-stat-box">
               <div className="stat-label">Estimated Walking Time</div>
-              <div className="stat-value" style={{ color: '#ffd700' }}>
+              <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
                 {activeRoute.properties.metrics.estimated_duration_minutes.toFixed(0)} min
               </div>
-              <small style={{ color: '#90a4ae' }}>v0 = 1.0 m/s terrain-adjusted</small>
+              <small style={{ color: 'var(--text-muted)' }}>v0 = 1.0 m/s terrain-adjusted</small>
             </div>
 
             <div className="hazard-stat-box">
               <div className="stat-label">Accumulated Path Cost</div>
-              <div className="stat-value" style={{ color: '#ffb74d' }}>
+              <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
                 {activeRoute.properties.metrics.accumulated_cost.toFixed(1)}
               </div>
-              <small style={{ color: '#90a4ae' }}>Cost-weighted integral</small>
+              <small style={{ color: 'var(--text-muted)' }}>Cost-weighted integral</small>
             </div>
 
             <div className="hazard-stat-box">
               <div className="stat-label">Mean Risk Exposure</div>
-              <div className="stat-value" style={{ color: '#81c784' }}>
+              <div className="stat-value" style={{ color: 'var(--text-secondary)' }}>
                 {(activeRoute.properties.metrics.mean_hazard_exposure * 100).toFixed(1)}%
               </div>
-              <small style={{ color: '#90a4ae' }}>0 to 1 normalized risk</small>
+              <small style={{ color: 'var(--text-muted)' }}>0 to 1 normalized risk</small>
             </div>
 
             <div className="hazard-stat-box">
               <div className="stat-label">Mean Topo Uncertainty</div>
-              <div className="stat-value" style={{ color: '#ba68c8' }}>
+              <div className="stat-value" style={{ color: 'var(--text-secondary)' }}>
                 {activeRoute.properties.metrics.mean_uncertainty_exposure.toFixed(2)} m
               </div>
-              <small style={{ color: '#90a4ae' }}>Elevation sigma_z</small>
+              <small style={{ color: 'var(--text-muted)' }}>Elevation sigma_z</small>
             </div>
 
             <div className="hazard-stat-box">
               <div className="stat-label">Science Return Yield</div>
-              <div className="stat-value" style={{ color: '#64b5f6' }}>
+              <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
                 {activeRoute.properties.metrics.accumulated_science_opportunity.toFixed(1)}
               </div>
-              <small style={{ color: '#90a4ae' }}>Total outcrop score</small>
+              <small style={{ color: 'var(--text-muted)' }}>Total outcrop score</small>
             </div>
           </div>
 
@@ -332,7 +332,7 @@ export const EVARoutePlannerPage: React.FC<EVARoutePlannerPageProps> = ({
           </div>
         </div>
       ) : (
-        <div className="card" style={{ padding: '1.5rem', textAlign: 'center', color: '#90a4ae' }}>
+        <div className="card" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
           <p>No traversal route currently active. Click &quot;Plan Route&quot; above to compute optimal waypoints.</p>
         </div>
       )}

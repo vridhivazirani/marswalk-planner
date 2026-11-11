@@ -51,10 +51,10 @@ export const DigitalTwinPage: React.FC<DigitalTwinPageProps> = ({
       {/* View Mode & Map Header */}
       <div className="twin-header" style={{ marginBottom: '0.8rem' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f28c52', fontSize: '1.3rem' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.3rem' }}>
             Jezero Crater Planetary Digital Twin
           </h2>
-          <small style={{ color: '#a89f97' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             Authentic USGS TRN HiRISE DTM (1.0m fused to 20m) & CTX Mosaic (6m) • Mars Equirectangular IAU_2015:49900
           </small>
         </div>
@@ -121,16 +121,16 @@ export const DigitalTwinPage: React.FC<DigitalTwinPageProps> = ({
       )}
 
       {selectedTarget && (
-        <div className="card science-target-card" style={{ marginTop: '0.8rem', borderLeft: '4px solid #ffd700' }}>
+        <div className="card science-target-card" style={{ marginTop: '0.8rem', borderLeft: '3px solid var(--accent-secondary)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, color: '#ffd700' }}>
+            <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>
               Selected Science Target #{selectedTarget.properties.rank}: {selectedTarget.properties.name}
             </h3>
             <span className="badge-target-rank">
               SCORE: {(selectedTarget.properties.composite_score * 100).toFixed(0)}%
             </span>
           </div>
-          <p style={{ margin: '0.4rem 0', fontSize: '0.85rem', color: '#eceff1' }}>
+          <p style={{ margin: '0.4rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             {selectedTarget.properties.rationale}
           </p>
         </div>
@@ -140,11 +140,11 @@ export const DigitalTwinPage: React.FC<DigitalTwinPageProps> = ({
         <div className="card hazard-inspector" style={{ marginTop: '0.8rem' }}>
           <div className="hazard-inspector-header">
             <div>
-              <h3 style={{ margin: 0, color: '#ff7043' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>
                 Surface Intelligence Query: {selectedHazard.coordinate.lat.toFixed(5)}°N,{' '}
                 {selectedHazard.coordinate.lon.toFixed(5)}°E
               </h3>
-              <small style={{ color: '#a89f97' }}>
+              <small style={{ color: 'var(--text-secondary)' }}>
                 Source: {selectedHazard.epistemic_source ?? 'HiRISE DTM 1.0m'} | Epistemic: OBSERVED & DERIVED
               </small>
             </div>
@@ -166,7 +166,7 @@ export const DigitalTwinPage: React.FC<DigitalTwinPageProps> = ({
               <div className="stat-label">Overall Hazard</div>
               <div
                 className="stat-value"
-                style={{ color: selectedHazard.is_passable ? '#81c784' : '#ef5350' }}
+                style={{ color: selectedHazard.is_passable ? 'var(--text-primary)' : 'var(--status-critical)' }}
               >
                 {selectedHazard.overall_hazard_score !== undefined
                   ? `${(selectedHazard.overall_hazard_score * 100).toFixed(1)}%`
@@ -219,13 +219,13 @@ export const DigitalTwinPage: React.FC<DigitalTwinPageProps> = ({
       )}
 
       {selectedCost && (
-        <div className="card hazard-inspector" style={{ marginTop: '0.8rem', borderColor: '#00897b' }}>
+        <div className="card hazard-inspector" style={{ marginTop: '0.8rem', borderColor: 'var(--border-default)' }}>
           <div className="hazard-inspector-header">
             <div>
-              <h3 style={{ margin: 0, color: '#80cbc4' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>
                 Unified Cost Map Analysis [{selectedCost.mission_profile}]
               </h3>
-              <small style={{ color: '#b2dfdb' }}>
+              <small style={{ color: 'var(--text-secondary)' }}>
                 Coord: {selectedCost.coordinate.lat.toFixed(5)}°N, {selectedCost.coordinate.lon.toFixed(5)}°E
               </small>
             </div>
@@ -234,7 +234,7 @@ export const DigitalTwinPage: React.FC<DigitalTwinPageProps> = ({
                 className={`passability-badge ${
                   selectedCost.is_blocked ? 'impassable' : 'passable'
                 }`}
-                style={{ background: selectedCost.is_blocked ? '#b71c1c' : '#00695c' }}
+                style={{ background: selectedCost.is_blocked ? '#2a0808' : 'var(--bg-panel-elevated)' }}
               >
                 {selectedCost.is_blocked
                   ? 'HARD BLOCKED'
@@ -242,7 +242,7 @@ export const DigitalTwinPage: React.FC<DigitalTwinPageProps> = ({
               </span>
             </div>
           </div>
-          <div className="hazard-explanation-box" style={{ borderLeftColor: '#26a69a', marginTop: '0.6rem' }}>
+          <div className="hazard-explanation-box" style={{ borderLeftColor: 'var(--accent-secondary)', marginTop: '0.6rem' }}>
             <strong>Cost Evaluation: </strong>
             {selectedCost.explanation}
           </div>

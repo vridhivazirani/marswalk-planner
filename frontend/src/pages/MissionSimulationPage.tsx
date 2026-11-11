@@ -19,10 +19,10 @@ export const MissionSimulationPage: React.FC<MissionSimulationPageProps> = ({
       {/* Header */}
       <div className="twin-header" style={{ marginBottom: '1rem' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f28c52', fontSize: '1.3rem' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.3rem' }}>
             EVA Mission Simulation & Environmental Operations
           </h2>
-          <small style={{ color: '#a89f97' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             Physiological Consumables Modeling, Spacesuit Energy, and Atmospheric Suitability
           </small>
         </div>

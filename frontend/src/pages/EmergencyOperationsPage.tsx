@@ -20,10 +20,10 @@ export const EmergencyOperationsPage: React.FC<EmergencyOperationsPageProps> = (
       {/* Header */}
       <div className="twin-header" style={{ marginBottom: '1rem' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f28c52', fontSize: '1.3rem' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.3rem' }}>
             Emergency Response & Dynamic Rerouting Operations
           </h2>
-          <small style={{ color: '#a89f97' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             In-Situ Contingency Injection, Route Severance Detection & Return-to-Base Replanning
           </small>
         </div>

@@ -84,7 +84,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
       {/* Brand Header */}
       <div className="sidebar-brand">
         <div className="brand-logo-row">
-          <span className="brand-icon">🔴</span>
+          <span className="brand-icon">◈</span>
           <span className="brand-name">MARSWALK</span>
         </div>
         <div className="brand-tagline">PLANETARY DECISION SUPPORT</div>

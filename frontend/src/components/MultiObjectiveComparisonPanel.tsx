@@ -87,32 +87,31 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
   const getProfileColor = (profileName: string): string => {
     switch (profileName) {
       case 'SAFETY_FIRST':
-        return '#00e5ff'
+        return '#ffffff'
       case 'SCIENCE_FIRST':
-        return '#ffd700'
+        return '#8a8a8a'
       case 'BALANCED':
-        return '#00e676'
+        return '#d4d4d4'
       default:
-        return '#ff9800'
+        return '#a3a3a3'
     }
   }
 
   return (
-    <div className="card" style={{ marginTop: '1rem', borderColor: '#455a64' }}>
+    <div className="card" style={{ marginTop: '1rem', background: 'var(--bg-panel)', borderColor: 'var(--border-default)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          <h3 style={{ margin: 0, color: '#e0e0e0' }}>Multi-Objective Route Trade-Off Engine</h3>
-          <small style={{ color: '#90a4ae' }}>
+          <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Multi-Objective Route Trade-Off Engine</h3>
+          <small style={{ color: 'var(--text-secondary)' }}>
             Pareto-optimal comparative evaluation across Safety, Science, and Efficiency
           </small>
         </div>
 
         <button
           type="button"
-          className="mode-btn active"
+          className="btn-primary"
           onClick={() => runComparison()}
           disabled={isEvaluating}
-          style={{ background: '#00897b', borderColor: '#4db6ac' }}
         >
           {isEvaluating ? 'Evaluating Alternatives…' : 'Recalculate Trade-Offs'}
         </button>
@@ -120,7 +119,7 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
 
       {/* Scenario Selection */}
       <div style={{ marginTop: '0.8rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <label htmlFor="scenario-select" style={{ color: '#b0bec5', fontSize: '0.9rem', fontWeight: 600 }}>
+        <label htmlFor="scenario-select" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>
           Curated Jezero Scenario:
         </label>
         <select
@@ -128,11 +127,11 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
           value={selectedScenarioId}
           onChange={handleScenarioChange}
           style={{
-            background: '#1e2429',
-            color: '#eceff1',
-            border: '1px solid #37474f',
+            background: 'var(--bg-panel-elevated)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)',
             padding: '0.35rem 0.6rem',
-            borderRadius: '4px',
+            borderRadius: '3px',
             fontSize: '0.85rem',
             minWidth: '280px',
           }}
@@ -146,13 +145,13 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
       </div>
 
       {/* Interactive Mission Preferences */}
-      <div style={{ marginTop: '0.8rem', background: '#1c2227', padding: '0.75rem', borderRadius: '4px', border: '1px solid #2e3a40' }}>
-        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#cfd8dc', marginBottom: '0.5rem' }}>
+      <div style={{ marginTop: '0.8rem', background: 'var(--bg-panel-elevated)', padding: '0.75rem', borderRadius: '3px', border: '1px solid var(--border-default)' }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
           Mission Importance Preferences (Trade-Off Weights):
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#00e5ff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
               <span>Safety Importance (Slope/Hazard):</span>
               <strong>{(preferences.safety_importance * 100).toFixed(0)}%</strong>
             </div>
@@ -163,12 +162,12 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
               step="0.05"
               value={preferences.safety_importance}
               onChange={(e) => handlePreferenceSlider('safety_importance', parseFloat(e.target.value))}
-              style={{ width: '100%', accentColor: '#00e5ff' }}
+              style={{ width: '100%', accentColor: 'var(--text-primary)' }}
             />
           </div>
 
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#ffd700' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
               <span>Science Importance (Mineral/Delta):</span>
               <strong>{(preferences.science_importance * 100).toFixed(0)}%</strong>
             </div>
@@ -179,12 +178,12 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
               step="0.05"
               value={preferences.science_importance}
               onChange={(e) => handlePreferenceSlider('science_importance', parseFloat(e.target.value))}
-              style={{ width: '100%', accentColor: '#ffd700' }}
+              style={{ width: '100%', accentColor: 'var(--accent-secondary)' }}
             />
           </div>
 
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#81c784' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
               <span>Efficiency Importance (Speed/Time):</span>
               <strong>{(preferences.efficiency_importance * 100).toFixed(0)}%</strong>
             </div>
@@ -195,7 +194,7 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
               step="0.05"
               value={preferences.efficiency_importance}
               onChange={(e) => handlePreferenceSlider('efficiency_importance', parseFloat(e.target.value))}
-              style={{ width: '100%', accentColor: '#81c784' }}
+              style={{ width: '100%', accentColor: 'var(--accent-secondary)' }}
             />
           </div>
         </div>
@@ -213,12 +212,12 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
           {/* Universal Optimal Disclaimer Banner */}
           <div
             style={{
-              background: '#262d33',
-              borderLeft: '4px solid #00bcd4',
+              background: 'var(--bg-panel-elevated)',
+              borderLeft: '3px solid var(--accent-primary)',
               padding: '0.6rem 0.8rem',
               borderRadius: '2px',
               fontSize: '0.8rem',
-              color: '#eceff1',
+              color: 'var(--text-primary)',
               lineHeight: '1.4',
               marginBottom: '1rem',
             }}
@@ -237,9 +236,10 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
                   className="route-card"
                   style={{
                     borderTop: `3px solid ${color}`,
-                    background: '#181f25',
+                    background: 'var(--bg-panel)',
+                    border: '1px solid var(--border-default)',
                     padding: '0.75rem',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '0.35rem',
@@ -252,10 +252,10 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
                     </span>
                     <span
                       style={{
-                        background: r.rank_under_preferences === 1 ? '#00695c' : '#37474f',
-                        color: r.rank_under_preferences === 1 ? '#a7ffeb' : '#cfd8dc',
+                        background: r.rank_under_preferences === 1 ? 'var(--accent-primary)' : 'var(--bg-panel-elevated)',
+                        color: r.rank_under_preferences === 1 ? 'var(--text-inverse)' : 'var(--text-secondary)',
                         padding: '0.15rem 0.45rem',
-                        borderRadius: '3px',
+                        borderRadius: '2px',
                         fontSize: '0.75rem',
                         fontWeight: 600,
                       }}
@@ -264,52 +264,52 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
                     </span>
                   </div>
 
-                  <div style={{ color: '#b0bec5', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
                     {r.primary_optimization_objective}
                   </div>
 
-                  <hr style={{ borderColor: '#2e3a40', margin: '0.2rem 0' }} />
+                  <hr style={{ borderColor: 'var(--border-subtle)', margin: '0.2rem 0' }} />
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#90a4ae' }}>Length:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Length:</span>
                     <strong>{r.length_km.toFixed(2)} km</strong>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#90a4ae' }}>Est. Walking Time:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Est. Walking Time:</span>
                     <strong>{r.estimated_duration_min.toFixed(0)} min</strong>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#90a4ae' }}>Mean Hazard Exposure:</span>
-                    <strong style={{ color: r.mean_hazard_exposure_pct > 20 ? '#ff8a80' : '#81c784' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Mean Hazard Exposure:</span>
+                    <strong style={{ color: r.mean_hazard_exposure_pct > 20 ? 'var(--status-critical)' : 'var(--text-primary)' }}>
                       {r.mean_hazard_exposure_pct.toFixed(1)}%
                     </strong>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#90a4ae' }}>Elevation Uncertainty:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Elevation Uncertainty:</span>
                     <strong>±{r.mean_uncertainty_m.toFixed(1)} m</strong>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#90a4ae' }}>Science Opportunity Score:</span>
-                    <strong style={{ color: '#ffd700' }}>{r.accumulated_science_score.toFixed(1)}</strong>
+                    <span style={{ color: 'var(--text-secondary)' }}>Science Opportunity Score:</span>
+                    <strong style={{ color: 'var(--accent-secondary)' }}>{r.accumulated_science_score.toFixed(1)}</strong>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#90a4ae' }}>Accumulated Cost:</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Accumulated Cost:</span>
                     <strong>{r.accumulated_cost.toFixed(0)}</strong>
                   </div>
 
                   <div
                     style={{
                       marginTop: '0.3rem',
-                      background: '#12171b',
+                      background: 'var(--bg-panel-elevated)',
                       padding: '0.4rem 0.5rem',
-                      borderRadius: '3px',
+                      borderRadius: '2px',
                       fontSize: '0.75rem',
-                      color: '#b0bec5',
+                      color: 'var(--text-secondary)',
                       borderLeft: `2px solid ${color}`,
                     }}
                   >
@@ -326,16 +326,16 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
             <div
               style={{
                 marginTop: '1rem',
-                background: '#171e23',
+                background: 'var(--bg-panel)',
                 padding: '0.75rem 1rem',
-                borderRadius: '4px',
-                border: '1px solid #2e3b43',
+                borderRadius: '3px',
+                border: '1px solid var(--border-default)',
               }}
             >
-              <h4 style={{ margin: '0 0 0.4rem 0', color: '#80cbc4', fontSize: '0.9rem' }}>
+              <h4 style={{ margin: '0 0 0.4rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                 Comparative Trade-Off Synthesis
               </h4>
-              <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#cfd8dc', fontSize: '0.85rem', lineHeight: '1.5' }}>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.5' }}>
                 {comparison.trade_off_analysis.map((item, idx) => (
                   <li key={idx} style={{ marginBottom: '0.25rem' }}>
                     {item}

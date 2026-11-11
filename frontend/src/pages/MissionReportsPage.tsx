@@ -85,10 +85,10 @@ export const MissionReportsPage: React.FC<MissionReportsPageProps> = ({
       {/* Header */}
       <div className="twin-header" style={{ marginBottom: '1rem' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f28c52', fontSize: '1.3rem' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.3rem' }}>
             Mission Briefing & Telemetry Reports
           </h2>
-          <small style={{ color: '#a89f97' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             Official Traversal Dossiers, Consumables Audits & Contingency Records
           </small>
         </div>
@@ -103,18 +103,18 @@ export const MissionReportsPage: React.FC<MissionReportsPageProps> = ({
       </div>
 
       {/* Report Configuration Bar */}
-      <div className="card" style={{ padding: '0.8rem 1rem', background: '#161c22', marginBottom: '1rem' }}>
+      <div className="card" style={{ padding: '0.8rem 1rem', background: 'var(--bg-panel)', border: '1px solid var(--border-default)', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
-            <span style={{ color: '#cfd8dc' }}>Mission Title:</span>
+            <span style={{ color: 'var(--text-secondary)' }}>Mission Title:</span>
             <input
               type="text"
               value={missionTitle}
               onChange={(e) => setMissionTitle(e.target.value)}
               style={{
-                background: '#232b32',
-                color: '#fff',
-                border: '1px solid #37474f',
+                background: 'var(--bg-panel-elevated)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)',
                 padding: '0.35rem 0.6rem',
                 borderRadius: '3px',
                 width: '340px',
@@ -124,14 +124,14 @@ export const MissionReportsPage: React.FC<MissionReportsPageProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
-            <span style={{ color: '#cfd8dc' }}>Crew Allocation:</span>
+            <span style={{ color: 'var(--text-secondary)' }}>Crew Allocation:</span>
             <select
               value={crewCount}
               onChange={(e) => setCrewCount(parseInt(e.target.value, 10))}
               style={{
-                background: '#232b32',
-                color: '#fff',
-                border: '1px solid #37474f',
+                background: 'var(--bg-panel-elevated)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)',
                 padding: '0.35rem 0.6rem',
                 borderRadius: '3px',
                 fontSize: '0.85rem',
@@ -151,12 +151,12 @@ export const MissionReportsPage: React.FC<MissionReportsPageProps> = ({
         className="card"
         style={{
           padding: '1.5rem',
-          background: '#12161b',
-          border: '1px solid #283440',
+          background: 'var(--bg-panel)',
+          border: '1px solid var(--border-default)',
           fontFamily: 'monospace',
           lineHeight: '1.6',
           whiteSpace: 'pre-wrap',
-          color: '#d1d5db',
+          color: 'var(--text-secondary)',
           fontSize: '0.85rem',
         }}
       >

@@ -136,28 +136,32 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
     if (!plan) return null
     if (!plan.is_feasible) {
       return {
-        bg: '#b71c1c',
-        color: '#ffcdd2',
+        bg: '#2a0808',
+        color: '#f5f5f5',
+        border: '1px solid #5c1414',
         label: 'PATHWAY BLOCKED: NO FEASIBLE ROUTE (ABORT REQUIRED)',
       }
     }
     if (plan.is_return_to_base) {
       return {
-        bg: '#e65100',
-        color: '#ffe0b2',
+        bg: '#261808',
+        color: '#f5f5f5',
+        border: '1px solid #78350f',
         label: 'EMERGENCY RETURN-TO-BASE SORTIE ACTIVE',
       }
     }
     if (plan.impact.is_route_affected) {
       return {
-        bg: '#f57f17',
-        color: '#fffde7',
+        bg: '#202020',
+        color: '#f5f5f5',
+        border: '1px solid #404040',
         label: 'ACTIVE ROUTE SEVERED: DYNAMIC DETOUR RECALCULATED',
       }
     }
     return {
-      bg: '#1b5e20',
-      color: '#c8e6c9',
+      bg: '#181818',
+      color: '#d4d4d4',
+      border: '1px solid #303030',
       label: 'ACTIVE CORRIDOR CLEAR: HAZARD BUFFER PRESERVED',
     }
   }
@@ -169,19 +173,19 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
       className="card emergency-panel"
       style={{
         marginTop: '1.2rem',
-        borderLeft: '4px solid #ff3d00',
-        background: '#15191e',
+        borderLeft: '3px solid var(--status-critical)',
+        background: 'var(--bg-panel)',
         padding: '1rem',
       }}
     >
       {/* Panel Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          <h3 style={{ margin: 0, color: '#ff6e40', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h3 style={{ margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span>⚠️</span>
             <span>Marswalk Emergency Response & Dynamic Rerouting Engine</span>
           </h3>
-          <small style={{ color: '#90a4ae' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             In-Situ Hazard Simulation, Obstacle Avoidance & Return-to-Base Replanning (Jezero Crater)
           </small>
         </div>
@@ -191,9 +195,10 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
               fontSize: '0.75rem',
               fontWeight: 600,
               padding: '0.2rem 0.6rem',
-              borderRadius: '3px',
-              background: '#37474f',
-              color: '#cfd8dc',
+              borderRadius: '2px',
+              background: 'var(--bg-panel-elevated)',
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border-default)',
             }}
           >
             EPISTEMIC: SIMULATED
@@ -209,13 +214,13 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
           gap: '1rem',
           alignItems: 'center',
           flexWrap: 'wrap',
-          background: '#1c2127',
+          background: 'var(--bg-panel-elevated)',
           padding: '0.6rem 0.8rem',
-          borderRadius: '4px',
-          border: '1px solid #2e3740',
+          borderRadius: '3px',
+          border: '1px solid var(--border-default)',
         }}
       >
-        <label htmlFor="emergency-scenario-select" style={{ fontSize: '0.85rem', color: '#eceff1', fontWeight: 600 }}>
+        <label htmlFor="emergency-scenario-select" style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>
           Simulated In-Situ Contingency Scenario:
         </label>
         <select
@@ -223,9 +228,9 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
           value={selectedScenarioId}
           onChange={handleScenarioChange}
           style={{
-            background: '#242b32',
-            color: '#eceff1',
-            border: '1px solid #37474f',
+            background: 'var(--bg-panel)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)',
             padding: '0.4rem 0.6rem',
             borderRadius: '3px',
             fontSize: '0.85rem',
@@ -242,13 +247,10 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
 
         <button
           type="button"
-          className="mode-btn"
+          className="btn-primary"
           disabled={isProcessing || !currentHazard}
           onClick={() => currentHazard && executeSimulation(currentHazard, crewProgressPct)}
           style={{
-            background: '#ff5722',
-            color: '#fff',
-            fontWeight: 700,
             padding: '0.4rem 0.8rem',
             fontSize: '0.85rem',
           }}
@@ -258,13 +260,10 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
 
         <button
           type="button"
-          className="mode-btn"
+          className="btn-alert"
           disabled={isProcessing || !plan}
           onClick={handleAbort}
           style={{
-            background: '#b71c1c',
-            color: '#fff',
-            fontWeight: 700,
             padding: '0.4rem 0.8rem',
             fontSize: '0.85rem',
           }}
@@ -283,18 +282,18 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
       <div
         style={{
           marginTop: '0.8rem',
-          background: '#191f25',
+          background: 'var(--bg-panel-elevated)',
           padding: '0.7rem 0.9rem',
-          borderRadius: '4px',
-          border: '1px solid #28313a',
+          borderRadius: '3px',
+          border: '1px solid var(--border-default)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#80cbc4' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
           <span>
             <strong>Crew Traverse Progress: </strong>
             Simulated position along active sortie: {(crewProgressPct * 100).toFixed(0)}%
           </span>
-          <span style={{ color: '#cfd8dc' }}>
+          <span style={{ color: 'var(--text-secondary)' }}>
             Origin for Dynamic Detour: {crewProgressPct === 0 ? 'Base Camp' : 'Current In-Field Waypoint'}
           </span>
         </div>
@@ -311,7 +310,7 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
               executeSimulation(currentHazard, p)
             }
           }}
-          style={{ width: '100%', accentColor: '#ff7043', marginTop: '0.4rem' }}
+          style={{ width: '100%', accentColor: 'var(--text-primary)', marginTop: '0.4rem' }}
         />
       </div>
 
@@ -320,18 +319,18 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
         <div
           style={{
             marginTop: '0.8rem',
-            background: '#181e23',
+            background: 'var(--bg-panel)',
             padding: '0.7rem 0.9rem',
-            borderRadius: '4px',
-            border: '1px dashed #ff5722',
+            borderRadius: '3px',
+            border: '1px dashed var(--status-critical)',
           }}
         >
-          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ffab91', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
             Interactive Custom Hazard Parameters:
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.8rem' }}>
             <div>
-              <div style={{ fontSize: '0.75rem', color: '#b0bec5' }}>Hazard Radius (meters):</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Hazard Radius (meters):</div>
               <input
                 type="range"
                 min="30"
@@ -343,14 +342,14 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
                   setCurrentHazard(updated)
                   executeSimulation(updated, crewProgressPct)
                 }}
-                style={{ width: '100%', accentColor: '#ff7043' }}
+                style={{ width: '100%', accentColor: 'var(--text-primary)' }}
               />
-              <span style={{ fontSize: '0.8rem', color: '#eceff1' }}>{currentHazard.radius_m.toFixed(0)} m</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>{currentHazard.radius_m.toFixed(0)} m</span>
             </div>
 
             <div>
-              <div style={{ fontSize: '0.75rem', color: '#b0bec5' }}>Traversal Restriction:</div>
-              <label style={{ fontSize: '0.8rem', color: '#eceff1', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Traversal Restriction:</div>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem' }}>
                 <input
                   type="checkbox"
                   checked={currentHazard.is_hard_restriction}
@@ -366,7 +365,7 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
 
             {!currentHazard.is_hard_restriction && (
               <div>
-                <div style={{ fontSize: '0.75rem', color: '#b0bec5' }}>Cost Multiplier ({currentHazard.cost_multiplier}x):</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Cost Multiplier ({currentHazard.cost_multiplier}x):</div>
                 <input
                   type="range"
                   min="2"
@@ -378,7 +377,7 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
                     setCurrentHazard(updated)
                     executeSimulation(updated, crewProgressPct)
                   }}
-                  style={{ width: '100%', accentColor: '#ffd54f' }}
+                  style={{ width: '100%', accentColor: 'var(--accent-secondary)' }}
                 />
               </div>
             )}
@@ -394,9 +393,10 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
             <div
               style={{
                 padding: '0.6rem 0.8rem',
-                borderRadius: '4px',
+                borderRadius: '3px',
                 background: statusBadge.bg,
                 color: statusBadge.color,
+                border: statusBadge.border,
                 fontWeight: 700,
                 fontSize: '0.85rem',
                 display: 'flex',
@@ -417,12 +417,12 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
           <div
             style={{
               marginTop: '0.6rem',
-              background: '#192026',
+              background: 'var(--bg-panel-elevated)',
               padding: '0.6rem 0.8rem',
               borderRadius: '3px',
               fontSize: '0.8rem',
-              color: '#cfd8dc',
-              border: '1px solid #28333c',
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border-default)',
             }}
           >
             <strong>Spatial Impact Assessment: </strong>
@@ -436,13 +436,13 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
               <div
                 className="stat-value"
                 style={{
-                  color: plan.metrics_delta.distance_delta_m <= 0 ? '#81c784' : '#ffb74d',
+                  color: plan.metrics_delta.distance_delta_m <= 0 ? 'var(--text-primary)' : 'var(--status-warning)',
                 }}
               >
                 {plan.metrics_delta.distance_delta_m > 0 ? '+' : ''}
                 {(plan.metrics_delta.distance_delta_m / 1000).toFixed(2)} km
               </div>
-              <small style={{ color: '#90a4ae', fontSize: '0.75rem' }}>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                 Reroute: {plan.rerouted_route ? (plan.rerouted_route.properties.metrics.total_distance_m / 1000).toFixed(2) : '0.00'} km
               </small>
             </div>
@@ -452,13 +452,13 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
               <div
                 className="stat-value"
                 style={{
-                  color: plan.metrics_delta.duration_delta_minutes <= 0 ? '#81c784' : '#ffb74d',
+                  color: plan.metrics_delta.duration_delta_minutes <= 0 ? 'var(--text-primary)' : 'var(--status-warning)',
                 }}
               >
                 {plan.metrics_delta.duration_delta_minutes > 0 ? '+' : ''}
                 {plan.metrics_delta.duration_delta_minutes.toFixed(1)} min
               </div>
-              <small style={{ color: '#90a4ae', fontSize: '0.75rem' }}>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                 Est: {plan.rerouted_route ? plan.rerouted_route.properties.metrics.estimated_duration_minutes.toFixed(0) : '0'} min
               </small>
             </div>
@@ -468,13 +468,13 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
               <div
                 className="stat-value"
                 style={{
-                  color: plan.metrics_delta.o2_consumption_delta_g <= 0 ? '#81c784' : '#ff8a80',
+                  color: plan.metrics_delta.o2_consumption_delta_g <= 0 ? 'var(--text-primary)' : 'var(--status-critical)',
                 }}
               >
                 {plan.metrics_delta.o2_consumption_delta_g > 0 ? '+' : ''}
                 {plan.metrics_delta.o2_consumption_delta_g.toFixed(1)} g
               </div>
-              <small style={{ color: '#90a4ae', fontSize: '0.75rem' }}>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                 Suit Consumable Draw
               </small>
             </div>
@@ -484,13 +484,13 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
               <div
                 className="stat-value"
                 style={{
-                  color: plan.metrics_delta.battery_consumption_delta_wh <= 0 ? '#81c784' : '#ff8a80',
+                  color: plan.metrics_delta.battery_consumption_delta_wh <= 0 ? 'var(--text-primary)' : 'var(--status-critical)',
                 }}
               >
                 {plan.metrics_delta.battery_consumption_delta_wh > 0 ? '+' : ''}
                 {plan.metrics_delta.battery_consumption_delta_wh.toFixed(1)} Wh
               </div>
-              <small style={{ color: '#90a4ae', fontSize: '0.75rem' }}>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                 PLSS Heating & Mobility
               </small>
             </div>
@@ -501,8 +501,8 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
             className="hazard-explanation-box"
             style={{
               marginTop: '0.6rem',
-              borderLeftColor: plan.is_feasible ? '#ff9800' : '#f44336',
-              background: '#191f26',
+              borderLeftColor: plan.is_feasible ? 'var(--accent-secondary)' : 'var(--status-critical)',
+              background: 'var(--bg-panel)',
               padding: '0.6rem 0.8rem',
               borderRadius: '2px',
               fontSize: '0.85rem',
@@ -519,12 +519,12 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
                 <div
                   key={idx}
                   style={{
-                    background: '#2b1a1a',
-                    borderLeft: '3px solid #ef5350',
+                    background: '#2a0808',
+                    borderLeft: '3px solid var(--status-critical)',
                     padding: '0.4rem 0.6rem',
                     borderRadius: '2px',
                     fontSize: '0.8rem',
-                    color: '#ffcdd2',
+                    color: 'var(--text-primary)',
                   }}
                 >
                   <strong>ALERT [{w.severity}]: </strong>
@@ -538,12 +538,12 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
           <div
             style={{
               marginTop: '0.6rem',
-              background: '#221815',
-              borderLeft: '3px solid #ff5722',
+              background: 'var(--bg-panel-elevated)',
+              borderLeft: '3px solid var(--border-default)',
               padding: '0.5rem 0.7rem',
               borderRadius: '3px',
               fontSize: '0.75rem',
-              color: '#ffccbc',
+              color: 'var(--text-muted)',
               lineHeight: '1.4',
             }}
           >

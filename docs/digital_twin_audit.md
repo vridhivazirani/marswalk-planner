@@ -145,3 +145,4 @@ The audit revealed the following discrepancies between UI labels and disk conten
 ### Recommended Future Enhancements (Post-Audit):
 1. **Optional Regional HiRISE Corridor Clipping:** For users who only want to view the rover traverse within the active study box, add a toggle in the layer settings to clip the rover vector to the 20m DTM bounding rectangle.
 2. **Download 0.25m HiRISE ORI Subset:** When high-bandwidth connectivity and additional disk storage allow, download a cropped 0.25m HiRISE ORI tile covering Kodiak Butte to provide sub-meter visible texture for astronaut footstep hazard inspection.
+

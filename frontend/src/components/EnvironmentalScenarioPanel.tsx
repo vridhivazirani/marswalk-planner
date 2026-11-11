@@ -130,33 +130,33 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
   const getCategoryBadge = (cat: string) => {
     switch (cat) {
       case 'OPTIMAL':
-        return { background: '#1b5e20', color: '#c8e6c9', label: 'OPTIMAL (Benign Conditions)' }
+        return { background: '#202020', color: '#ffffff', border: '1px solid #ffffff', label: 'OPTIMAL (Benign Conditions)' }
       case 'ACCEPTABLE':
-        return { background: '#0d47a1', color: '#bbdefb', label: 'ACCEPTABLE (Within Flight Rules)' }
+        return { background: '#181818', color: '#d4d4d4', border: '1px solid #737373', label: 'ACCEPTABLE (Within Flight Rules)' }
       case 'MARGINAL':
-        return { background: '#f57f17', color: '#fff9c4', label: 'MARGINAL (High Environmental Strain)' }
+        return { background: '#261808', color: '#f5f5f5', border: '1px solid #78350f', label: 'MARGINAL (High Environmental Strain)' }
       default:
-        return { background: '#b71c1c', color: '#ffcdd2', label: 'HAZARDOUS (Severe Extreme Risk)' }
+        return { background: '#2a0808', color: '#f5f5f5', border: '1px solid #5c1414', label: 'HAZARDOUS (Severe Extreme Risk)' }
     }
   }
 
   const getOriginBadge = (origin: string) => {
     switch (origin) {
       case 'HISTORICAL_OBSERVED':
-        return { background: '#004d40', color: '#80cbc4', text: 'MEDA In-Situ Ingest' }
+        return { background: '#202020', color: '#f5f5f5', border: '1px solid #737373', text: 'MEDA In-Situ Ingest' }
       case 'CLIMATE_MODELED':
-        return { background: '#311b92', color: '#b39ddb', text: 'MCD Climate Model' }
+        return { background: '#181818', color: '#d4d4d4', border: '1px solid #525252', text: 'MCD Climate Model' }
       default:
-        return { background: '#bf360c', color: '#ffccbc', text: 'User Scenario Input' }
+        return { background: '#181818', color: '#a3a3a3', border: '1px solid #383838', text: 'User Scenario Input' }
     }
   }
 
   return (
-    <div className="card" style={{ marginTop: '1.2rem', borderColor: '#3e4e58' }}>
+    <div className="card" style={{ marginTop: '1.2rem', background: 'var(--bg-panel)', borderColor: 'var(--border-default)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          <h3 style={{ margin: 0, color: '#e0e0e0' }}>Marswalk Environmental Scenario Engine</h3>
-          <small style={{ color: '#90a4ae' }}>
+          <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Marswalk Environmental Scenario Engine</h3>
+          <small style={{ color: 'var(--text-secondary)' }}>
             Hypothetical EVA meteorological assessment, dust opacity, thermal suitability, and historical dataset provenance
           </small>
         </div>
@@ -164,7 +164,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             type="button"
-            className="mode-btn"
+            className="btn-secondary"
             onClick={handleCompareAll}
             disabled={isAssessing}
             style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
@@ -182,13 +182,13 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
           gap: '1rem',
           alignItems: 'center',
           flexWrap: 'wrap',
-          background: '#1a2228',
+          background: 'var(--bg-panel-elevated)',
           padding: '0.6rem 0.8rem',
-          borderRadius: '4px',
-          border: '1px solid #28343c',
+          borderRadius: '3px',
+          border: '1px solid var(--border-default)',
         }}
       >
-        <label htmlFor="env-scenario-select" style={{ fontSize: '0.85rem', color: '#cfd8dc', fontWeight: 600 }}>
+        <label htmlFor="env-scenario-select" style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>
           Select Planetary Environmental Scenario:
         </label>
         <select
@@ -196,9 +196,9 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
           value={selectedScenarioId}
           onChange={handleScenarioSelect}
           style={{
-            background: '#232d34',
-            color: '#eceff1',
-            border: '1px solid #37474f',
+            background: 'var(--bg-panel)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)',
             padding: '0.35rem 0.5rem',
             borderRadius: '3px',
             fontSize: '0.85rem',
@@ -219,7 +219,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
               fontSize: '0.75rem',
               fontWeight: 600,
               padding: '0.2rem 0.5rem',
-              borderRadius: '3px',
+              borderRadius: '2px',
               ...getOriginBadge(currentScenario.data_origin),
             }}
           >
@@ -239,19 +239,19 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
         <div
           style={{
             marginTop: '0.8rem',
-            background: '#161d22',
+            background: 'var(--bg-panel)',
             padding: '0.8rem',
-            borderRadius: '4px',
-            border: '1px solid #28343c',
+            borderRadius: '3px',
+            border: '1px solid var(--border-default)',
           }}
         >
-          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#80cbc4', marginBottom: '0.6rem' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.6rem' }}>
             Operational Environmental Parameters & Weather Proxies:
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.9rem' }}>
             {/* Air Temperature */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#90caf9' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
                 <span>Ambient Air Temp:</span>
                 <strong>{currentScenario.air_temperature_c.toFixed(1)} °C</strong>
               </div>
@@ -262,13 +262,13 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                 step="1"
                 value={currentScenario.air_temperature_c}
                 onChange={(e) => handleParamChange('air_temperature_c', parseFloat(e.target.value))}
-                style={{ width: '100%', accentColor: '#90caf9' }}
+                style={{ width: '100%', accentColor: 'var(--text-primary)' }}
               />
             </div>
 
             {/* Solar Irradiance */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#ffd700' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
                 <span>Solar Irradiance:</span>
                 <strong>{currentScenario.solar_irradiance_w_per_m2.toFixed(0)} W/m²</strong>
               </div>
@@ -279,13 +279,13 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                 step="10"
                 value={currentScenario.solar_irradiance_w_per_m2}
                 onChange={(e) => handleParamChange('solar_irradiance_w_per_m2', parseFloat(e.target.value))}
-                style={{ width: '100%', accentColor: '#ffd700' }}
+                style={{ width: '100%', accentColor: 'var(--accent-secondary)' }}
               />
             </div>
 
             {/* Dust Opacity Tau */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#ffb74d' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
                 <span>Dust Opacity (τ):</span>
                 <strong>τ = {currentScenario.dust_optical_depth_tau.toFixed(2)}</strong>
               </div>
@@ -296,13 +296,13 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                 step="0.05"
                 value={currentScenario.dust_optical_depth_tau}
                 onChange={(e) => handleParamChange('dust_optical_depth_tau', parseFloat(e.target.value))}
-                style={{ width: '100%', accentColor: '#ffb74d' }}
+                style={{ width: '100%', accentColor: 'var(--accent-secondary)' }}
               />
             </div>
 
             {/* Sustained Wind Speed */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#81c784' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
                 <span>Wind Speed / Gust:</span>
                 <strong>
                   {currentScenario.wind_speed_mps.toFixed(1)} / {currentScenario.wind_gust_mps.toFixed(1)} m/s
@@ -319,12 +319,12 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                   handleParamChange('wind_speed_mps', ws)
                   handleParamChange('wind_gust_mps', ws * 1.8)
                 }}
-                style={{ width: '100%', accentColor: '#81c784' }}
+                style={{ width: '100%', accentColor: 'var(--text-primary)' }}
               />
             </div>
           </div>
 
-          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#90a4ae' }}>
+          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             <span>Operational Window: {currentScenario.operational_window_start_ltst} - {currentScenario.operational_window_end_ltst} LTST</span>
             <span>Duration: {currentScenario.operational_window_hours.toFixed(1)} hours</span>
             <span>Season (Ls): {currentScenario.season_solar_longitude_ls_deg ?? 180}°</span>
@@ -345,16 +345,16 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                 style={{
                   marginTop: '0.5rem',
                   padding: '0.6rem',
-                  background: '#12181d',
+                  background: 'var(--bg-panel-elevated)',
                   borderRadius: '3px',
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                   gap: '0.8rem',
-                  border: '1px dashed #37474f',
+                  border: '1px dashed var(--border-default)',
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: '#90caf9', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                     <span>Thermal Weight:</span>
                     <strong>{weights.w_thermal.toFixed(2)}</strong>
                   </div>
@@ -365,12 +365,12 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                     step="0.05"
                     value={weights.w_thermal}
                     onChange={(e) => handleWeightChange('w_thermal', parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: '#90caf9' }}
+                    style={{ width: '100%', accentColor: 'var(--text-primary)' }}
                   />
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: '#ffd700', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                     <span>Solar Weight:</span>
                     <strong>{weights.w_solar.toFixed(2)}</strong>
                   </div>
@@ -381,12 +381,12 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                     step="0.05"
                     value={weights.w_solar}
                     onChange={(e) => handleWeightChange('w_solar', parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: '#ffd700' }}
+                    style={{ width: '100%', accentColor: 'var(--text-primary)' }}
                   />
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: '#ffb74d', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                     <span>Dust Opacity Weight:</span>
                     <strong>{weights.w_dust.toFixed(2)}</strong>
                   </div>
@@ -397,12 +397,12 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                     step="0.05"
                     value={weights.w_dust}
                     onChange={(e) => handleWeightChange('w_dust', parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: '#ffb74d' }}
+                    style={{ width: '100%', accentColor: 'var(--text-primary)' }}
                   />
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: '#81c784', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
                     <span>Wind Weight:</span>
                     <strong>{weights.w_wind.toFixed(2)}</strong>
                   </div>
@@ -413,7 +413,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                     step="0.05"
                     value={weights.w_wind}
                     onChange={(e) => handleWeightChange('w_wind', parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: '#81c784' }}
+                    style={{ width: '100%', accentColor: 'var(--text-primary)' }}
                   />
                 </div>
               </div>
@@ -434,14 +434,15 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
               flexWrap: 'wrap',
               gap: '0.5rem',
               padding: '0.6rem 0.8rem',
-              borderRadius: '4px',
-              background: '#1e242a',
-              borderLeft: `4px solid ${getCategoryBadge(assessment.suitability.suitability_category).background}`,
+              borderRadius: '3px',
+              background: 'var(--bg-panel-elevated)',
+              borderLeft: `3px solid ${getCategoryBadge(assessment.suitability.suitability_category).color}`,
+              border: '1px solid var(--border-default)',
             }}
           >
             <div>
-              <span style={{ fontSize: '0.85rem', color: '#b0bec5' }}>Mission Environmental Suitability Score:</span>
-              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#eceff1' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Mission Environmental Suitability Score:</span>
+              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 {(assessment.suitability.overall_suitability_score * 100).toFixed(1)}%
                 <span
                   style={{
@@ -449,7 +450,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                     fontWeight: 600,
                     marginLeft: '0.8rem',
                     padding: '0.2rem 0.5rem',
-                    borderRadius: '3px',
+                    borderRadius: '2px',
                     ...getCategoryBadge(assessment.suitability.suitability_category),
                   }}
                 >
@@ -458,7 +459,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ fontSize: '0.75rem', color: '#90a4ae', textAlign: 'right' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'right' }}>
               <div>Origin: {assessment.scenario.data_origin}</div>
               <div>Source: {assessment.scenario.source_reference}</div>
             </div>
@@ -468,40 +469,40 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
           <div className="hazard-breakdown-grid" style={{ marginTop: '0.6rem' }}>
             <div className="hazard-stat-box">
               <div className="stat-label">Thermal Score</div>
-              <div className="stat-value" style={{ color: '#90caf9' }}>
+              <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
                 {(assessment.suitability.thermal_score * 100).toFixed(0)}%
               </div>
-              <small style={{ color: '#90a4ae', fontSize: '0.75rem' }}>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                 Air: {assessment.scenario.air_temperature_c.toFixed(1)}°C
               </small>
             </div>
 
             <div className="hazard-stat-box">
               <div className="stat-label">Solar Illumination</div>
-              <div className="stat-value" style={{ color: '#ffd700' }}>
+              <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
                 {(assessment.suitability.solar_illumination_score * 100).toFixed(0)}%
               </div>
-              <small style={{ color: '#90a4ae', fontSize: '0.75rem' }}>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                 Flux: {assessment.scenario.solar_irradiance_w_per_m2.toFixed(0)} W/m²
               </small>
             </div>
 
             <div className="hazard-stat-box">
               <div className="stat-label">Dust Transparency</div>
-              <div className="stat-value" style={{ color: '#ffb74d' }}>
+              <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
                 {(assessment.suitability.dust_opacity_score * 100).toFixed(0)}%
               </div>
-              <small style={{ color: '#90a4ae', fontSize: '0.75rem' }}>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                 Opacity: τ = {assessment.scenario.dust_optical_depth_tau.toFixed(2)}
               </small>
             </div>
 
             <div className="hazard-stat-box">
               <div className="stat-label">Aerodynamic Drag</div>
-              <div className="stat-value" style={{ color: '#81c784' }}>
+              <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
                 {(assessment.suitability.wind_aerodynamic_score * 100).toFixed(0)}%
               </div>
-              <small style={{ color: '#90a4ae', fontSize: '0.75rem' }}>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                 Wind: {assessment.scenario.wind_speed_mps.toFixed(1)} m/s
               </small>
             </div>
@@ -514,12 +515,12 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                 <div
                   key={idx}
                   style={{
-                    background: '#2b1a1a',
-                    borderLeft: '3px solid #ef5350',
+                    background: '#2a0808',
+                    borderLeft: '3px solid var(--status-critical)',
                     padding: '0.4rem 0.6rem',
                     borderRadius: '2px',
                     fontSize: '0.8rem',
-                    color: '#ffcdd2',
+                    color: 'var(--text-primary)',
                   }}
                 >
                   <strong>ALERT: </strong>
@@ -533,12 +534,12 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
           <div
             style={{
               marginTop: '0.6rem',
-              background: '#141a1f',
+              background: 'var(--bg-panel-elevated)',
               padding: '0.5rem 0.7rem',
               borderRadius: '3px',
               fontSize: '0.75rem',
-              color: '#90a4ae',
-              border: '1px solid #232d34',
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border-default)',
             }}
           >
             {assessment.data_availability_notice}
@@ -548,12 +549,12 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
           <div
             style={{
               marginTop: '0.6rem',
-              background: '#201815',
-              borderLeft: '3px solid #ff7043',
+              background: 'var(--bg-panel-elevated)',
+              borderLeft: '3px solid var(--border-default)',
               padding: '0.5rem 0.7rem',
               borderRadius: '3px',
               fontSize: '0.75rem',
-              color: '#ffccbc',
+              color: 'var(--text-muted)',
               lineHeight: '1.4',
             }}
           >
@@ -564,14 +565,14 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
 
       {/* Comparative Scenario Evaluation Matrix */}
       {comparisons.length > 0 && (
-        <div style={{ marginTop: '1.2rem', background: '#171e24', padding: '0.8rem', borderRadius: '4px', border: '1px solid #2c3942' }}>
-          <h4 style={{ margin: '0 0 0.5rem 0', color: '#80cbc4', fontSize: '0.9rem' }}>
+        <div style={{ marginTop: '1.2rem', background: 'var(--bg-panel)', padding: '0.8rem', borderRadius: '3px', border: '1px solid var(--border-default)' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
             Multi-Scenario Comparative Ranking Matrix
           </h4>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', color: '#cfd8dc' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #37474f', textAlign: 'left', color: '#90a4ae' }}>
+                <tr style={{ borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', color: 'var(--text-muted)' }}>
                   <th style={{ padding: '0.4rem' }}>Rank</th>
                   <th style={{ padding: '0.4rem' }}>Scenario</th>
                   <th style={{ padding: '0.4rem' }}>Data Origin</th>
@@ -588,12 +589,12 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                   <tr
                     key={c.scenario.scenario_id}
                     style={{
-                      borderBottom: '1px solid #232d34',
-                      background: idx === 0 ? 'rgba(0, 150, 136, 0.08)' : 'transparent',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      background: idx === 0 ? 'var(--bg-panel-elevated)' : 'transparent',
                     }}
                   >
-                    <td style={{ padding: '0.4rem', fontWeight: 700 }}>#{idx + 1}</td>
-                    <td style={{ padding: '0.4rem', color: '#eceff1', fontWeight: 600 }}>{c.scenario.title}</td>
+                    <td style={{ padding: '0.4rem', fontWeight: 700, color: 'var(--text-primary)' }}>#{idx + 1}</td>
+                    <td style={{ padding: '0.4rem', color: 'var(--text-primary)', fontWeight: 600 }}>{c.scenario.title}</td>
                     <td style={{ padding: '0.4rem' }}>
                       <span
                         style={{
@@ -610,7 +611,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
                     <td style={{ padding: '0.4rem' }}>{c.scenario.solar_irradiance_w_per_m2.toFixed(0)} W/m²</td>
                     <td style={{ padding: '0.4rem' }}>{c.scenario.dust_optical_depth_tau.toFixed(2)}</td>
                     <td style={{ padding: '0.4rem' }}>{c.scenario.wind_speed_mps.toFixed(1)} m/s</td>
-                    <td style={{ padding: '0.4rem', fontWeight: 700, color: '#80cbc4' }}>
+                    <td style={{ padding: '0.4rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                       {(c.suitability.overall_suitability_score * 100).toFixed(0)}%
                     </td>
                     <td style={{ padding: '0.4rem' }}>
@@ -637,7 +638,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
       <div style={{ marginTop: '0.8rem' }}>
         <button
           type="button"
-          className="mode-btn"
+          className="btn-secondary"
           onClick={() => setShowSources(!showSources)}
           style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
         >
@@ -648,25 +649,25 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
           <div
             style={{
               marginTop: '0.5rem',
-              background: '#12171c',
+              background: 'var(--bg-panel)',
               padding: '0.7rem',
-              borderRadius: '4px',
-              border: '1px solid #232d34',
+              borderRadius: '3px',
+              border: '1px solid var(--border-default)',
               fontSize: '0.8rem',
-              color: '#b0bec5',
+              color: 'var(--text-secondary)',
             }}
           >
-            <div style={{ color: '#80cbc4', fontWeight: 600, marginBottom: '0.4rem' }}>
+            <div style={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: '0.4rem' }}>
               Official Planetary In-Situ & Modeled Climate Data Sources:
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.8rem' }}>
               {sources.map((s) => (
-                <div key={s.product_id} style={{ background: '#192026', padding: '0.5rem', borderRadius: '3px' }}>
-                  <div style={{ color: '#eceff1', fontWeight: 600 }}>{s.title}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#90a4ae' }}>Product ID: {s.product_id}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#90a4ae' }}>Org: {s.organization}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#80cbc4', marginTop: '0.2rem' }}>Coverage: {s.coverage}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#ffb74d', marginTop: '0.2rem' }}>
+                <div key={s.product_id} style={{ background: 'var(--bg-panel-elevated)', border: '1px solid var(--border-default)', padding: '0.5rem', borderRadius: '3px' }}>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{s.title}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Product ID: {s.product_id}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Org: {s.organization}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Coverage: {s.coverage}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--status-warning)', marginTop: '0.2rem' }}>
                     <em>Limitation: </em>
                     {s.caveats}
                   </div>

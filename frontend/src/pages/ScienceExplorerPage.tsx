@@ -34,10 +34,10 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
       {/* Header */}
       <div className="twin-header" style={{ marginBottom: '1rem' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#f28c52', fontSize: '1.3rem' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.3rem' }}>
             Scientific Opportunity Engine
           </h2>
-          <small style={{ color: '#a89f97' }}>
+          <small style={{ color: 'var(--text-secondary)' }}>
             Ranked Candidate Science Targets • CRISM Spectral Mineralogy & Stratigraphic Outcrops
           </small>
         </div>
@@ -60,24 +60,24 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
                 style={{
                   cursor: 'pointer',
                   padding: '0.8rem',
-                  borderLeft: '4px solid #ffd700',
-                  background: isSelected ? '#222014' : '#161a1e',
-                  borderColor: isSelected ? '#ffd700' : '#28343e',
+                  borderLeft: '3px solid var(--accent-secondary)',
+                  background: isSelected ? 'var(--bg-panel-elevated)' : 'var(--bg-panel)',
+                  borderColor: isSelected ? 'var(--border-active)' : 'var(--border-default)',
                   transition: 'all 0.15s ease',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#ffd700' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                     #{tgt.properties.rank}: {tgt.properties.name}
                   </span>
                   <span className="badge-target-rank">
                     SCORE: {(tgt.properties.composite_score * 100).toFixed(0)}%
                   </span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#ce93d8', marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
                   Theme: {tgt.properties.primary_science_theme}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#90a4ae', marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                   Location: {tgt.geometry.coordinates[1].toFixed(5)}°N, {tgt.geometry.coordinates[0].toFixed(5)}°E
                 </div>
               </div>
@@ -87,13 +87,13 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
 
         {/* Selected Target Deep Dossier */}
         {selectedTarget && (
-          <div className="card" style={{ padding: '1rem', background: '#171c22', border: '1px solid #ffd700' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #28343e', paddingBottom: '0.6rem' }}>
+          <div className="card" style={{ padding: '1rem', background: 'var(--bg-panel)', border: '1px solid var(--border-default)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.6rem' }}>
               <div>
-                <h3 style={{ margin: 0, color: '#ffd700', fontSize: '1.2rem' }}>
+                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.2rem' }}>
                   #{selectedTarget.properties.rank}: {selectedTarget.properties.name}
                 </h3>
-                <small style={{ color: '#ce93d8' }}>
+                <small style={{ color: 'var(--text-secondary)' }}>
                   Theme: {selectedTarget.properties.primary_science_theme} | Epistemic: {selectedTarget.properties.epistemic_class}
                 </small>
               </div>
@@ -101,7 +101,7 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
                 type="button"
                 className="btn-primary"
                 onClick={() => onSelectTargetForRouting(selectedTarget)}
-                style={{ background: '#ffd700', color: '#120e0c', fontWeight: 700, padding: '0.4rem 0.8rem' }}
+                style={{ padding: '0.4rem 0.8rem' }}
               >
                 🧭 Route to Target
               </button>
@@ -111,44 +111,44 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
             <div className="hazard-breakdown-grid" style={{ marginTop: '0.8rem' }}>
               <div className="hazard-stat-box">
                 <div className="stat-label">Mineralogy</div>
-                <div className="stat-value" style={{ color: '#ffd700' }}>
+                <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
                   {(selectedTarget.properties.breakdown.mineralogy * 100).toFixed(0)}%
                 </div>
               </div>
               <div className="hazard-stat-box">
                 <div className="stat-label">Diversity</div>
-                <div className="hazard-value" style={{ color: '#81c784' }}>
+                <div className="stat-value" style={{ color: 'var(--text-primary)' }}>
                   {(selectedTarget.properties.breakdown.diversity * 100).toFixed(0)}%
                 </div>
               </div>
               <div className="hazard-stat-box">
                 <div className="stat-label">Layered Strata</div>
-                <div className="hazard-value" style={{ color: '#64b5f6' }}>
+                <div className="stat-value" style={{ color: 'var(--text-secondary)' }}>
                   {(selectedTarget.properties.breakdown.layered_features * 100).toFixed(0)}%
                 </div>
               </div>
               <div className="hazard-stat-box">
                 <div className="stat-label">Delta Context</div>
-                <div className="hazard-value" style={{ color: '#ffb74d' }}>
+                <div className="stat-value" style={{ color: 'var(--text-secondary)' }}>
                   {(selectedTarget.properties.breakdown.delta_context * 100).toFixed(0)}%
                 </div>
               </div>
               <div className="hazard-stat-box">
                 <div className="stat-label">Rover Proximity</div>
-                <div className="hazard-value" style={{ color: '#ff8a80' }}>
+                <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
                   {(selectedTarget.properties.breakdown.rover_proximity * 100).toFixed(0)}%
                 </div>
               </div>
               <div className="hazard-stat-box">
                 <div className="stat-label">Confidence</div>
-                <div className="hazard-value" style={{ color: '#ba68c8' }}>
+                <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
                   {(selectedTarget.properties.breakdown.confidence * 100).toFixed(0)}%
                 </div>
               </div>
             </div>
 
             {/* Scientific Rationale */}
-            <div className="hazard-explanation-box" style={{ borderLeftColor: '#ffd700', marginTop: '0.8rem' }}>
+            <div className="hazard-explanation-box" style={{ borderLeftColor: 'var(--accent-secondary)', marginTop: '0.8rem' }}>
               <strong>Scientific Rationale: </strong>
               {selectedTarget.properties.rationale}
             </div>
@@ -159,7 +159,7 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
               {selectedTarget.properties.life_inference_warning}
             </div>
 
-            <div className="notice-warning" style={{ borderLeftColor: '#f44336', marginTop: '0.4rem' }}>
+            <div className="notice-warning" style={{ borderLeftColor: 'var(--status-critical)', marginTop: '0.4rem' }}>
               <strong>Safety Caveat: </strong>
               {selectedTarget.properties.safety_caveat}
             </div>

@@ -95,25 +95,25 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
             <div className="overview-stats-grid">
               <div className="stat-unit">
                 <span className="stat-unit-label">Distance</span>
-                <span className="stat-unit-val" style={{ color: '#00e5ff' }}>
+                <span className="stat-unit-val" style={{ color: 'var(--text-primary)' }}>
                   {(activeRoute.properties.metrics.total_distance_m / 1000).toFixed(2)} km
                 </span>
               </div>
               <div className="stat-unit">
                 <span className="stat-unit-label">Walking Time</span>
-                <span className="stat-unit-val" style={{ color: '#ffd700' }}>
+                <span className="stat-unit-val" style={{ color: 'var(--text-primary)' }}>
                   {activeRoute.properties.metrics.estimated_duration_minutes.toFixed(0)} min
                 </span>
               </div>
               <div className="stat-unit">
                 <span className="stat-unit-label">Mean Risk</span>
-                <span className="stat-unit-val" style={{ color: '#81c784' }}>
+                <span className="stat-unit-val" style={{ color: 'var(--text-secondary)' }}>
                   {(activeRoute.properties.metrics.mean_hazard_exposure * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="stat-unit">
                 <span className="stat-unit-label">Science Return</span>
-                <span className="stat-unit-val" style={{ color: '#e040fb' }}>
+                <span className="stat-unit-val" style={{ color: 'var(--accent-secondary)' }}>
                   {activeRoute.properties.metrics.accumulated_science_opportunity.toFixed(1)}
                 </span>
               </div>
@@ -136,7 +136,7 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
         </div>
 
         {/* Emergency Contingency Status */}
-        <div className="card overview-card" style={{ borderLeft: '4px solid #ff5722' }}>
+        <div className="card overview-card" style={{ borderLeft: '3px solid var(--status-critical)' }}>
           <div className="card-header">
             <h3>Emergency Operations Status</h3>
             <span className={`badge ${emergencyPlan ? 'badge-alert' : 'badge-standby'}`}>
@@ -145,11 +145,11 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
           </div>
           {emergencyPlan ? (
             <div>
-              <div style={{ color: '#ffccbc', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+              <div style={{ color: 'var(--text-primary)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
                 <strong>Active Contingency: </strong>
                 {emergencyPlan.hazard_event.title}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#90a4ae' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                 Status:{' '}
                 {emergencyPlan.is_feasible
                   ? emergencyPlan.is_return_to_base
@@ -181,7 +181,7 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
             <h3>Planetary Data Pipeline</h3>
             <span className="badge badge-observed">10 VERIFIED</span>
           </div>
-          <p style={{ fontSize: '0.85rem', color: '#b0bec5' }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             Fully integrated with USGS HiRISE DTM (1.0m), HiRISE ORI (0.25m), CTX DTM (20m), CRISM
             Mineralogy, and Perseverance MEDA in-situ weather telemetry.
           </p>
@@ -202,7 +202,7 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
             <h3>Sortie Coordinates</h3>
             <span className="badge badge-heuristic">CONFIGURABLE</span>
           </div>
-          <div style={{ fontSize: '0.85rem', color: '#cfd8dc' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             <div style={{ marginBottom: '0.4rem' }}>
               <strong>Base Camp: </strong>
               {startPoint.lat.toFixed(5)}°N, {startPoint.lon.toFixed(5)}°E

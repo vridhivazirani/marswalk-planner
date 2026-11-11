@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { DigitalTwinLayersResponse } from '../api/twin'
@@ -36,8 +36,11 @@ export function MarsMap2D({
   const scienceTargetsGroupRef = useRef<L.LayerGroup | null>(null)
   const routesLayerGroupRef = useRef<L.LayerGroup | null>(null)
   const emergencyLayerGroupRef = useRef<L.LayerGroup | null>(null)
+  const boundsRectRef = useRef<L.Rectangle | null>(null)
   const roverFetchedRef = useRef(false)
-  const targetsFetchedRef = useRef(false)
+
+  // Aerospace Monochrome vs Scientific Spectrum view mode (default: true = pure dark monochrome)
+  const [isMonoMode, setIsMonoMode] = useState<boolean>(true)
 
   // Initialize Leaflet Map using Plate Carrée / Equirectangular CRS (L.CRS.EPSG4326 for Mars lat/lon)
   useEffect(() => {
@@ -58,11 +61,12 @@ export function MarsMap2D({
 
     // Study area bounding rectangle boundary
     const boundsRect = L.rectangle(bounds, {
-      color: '#00e5ff',
-      weight: 2,
-      dashArray: '5, 5',
+      color: '#a3a3a3',
+      weight: 1.5,
+      dashArray: '4, 4',
       fill: false,
     }).addTo(map)
+    boundsRectRef.current = boundsRect
 
     map.fitBounds(boundsRect.getBounds(), { padding: [20, 20] })
 
@@ -150,10 +154,10 @@ export function MarsMap2D({
               style: (feature) => {
                 if (feature?.geometry.type === 'LineString') {
                   return {
-                    color: '#ffab00',
-                    weight: 3,
+                    color: isMonoMode ? '#a3a3a3' : '#ffab00',
+                    weight: 2.5,
                     opacity: 0.95,
-                    dashArray: '7, 6',
+                    dashArray: '8, 6',
                   }
                 }
                 return {}
@@ -161,9 +165,9 @@ export function MarsMap2D({
               pointToLayer: (feature, latlng) => {
                 const sol = feature.properties?.sol ?? '?'
                 return L.circleMarker(latlng, {
-                  radius: 4,
-                  fillColor: '#ffd600',
-                  color: '#212121',
+                  radius: 3.5,
+                  fillColor: isMonoMode ? '#f5f5f5' : '#ffd600',
+                  color: '#111111',
                   weight: 1,
                   opacity: 1,
                   fillOpacity: 0.9,
@@ -184,7 +188,7 @@ export function MarsMap2D({
     } else if (map.hasLayer(vecGroup)) {
       map.removeLayer(vecGroup)
     }
-  }, [activeLayers])
+  }, [activeLayers, isMonoMode])
 
   // Manage Ranked Science Targets
   useEffect(() => {
@@ -192,37 +196,34 @@ export function MarsMap2D({
     const sciGroup = scienceTargetsGroupRef.current
     if (!map || !sciGroup) return
 
-    if (!targetsFetchedRef.current) {
-      fetchScienceTargets()
-        .then((data) => {
-          sciGroup.clearLayers()
-          data.features.forEach((feature) => {
-            const [lon, lat, elev] = feature.geometry.coordinates
-            const marker = L.circleMarker([lat, lon], {
-              radius: 8,
-              fillColor: '#ffd700',
-              color: '#1a1412',
-              weight: 2,
-              opacity: 1,
-              fillOpacity: 0.95,
-            })
-            marker.bindTooltip(
-              `<strong>#${feature.properties.rank} ${feature.properties.name}</strong><br/>Score: ${(feature.properties.composite_score * 100).toFixed(1)}% | Elev: ${elev.toFixed(1)}m`
-            )
-            marker.on('click', (e) => {
-              L.DomEvent.stopPropagation(e)
-              onSelectTarget?.(feature)
-              onSelectCoords?.({ lat, lon })
-            })
-            sciGroup.addLayer(marker)
+    fetchScienceTargets()
+      .then((data) => {
+        sciGroup.clearLayers()
+        data.features.forEach((feature) => {
+          const [lon, lat, elev] = feature.geometry.coordinates
+          const marker = L.circleMarker([lat, lon], {
+            radius: 8,
+            fillColor: isMonoMode ? '#ffffff' : '#ffd700',
+            color: isMonoMode ? '#090909' : '#1a1412',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.95,
           })
-          targetsFetchedRef.current = true
+          marker.bindTooltip(
+            `<strong>#${feature.properties.rank} ${feature.properties.name}</strong><br/>Score: ${(feature.properties.composite_score * 100).toFixed(1)}% | Elev: ${elev.toFixed(1)}m`
+          )
+          marker.on('click', (e) => {
+            L.DomEvent.stopPropagation(e)
+            onSelectTarget?.(feature)
+            onSelectCoords?.({ lat, lon })
+          })
+          sciGroup.addLayer(marker)
         })
-        .catch((err: unknown) => {
-          console.error('Failed loading science targets:', err)
-        })
-    }
-  }, [onSelectCoords, onSelectTarget])
+      })
+      .catch((err: unknown) => {
+        console.error('Failed loading science targets:', err)
+      })
+  }, [onSelectCoords, onSelectTarget, isMonoMode])
 
   // Render planned traversal routes
   useEffect(() => {
@@ -233,21 +234,30 @@ export function MarsMap2D({
     routeGroup.clearLayers()
     if (!routes || routes.length === 0) return
 
-    const colorMap: Record<string, string> = {
-      SAFETY_FIRST: '#00e5ff',
-      SCIENCE_FIRST: '#ffd700',
-      BALANCED: '#00e676',
-    }
+    // Monochrome vs Spectrum styling
+    const colorMap: Record<string, string> = isMonoMode
+      ? {
+          SAFETY_FIRST: '#ffffff',
+          BALANCED: '#d4d4d4',
+          SCIENCE_FIRST: '#8a8a8a',
+        }
+      : {
+          SAFETY_FIRST: '#00e5ff',
+          BALANCED: '#00e676',
+          SCIENCE_FIRST: '#ffd700',
+        }
 
     routes.forEach((route) => {
       const coords: L.LatLngExpression[] = route.geometry.coordinates.map((c) => [c[1], c[0]])
       const prof = route.properties.profile_name
-      const color = colorMap[prof] || '#e040fb'
+      const color = colorMap[prof] || '#f5f5f5'
+      const isDash = isMonoMode && prof !== 'SAFETY_FIRST'
 
       const polyline = L.polyline(coords, {
         color,
-        weight: 4,
-        opacity: 0.9,
+        weight: isMonoMode ? (prof === 'SAFETY_FIRST' ? 3.5 : 2.5) : 4,
+        opacity: 0.95,
+        dashArray: isDash ? (prof === 'BALANCED' ? '8, 5' : '3, 4') : undefined,
       }).bindTooltip(
         `<strong>${prof.replace('_', ' ')} Route</strong><br/>` +
           `Distance: ${(route.properties.metrics.total_distance_m / 1000).toFixed(2)} km | ` +
@@ -255,7 +265,7 @@ export function MarsMap2D({
       )
       routeGroup.addLayer(polyline)
     })
-  }, [routes])
+  }, [routes, isMonoMode])
 
   // Render simulated hazard zones, crew position, and dynamic alternative routes
   useEffect(() => {
@@ -288,7 +298,7 @@ export function MarsMap2D({
     const crewMarker = L.circleMarker([crew.lat, crew.lon], {
       radius: 8,
       color: '#ffffff',
-      fillColor: '#00e5ff',
+      fillColor: isMonoMode ? '#ffffff' : '#00e5ff',
       fillOpacity: 0.95,
       weight: 2,
     }).bindTooltip(
@@ -323,10 +333,10 @@ export function MarsMap2D({
       )
       emergGroup.addLayer(rerouteLine)
     }
-  }, [emergencyPlan])
+  }, [emergencyPlan, isMonoMode])
 
   return (
-    <div className="map2d-wrapper">
+    <div className={`map2d-wrapper ${isMonoMode ? 'mono-map-mode' : ''}`}>
       <div ref={mapContainerRef} className="leaflet-map-canvas" />
 
       {/* Map Traversal & Footprint Legend */}
@@ -337,48 +347,85 @@ export function MarsMap2D({
           bottom: '12px',
           left: '12px',
           zIndex: 1000,
-          background: 'rgba(17, 24, 39, 0.92)',
-          border: '1px solid #374151',
-          borderRadius: '6px',
-          padding: '0.5rem 0.75rem',
-          fontSize: '0.75rem',
-          color: '#e5e7eb',
+          background: 'rgba(17, 17, 17, 0.94)',
+          border: '1px solid #303030',
+          borderRadius: '3px',
+          padding: '0.55rem 0.8rem',
+          fontSize: '0.72rem',
+          color: '#d4d4d4',
           pointerEvents: 'auto',
-          maxWidth: '330px',
-          lineHeight: 1.4,
-          backdropFilter: 'blur(4px)',
+          maxWidth: '340px',
+          lineHeight: 1.45,
+          backdropFilter: 'blur(6px)',
         }}
       >
-        <div style={{ fontWeight: 600, color: '#f28c52', marginBottom: '0.3rem', letterSpacing: '0.5px' }}>
+        <div style={{ fontWeight: 600, color: '#f5f5f5', marginBottom: '0.35rem', letterSpacing: '0.06em', fontSize: '0.7rem' }}>
           TRAVERSAL & COVERAGE GUIDE
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: '2px dashed #00e5ff' }} />
+          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: isMonoMode ? '2px dashed #a3a3a3' : '2px dashed #00e5ff' }} />
           <span>20m DTM Study Boundary (Analysis Extent)</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: '3px solid #00e676' }} />
+          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: isMonoMode ? '3px solid #ffffff' : '3px solid #00e676' }} />
           <span>Planned EVA Route (Strictly Inside Footprint)</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: '3px dashed #ffab00' }} />
+          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: isMonoMode ? '2px dashed #a3a3a3' : '3px dashed #ffab00' }} />
           <span>Perseverance Traverse (Observed, Extends West)</span>
         </div>
         <div
           style={{
-            fontSize: '0.7rem',
-            color: '#9ca3af',
-            marginTop: '0.3rem',
-            borderTop: '1px solid #374151',
-            paddingTop: '0.3rem',
+            fontSize: '0.68rem',
+            color: '#737373',
+            marginTop: '0.35rem',
+            borderTop: '1px solid #262626',
+            paddingTop: '0.35rem',
           }}
         >
-          Terrain outside cyan boundary is unmapped regional basin (NoData — EVA entry prohibited).
+          Terrain outside boundary is unmapped regional basin (NoData — EVA entry prohibited).
         </div>
       </div>
 
       {/* Layer Control Panel */}
       <div className="layer-control-panel">
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '0.65rem', background: '#090909', padding: '2px', border: '1px solid #303030', borderRadius: '2px' }}>
+          <button
+            type="button"
+            onClick={() => setIsMonoMode(true)}
+            style={{
+              flex: 1,
+              padding: '0.25rem 0.35rem',
+              fontSize: '0.65rem',
+              fontWeight: 600,
+              background: isMonoMode ? '#202020' : 'transparent',
+              color: isMonoMode ? '#ffffff' : '#737373',
+              border: isMonoMode ? '1px solid #ffffff' : '1px solid transparent',
+              cursor: 'pointer',
+              letterSpacing: '0.04em',
+            }}
+          >
+            AEROSPACE MONO
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsMonoMode(false)}
+            style={{
+              flex: 1,
+              padding: '0.25rem 0.35rem',
+              fontSize: '0.65rem',
+              fontWeight: 600,
+              background: !isMonoMode ? '#202020' : 'transparent',
+              color: !isMonoMode ? '#ffffff' : '#737373',
+              border: !isMonoMode ? '1px solid #ffffff' : '1px solid transparent',
+              cursor: 'pointer',
+              letterSpacing: '0.04em',
+            }}
+          >
+            SPECTRUM
+          </button>
+        </div>
+
         <h3>Exploration Layers</h3>
         {metadata.layers.map((layer) => (
           <label key={layer.id} className="layer-checkbox-label">
