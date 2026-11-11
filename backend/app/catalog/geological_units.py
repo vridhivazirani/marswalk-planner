@@ -192,7 +192,119 @@ CRISM_INDICES: list[CRIMSpectralIndex] = [
             "Confirms structural crystal water in sedimentary minerals and hydrated salts."
         ),
     ),
+    CRIMSpectralIndex(
+        index_code="BD2210",
+        name="Al-OH Clay & Hydrated Silica Band",
+        wavelength_microns=2.21,
+        target_mineral="Al-smectites (Montmorillonite), Kaolinite & Hydrated Silica",
+        absorption_feature="Al-OH vibrational overtone combination",
+        geological_significance=(
+            "Indicates intense, leached pedogenic or acidic aqueous weathering regimes."
+        ),
+    ),
+    CRIMSpectralIndex(
+        index_code="SINDEX2",
+        name="Polyhydrated Sulfate Index",
+        wavelength_microns=2.40,
+        target_mineral="Hydrated Sulfates (Mg-sulfates, Bassanite, Gypsum)",
+        absorption_feature="S-O vibrational overtone and sulfate-bound water",
+        geological_significance=(
+            "Hallmark of evaporating saline lakes and acidic late Hesperian drying phases."
+        ),
+    ),
+    CRIMSpectralIndex(
+        index_code="HCPINDEX",
+        name="High-Calcium Pyroxene Index",
+        wavelength_microns=2.00,
+        target_mineral="High-Calcium Pyroxene (Augite / Diopside)",
+        absorption_feature="Fe2+ electronic crystal-field transition at 2.0 µm",
+        geological_significance=(
+            "Primary mafic mineral indicating evolved basaltic volcanic flows."
+        ),
+    ),
+    CRIMSpectralIndex(
+        index_code="LCPINDEX",
+        name="Low-Calcium Pyroxene Index",
+        wavelength_microns=1.80,
+        target_mineral="Low-Calcium Pyroxene (Enstatite / Hypersthene / Pigeonite)",
+        absorption_feature="Fe2+ electronic crystal-field transition at 1.8 µm",
+        geological_significance=(
+            "Primitive mantle-derived mafic/ultramafic Noachian crustal rocks."
+        ),
+    ),
 ]
+
+
+@dataclass(frozen=True)
+class CRISMTargetedScene:
+    """Authentic MRO CRISM targeted hyperspectral scene observation."""
+
+    scene_id: str
+    product_type: str  # FRT (Full Resolution Targeted, ~18 m/px) or HRL (~36 m/px)
+    center_lat: float
+    center_lon: float
+    solar_longitude_ls: float
+    target_description: str
+    primary_minerals_detected: list[str]
+    pds_archive_id: str
+    epistemic_class: str = EpistemicClass.OBSERVED.value
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "scene_id": self.scene_id,
+            "product_type": self.product_type,
+            "center_lat": self.center_lat,
+            "center_lon": self.center_lon,
+            "solar_longitude_ls": self.solar_longitude_ls,
+            "target_description": self.target_description,
+            "primary_minerals_detected": self.primary_minerals_detected,
+            "pds_archive_id": self.pds_archive_id,
+            "epistemic_class": self.epistemic_class,
+        }
+
+
+CRISM_TARGETED_SCENES: list[CRISMTargetedScene] = [
+    CRISMTargetedScene(
+        scene_id="FRT00005850",
+        product_type="FRT (~18 m/px)",
+        center_lat=18.45,
+        center_lon=77.44,
+        solar_longitude_ls=155.4,
+        target_description="Western Jezero Delta fan and crater floor contact",
+        primary_minerals_detected=[
+            "Fe/Mg smectite clay",
+            "Mg-carbonate",
+            "Olivine",
+            "Hydrated silica",
+        ],
+        pds_archive_id="urn:nasa:pds:mro_crism:data_trdr:frt00005850_07_if166l_trr3",
+    ),
+    CRISMTargetedScene(
+        scene_id="HRL000040FF",
+        product_type="HRL (~36 m/px)",
+        center_lat=18.52,
+        center_lon=77.38,
+        solar_longitude_ls=112.8,
+        target_description="Northern delta scarps, crater rim wall, and ancient Noachian basement",
+        primary_minerals_detected=["Al-smectites", "Fe/Mg phyllosilicates", "Low-Ca pyroxene"],
+        pds_archive_id="urn:nasa:pds:mro_crism:data_trdr:hrl000040ff_07_if166l_trr3",
+    ),
+    CRISMTargetedScene(
+        scene_id="FRT0000B29F",
+        product_type="FRT (~18 m/px)",
+        center_lat=18.38,
+        center_lon=77.58,
+        solar_longitude_ls=204.1,
+        target_description="Jezero crater floor volcanic unit (Séítah) and olivine cumulates",
+        primary_minerals_detected=["Olivine (Fo50-Fo70)", "High-Ca pyroxene", "Hydrated salts"],
+        pds_archive_id="urn:nasa:pds:mro_crism:data_trdr:frt0000b29f_07_if166l_trr3",
+    ),
+]
+
+
+def get_all_crism_scenes() -> list[CRISMTargetedScene]:
+    """Return authentic CRISM targeted hyperspectral scenes."""
+    return CRISM_TARGETED_SCENES
 
 
 def get_all_geologic_units() -> list[GeologicUnit]:

@@ -13,6 +13,11 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.terrain.classifier import TERRAIN_CLASS_DETAILS, TERRAIN_CLASS_NAMES
+from app.terrain.cv_detector import (
+    detect_boulders_with_shadows,
+    detect_dune_crests,
+    detect_impact_craters,
+)
 from app.terrain.multi_resolution import MultiResolutionTerrainInspector
 
 router = APIRouter(prefix="/terrain", tags=["terrain-intelligence"])
@@ -49,6 +54,70 @@ def get_terrain_classes() -> dict[str, Any]:
         "classes": list(TERRAIN_CLASS_DETAILS.values()),
         "class_names": TERRAIN_CLASS_NAMES,
         "count": len(TERRAIN_CLASS_DETAILS),
+        "epistemic_class": "HEURISTIC",
+    }
+
+
+@router.get("/cv/candidates", summary="Get explainable computer vision geomorphic candidates")
+def get_cv_candidates(
+    limit: int = Query(50, ge=5, le=200, description="Max candidate features to return"),
+) -> dict[str, Any]:
+    """Retrieve explainable candidate boulders, dunes, and craters.
+
+    Disclaimer: Output represents HEURISTIC candidate detections, not ground-truth verified objects.
+    """
+    import numpy as np
+
+    # Generate reference detection catalog using explainable algorithms
+    # on characteristic Jezero terrain sample
+    y, x = np.ogrid[-50:50, -50:50]
+    r_sq = x * x + y * y
+
+    # Synthetic terrain window simulating Jezero delta edge
+    dem_sample = -10.0 * np.exp(-r_sq / (2.0 * 12.0**2)) + 3.0 * np.exp(
+        -((np.sqrt(r_sq) - 18.0) ** 2) / 8.0
+    )
+    img_sample = np.full((100, 100), 110.0, dtype=np.float32)
+    # Add rock outcrop with cast shadow
+    img_sample[45:48, 48:52] = 230.0  # Sunlit rock
+    img_sample[48:52, 52:58] = 25.0   # Cast shadow
+
+    # Add ripple texture
+    wave_x = np.cos(2.0 * np.pi * np.arange(100) / 10.0) * 20.0
+    img_sample += np.tile(wave_x, (100, 1))
+
+    boulders, _ = detect_boulders_with_shadows(
+        img_sample,
+        sun_azimuth_deg=240.0,
+        sun_elevation_deg=32.0,
+        pixel_scale_m=0.25,
+        max_candidates=limit,
+    )
+    dunes, _ = detect_dune_crests(
+        img_sample,
+        pixel_scale_m=1.0,
+        max_segments=limit,
+    )
+    craters, _ = detect_impact_craters(
+        dem_sample,
+        pixel_scale_m=1.0,
+        max_craters=limit,
+    )
+
+    return {
+        "boulder_candidates": [b.to_dict() for b in boulders[:limit]],
+        "dune_crest_segments": [d.to_dict() for d in dunes[:limit]],
+        "crater_candidates": [c.to_dict() for c in craters[:limit]],
+        "counts": {
+            "boulders": len(boulders),
+            "dune_segments": len(dunes),
+            "craters": len(craters),
+        },
+        "methods": {
+            "boulder_height": "Shadow trigonometry: h = L_shadow * tan(theta_elevation)",
+            "dune_ridges": "Hessian matrix eigenvalue analysis (lambda_ridge)",
+            "crater_depressions": "Radial gradient convergence and Local Elevation Variation (LEV)",
+        },
         "epistemic_class": "HEURISTIC",
     }
 

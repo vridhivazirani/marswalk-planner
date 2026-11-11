@@ -12,6 +12,7 @@ from app.mission.environmental import (
     DataOriginCategory,
     EnvironmentalScenarioInput,
     EnvironmentalWeights,
+    PlanetaryEnvironmentPhysics,
 )
 from app.services.environmental_assessment import EnvironmentalAssessmentService
 
@@ -147,3 +148,52 @@ def compare_scenarios_endpoint(req: CompareScenariosRequest) -> dict[str, Any]:
         return {"comparisons": [r.to_dict() for r in reports]}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.get("/diurnal-cycle", summary="Get 24-hour diurnal temperature and solar curve")
+def get_diurnal_cycle_endpoint(
+    latitude_deg: float = 18.45,
+    season_ls_deg: float = 180.0,
+    thermal_inertia_tiu: float = 320.0,
+    dust_tau: float = 0.40,
+) -> dict[str, Any]:
+    """Compute harmonic diurnal surface & air temperature curve and solar irradiance."""
+    profiles = PlanetaryEnvironmentPhysics.compute_diurnal_cycle(
+        latitude_deg=latitude_deg,
+        season_ls_deg=season_ls_deg,
+        thermal_inertia_tiu=thermal_inertia_tiu,
+        dust_tau=dust_tau,
+    )
+    return {
+        "latitude_deg": latitude_deg,
+        "season_ls_deg": season_ls_deg,
+        "thermal_inertia_tiu": thermal_inertia_tiu,
+        "dust_tau": dust_tau,
+        "profiles": [p.to_dict() for p in profiles],
+        "epistemic_class": "SIMULATED",
+    }
+
+
+@router.get("/dust-climatology", summary="Get seasonal dust optical depth (tau) curve")
+def get_dust_climatology_endpoint() -> dict[str, Any]:
+    """Retrieve seasonal dust optical depth variation across full Martian year (0-360 Ls)."""
+    points = PlanetaryEnvironmentPhysics.compute_dust_climatology()
+    return {
+        "cycle_points": [p.to_dict() for p in points],
+        "storm_season_range_ls": [180.0, 330.0],
+        "epistemic_class": "CLIMATE_MODELED",
+    }
+
+
+@router.get("/thermal-inertia", summary="Classify terrain trafficability from thermal inertia")
+def get_thermal_inertia_endpoint(
+    tiu: float = 320.0,
+    albedo: float = 0.22,
+) -> dict[str, Any]:
+    """Evaluate surface material and EVA bearing capacity from thermal inertia."""
+    summary = PlanetaryEnvironmentPhysics.classify_thermal_inertia(
+        thermal_inertia_tiu=tiu,
+        albedo=albedo,
+    )
+    return summary.to_dict()
+

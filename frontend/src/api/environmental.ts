@@ -111,3 +111,86 @@ export async function compareEnvironmentalScenarios(
   return data.comparisons
 }
 
+export interface DiurnalHourProfileDTO {
+  ltst_hour: number
+  surface_temp_c: number
+  air_temp_c: number
+  solar_flux_w_m2: number
+  eva_suitability_flag: boolean
+}
+
+export interface DiurnalCycleResponse {
+  latitude_deg: number
+  season_ls_deg: number
+  thermal_inertia_tiu: number
+  dust_tau: number
+  profiles: DiurnalHourProfileDTO[]
+  epistemic_class: string
+}
+
+export interface DustClimatologyPointDTO {
+  solar_longitude_ls_deg: number
+  season_name: string
+  tau_background: number
+  tau_regional_storm: number
+  tau_global_storm: number
+  storm_probability_pct: number
+}
+
+export interface DustClimatologyResponse {
+  cycle_points: DustClimatologyPointDTO[]
+  storm_season_range_ls: [number, number]
+  epistemic_class: string
+}
+
+export interface ThermalInertiaDTO {
+  thermal_inertia_tiu: number
+  albedo: number
+  surface_material: string
+  trafficability_implication: string
+  epistemic_class: string
+}
+
+export async function fetchDiurnalCycle(
+  latitudeDeg = 18.45,
+  seasonLsDeg = 180.0,
+  thermalInertiaTiu = 320.0,
+  dustTau = 0.4,
+): Promise<DiurnalCycleResponse> {
+  const params = new URLSearchParams({
+    latitude_deg: latitudeDeg.toString(),
+    season_ls_deg: seasonLsDeg.toString(),
+    thermal_inertia_tiu: thermalInertiaTiu.toString(),
+    dust_tau: dustTau.toString(),
+  })
+  const res = await fetch(`/api/v1/environmental/diurnal-cycle?${params.toString()}`)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch diurnal cycle: ${res.statusText}`)
+  }
+  return res.json() as Promise<DiurnalCycleResponse>
+}
+
+export async function fetchDustClimatology(): Promise<DustClimatologyResponse> {
+  const res = await fetch('/api/v1/environmental/dust-climatology')
+  if (!res.ok) {
+    throw new Error(`Failed to fetch dust climatology: ${res.statusText}`)
+  }
+  return res.json() as Promise<DustClimatologyResponse>
+}
+
+export async function fetchThermalInertia(
+  tiu = 320.0,
+  albedo = 0.22,
+): Promise<ThermalInertiaDTO> {
+  const params = new URLSearchParams({
+    tiu: tiu.toString(),
+    albedo: albedo.toString(),
+  })
+  const res = await fetch(`/api/v1/environmental/thermal-inertia?${params.toString()}`)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch thermal inertia: ${res.statusText}`)
+  }
+  return res.json() as Promise<ThermalInertiaDTO>
+}
+
+

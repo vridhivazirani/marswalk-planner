@@ -451,3 +451,232 @@ class EnvironmentalScenarioEngine:
                 },
             ]
         }
+
+
+# ---------------------------------------------------------------------------
+# Stage C: Surface Thermal Inertia, Diurnal Cycles & Climatological Dust Models
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ThermalInertiaSummary:
+    """Thermal inertia estimation and lithological interpretation."""
+
+    thermal_inertia_tiu: float  # J m^-2 K^-1 s^-1/2
+    albedo: float
+    surface_material: str
+    trafficability_implication: str
+    epistemic_class: str = EpistemicClass.DERIVED.value
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "thermal_inertia_tiu": round(self.thermal_inertia_tiu, 1),
+            "albedo": round(self.albedo, 3),
+            "surface_material": self.surface_material,
+            "trafficability_implication": self.trafficability_implication,
+            "epistemic_class": self.epistemic_class,
+        }
+
+
+@dataclass(frozen=True)
+class DiurnalHourProfile:
+    """Hourly temperature and solar flux values across one Martian sol (0-24 LTST)."""
+
+    ltst_hour: float  # 0.0 to 24.0 Local True Solar Time
+    surface_temp_c: float
+    air_temp_c: float
+    solar_flux_w_m2: float
+    eva_suitability_flag: bool  # True if inside typical safe operational limits
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "ltst_hour": round(self.ltst_hour, 1),
+            "surface_temp_c": round(self.surface_temp_c, 1),
+            "air_temp_c": round(self.air_temp_c, 1),
+            "solar_flux_w_m2": round(self.solar_flux_w_m2, 1),
+            "eva_suitability_flag": self.eva_suitability_flag,
+        }
+
+
+@dataclass(frozen=True)
+class DustClimatologyPoint:
+    """Atmospheric dust optical depth (tau) parameterized by Solar Longitude Ls."""
+
+    solar_longitude_ls_deg: float  # 0 to 360 degrees
+    season_name: str
+    tau_background: float
+    tau_regional_storm: float
+    tau_global_storm: float
+    storm_probability_pct: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "solar_longitude_ls_deg": round(self.solar_longitude_ls_deg, 1),
+            "season_name": self.season_name,
+            "tau_background": round(self.tau_background, 2),
+            "tau_regional_storm": round(self.tau_regional_storm, 2),
+            "tau_global_storm": round(self.tau_global_storm, 2),
+            "storm_probability_pct": round(self.storm_probability_pct, 1),
+        }
+
+
+class PlanetaryEnvironmentPhysics:
+    """Physical models for Mars surface thermodynamics and climatological cycles."""
+
+    @staticmethod
+    def classify_thermal_inertia(
+        thermal_inertia_tiu: float,
+        albedo: float = 0.22,
+    ) -> ThermalInertiaSummary:
+        """Classify terrain lithology and rover/EVA trafficability from thermal inertia."""
+        if thermal_inertia_tiu < 120.0:
+            mat = "Fine, low-bearing unconsolidated dust mantle"
+            traffic = "High sinkage hazard; poor traction for rover wheels and boots"
+        elif thermal_inertia_tiu < 250.0:
+            mat = "Coarse active sand sheets and ripple fields"
+            traffic = "Moderate slip; potential entrapment on steep leeward dune faces"
+        elif thermal_inertia_tiu < 450.0:
+            mat = "Cemented duricrust, regolith pebble lag & cohesive soil"
+            traffic = "Optimal EVA walking terrain; firm bearing capacity"
+        else:
+            mat = "Indurated bedrock, competent sandstone & volcanic slab"
+            traffic = "Rigid high-friction footing; potential obstacle / tripping hazard"
+
+        return ThermalInertiaSummary(
+            thermal_inertia_tiu=thermal_inertia_tiu,
+            albedo=albedo,
+            surface_material=mat,
+            trafficability_implication=traffic,
+        )
+
+    @staticmethod
+    def compute_diurnal_cycle(
+        latitude_deg: float = 18.45,
+        season_ls_deg: float = 180.0,
+        thermal_inertia_tiu: float = 320.0,
+        dust_tau: float = 0.40,
+    ) -> list[DiurnalHourProfile]:
+        """Compute 24-hour diurnal temperature and solar curve for Mars.
+
+        Based on harmonic energy balance:
+        - Peak solar illumination occurs at 12:00 LTST.
+        - Peak surface temperature lags solar noon by 1.0 to 2.5 hours depending on inertia.
+        - Higher thermal inertia reduces diurnal amplitude (warmer nights, cooler days).
+        - Higher dust tau attenuates solar flux and warms nighttime air via greenhouse opacity.
+        """
+        import math
+
+        lat_rad = math.radians(latitude_deg)
+        # Solar declination on Mars: delta = 25.2 deg * sin(Ls)
+        declination_rad = math.radians(25.2 * math.sin(math.radians(season_ls_deg)))
+
+        # Solar constant at Mars: ~590 W/m2 at mean distance
+        # Scaled by dust transmission: exp(-tau / cos(Z))
+        solar_const = 590.0
+
+        # Mean temperature base depending on latitude and season
+        t_mean_c = -55.0 - 15.0 * abs(math.sin(lat_rad))
+        # Diurnal amplitude inversely proportional to sqrt(thermal inertia)
+        delta_t_surf = max(20.0, min(55.0, 550.0 / math.sqrt(max(50.0, thermal_inertia_tiu))))
+        # Atmospheric dust greenhouse reduces diurnal swing
+        delta_t_surf *= max(0.65, 1.0 - 0.15 * dust_tau)
+
+        # Thermal lag: higher inertia -> longer thermal delay
+        lag_hours = 1.0 + (thermal_inertia_tiu / 500.0)
+
+        profiles: list[DiurnalHourProfile] = []
+        for h in range(24):
+            ltst = float(h)
+            # Solar hour angle: omega = (ltst - 12.0) * 15 deg/hr
+            omega_rad = math.radians((ltst - 12.0) * 15.0)
+
+            # Solar elevation: sin(elev) = sin(lat)*sin(dec) + cos(lat)*cos(dec)*cos(omega)
+            sin_elev = math.sin(lat_rad) * math.sin(declination_rad) + math.cos(
+                lat_rad
+            ) * math.cos(declination_rad) * math.cos(omega_rad)
+
+            if sin_elev > 0.0:
+                airmass = 1.0 / max(0.1, sin_elev)
+                transmittance = math.exp(-dust_tau * airmass)
+                solar_flux = solar_const * sin_elev * transmittance
+            else:
+                solar_flux = 0.0
+
+            # Surface temperature two-harmonic formulation (Spencer et al. 1989 planetary standard)
+            # Produces afternoon peak (~13:30 LTST) and pre-dawn cryogenic minimum (~04:30 LTST)
+            phi1_rad = math.radians((ltst - 12.0 - lag_hours) * 15.0)
+            phi2_rad = 2.0 * phi1_rad + 0.30
+            harmonic = 0.75 * math.cos(phi1_rad) + 0.25 * math.cos(phi2_rad)
+            surf_temp = t_mean_c + delta_t_surf * harmonic
+
+            # Air temperature at 1.5m (damped and lagged by ~1 hr compared to surface)
+            air_phi1 = math.radians((ltst - 12.0 - lag_hours - 0.8) * 15.0)
+            air_phi2 = 2.0 * air_phi1 + 0.30
+            air_harmonic = 0.75 * math.cos(air_phi1) + 0.25 * math.cos(air_phi2)
+            air_temp = t_mean_c + (delta_t_surf * 0.75) * air_harmonic
+
+            # Operational EVA window: surface > -70C, air > -65C, daylight flux > 100 W/m2
+            is_suitable = (surf_temp >= -70.0) and (air_temp >= -65.0) and (solar_flux >= 100.0)
+
+            profiles.append(
+                DiurnalHourProfile(
+                    ltst_hour=ltst,
+                    surface_temp_c=surf_temp,
+                    air_temp_c=air_temp,
+                    solar_flux_w_m2=solar_flux,
+                    eva_suitability_flag=is_suitable,
+                )
+            )
+
+        return profiles
+
+    @staticmethod
+    def compute_dust_climatology() -> list[DustClimatologyPoint]:
+        """Compute Martian seasonal dust optical depth (tau) cycle across 360 deg Ls.
+
+        Corresponds to Mars Climate Database and Mars 2020 MEDA / Curiosity REMS observations:
+        - Ls = 0 - 150: Northern spring/summer clear season (tau ~ 0.25 - 0.45).
+        - Ls = 180 - 330: Perihelion dust storm season with frequent regional storms
+          and periodic planet-encircling global dust events (GDE).
+        """
+        import math
+
+        points: list[DustClimatologyPoint] = []
+        for ls in range(0, 360, 15):
+            ls_deg = float(ls)
+
+            # Determine season name
+            if 0 <= ls < 90:
+                s_name = "Northern Spring / Southern Autumn (Aphelion Approach)"
+            elif 90 <= ls < 180:
+                s_name = "Northern Summer / Southern Winter (Aphelion Clear Season)"
+            elif 180 <= ls < 270:
+                s_name = "Northern Autumn / Southern Spring (Perihelion Dust Storm Season)"
+            else:
+                s_name = "Northern Winter / Southern Summer (Solstitial Peak)"
+
+            # Baseline clear-sky tau
+            tau_base = 0.25 + 0.10 * math.sin(math.radians(ls_deg - 60.0))
+
+            # Perihelion dust storm amplification (Gaussian centered at Ls = 250 deg)
+            dist_perihelion = (ls_deg - 250.0) % 360.0
+            if dist_perihelion > 180.0:
+                dist_perihelion -= 360.0
+
+            peri_factor = math.exp(-((dist_perihelion) ** 2) / (2.0 * (45.0**2)))
+            tau_regional = tau_base + 1.2 * peri_factor
+            tau_global = tau_base + 3.2 * peri_factor
+            storm_prob = 5.0 + 75.0 * peri_factor
+
+            points.append(
+                DustClimatologyPoint(
+                    solar_longitude_ls_deg=ls_deg,
+                    season_name=s_name,
+                    tau_background=tau_base,
+                    tau_regional_storm=tau_regional,
+                    tau_global_storm=tau_global,
+                    storm_probability_pct=storm_prob,
+                )
+            )
+
+        return points

@@ -23,6 +23,7 @@ import { MapExplorerPage } from './pages/MapExplorerPage'
 import { NASADataHubPage } from './pages/NASADataHubPage'
 import { TerrainIntelligencePage } from './pages/TerrainIntelligencePage'
 import { HazardAssessmentPage } from './pages/HazardAssessmentPage'
+import { GeologyMineralogyPage } from './pages/GeologyMineralogyPage'
 import { ScienceExplorerPage } from './pages/ScienceExplorerPage'
 import { EVARoutePlannerPage } from './pages/EVARoutePlannerPage'
 import { RouteComparisonPage } from './pages/RouteComparisonPage'
@@ -44,6 +45,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   'data-hub': 'NASA Planetary Data Hub',
   'terrain': 'Terrain Intelligence Engine',
   'hazards': 'Hazard Intelligence Assessment',
+  'geology': 'Geology & Mineralogy Subsystem (CRISM & USGS)',
   'science': 'Scientific Opportunity Explorer',
   'route-planner': 'EVA Route Optimization Planner',
   'route-comparison': 'Multi-Objective Route Comparison',
@@ -249,6 +251,8 @@ function App() {
               )}
 
               {activePage === 'hazards' && <HazardAssessmentPage />}
+
+              {activePage === 'geology' && <GeologyMineralogyPage />}
 
               {activePage === 'science' && (
                 <ScienceExplorerPage

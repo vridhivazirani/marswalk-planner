@@ -371,6 +371,18 @@ export interface GeologicUnitDTO {
   epistemic_class: string
 }
 
+export interface CRISMTargetedSceneDTO {
+  scene_id: string
+  product_type: string
+  center_lat: number
+  center_lon: number
+  solar_longitude_ls: number
+  target_description: string
+  primary_minerals_detected: string[]
+  pds_archive_id: string
+  epistemic_class: string
+}
+
 export interface CRISMIndexDTO {
   index_code: string
   name: string
@@ -425,6 +437,14 @@ export async function fetchCRISMIndices(): Promise<{ indices: CRISMIndexDTO[]; c
   const res = await fetch('/api/v1/atlas/geology/crism-indices')
   if (!res.ok) {
     throw new Error(`Failed to fetch CRISM indices: ${res.statusText}`)
+  }
+  return res.json()
+}
+
+export async function fetchCRISMScenes(): Promise<{ scenes: CRISMTargetedSceneDTO[]; count: number; instrument: string; authority: string }> {
+  const res = await fetch('/api/v1/atlas/geology/crism-scenes')
+  if (!res.ok) {
+    throw new Error(`Failed to fetch CRISM scenes: ${res.statusText}`)
   }
   return res.json()
 }

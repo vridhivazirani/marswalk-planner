@@ -7,6 +7,7 @@ export type PageId =
   | 'data-hub'
   | 'terrain'
   | 'hazards'
+  | 'geology'
   | 'science'
   | 'route-planner'
   | 'route-comparison'
@@ -55,6 +56,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
         { id: 'data-hub', label: 'NASA Data Hub', icon: '🛰️', badge: '10' },
         { id: 'terrain', label: 'Terrain Intelligence', icon: '⛰️' },
         { id: 'hazards', label: 'Hazard Assessment', icon: '⚠️' },
+        { id: 'geology', label: 'Geology & Mineralogy', icon: '💎', badge: 'CRISM' },
         { id: 'science', label: 'Science Explorer', icon: '🔬', badge: '6' },
       ],
     },

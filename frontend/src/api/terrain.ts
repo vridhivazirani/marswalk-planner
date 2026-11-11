@@ -268,3 +268,66 @@ export async function fetchTerrainTransectProfile(
   }
   return res.json() as Promise<TerrainTransectResponse>
 }
+
+export interface BoulderCandidateDTO {
+  candidate_id: string
+  row: number
+  col: number
+  estimated_diameter_m: number
+  shadow_length_m: number
+  estimated_height_m: number
+  confidence_score: number
+  sun_azimuth_deg: number
+  sun_elevation_deg: number
+  epistemic_class: string
+}
+
+export interface DuneCrestSegmentDTO {
+  segment_id: string
+  center_row: number
+  center_col: number
+  length_m: number
+  orientation_deg: number
+  crest_sharpness: number
+  estimated_slipface_aspect_deg: number
+  epistemic_class: string
+}
+
+export interface CraterCandidateDTO {
+  candidate_id: string
+  center_row: number
+  center_col: number
+  radius_m: number
+  depth_m: number
+  rim_height_m: number
+  depth_to_diameter_ratio: number
+  circularity: number
+  confidence_score: number
+  epistemic_class: string
+}
+
+export interface CVCandidatesResponse {
+  boulder_candidates: BoulderCandidateDTO[]
+  dune_crest_segments: DuneCrestSegmentDTO[]
+  crater_candidates: CraterCandidateDTO[]
+  counts: {
+    boulders: number
+    dune_segments: number
+    craters: number
+  }
+  methods: {
+    boulder_height: string
+    dune_ridges: string
+    crater_depressions: string
+  }
+  epistemic_class: string
+}
+
+export async function fetchCVCandidates(limit = 50): Promise<CVCandidatesResponse> {
+  const res = await fetch(`/api/v1/terrain/cv/candidates?limit=${limit}`)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch CV candidates: ${res.statusText}`)
+  }
+  return res.json() as Promise<CVCandidatesResponse>
+}
+

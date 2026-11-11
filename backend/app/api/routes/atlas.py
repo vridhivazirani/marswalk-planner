@@ -17,6 +17,7 @@ from app.catalog.atlas_catalog import (
 )
 from app.catalog.geological_units import (
     get_all_crism_indices,
+    get_all_crism_scenes,
     get_all_geologic_units,
     get_all_global_geologic_units,
 )
@@ -412,6 +413,18 @@ def get_crism_indices() -> dict[str, Any]:
         "indices": [idx.to_dict() for idx in indices],
         "count": len(indices),
         "instrument": "Mars Reconnaissance Orbiter (MRO) CRISM",
+    }
+
+
+@router.get("/geology/crism-scenes", summary="Get authentic CRISM targeted scenes at Jezero")
+def get_crism_scenes() -> dict[str, Any]:
+    """Return authentic MRO CRISM targeted hyperspectral scenes (FRT, HRL)."""
+    scenes = get_all_crism_scenes()
+    return {
+        "scenes": [s.to_dict() for s in scenes],
+        "count": len(scenes),
+        "instrument": "MRO Compact Reconnaissance Imaging Spectrometer (CRISM)",
+        "authority": "NASA Planetary Data System (PDS) Geosciences Node",
     }
 
 
