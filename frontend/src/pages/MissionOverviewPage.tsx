@@ -83,6 +83,54 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
 
       {/* Grid of Key Mission Modules */}
       <div className="overview-cards-grid">
+        {/* Robotic Ground Truth vs Human Sortie Separation Card */}
+        <div className="card overview-card" style={{ borderLeft: '3px solid #00e5ff' }}>
+          <div className="card-header">
+            <h3>Robotic Ground Truth (M20 Perseverance)</h3>
+            <span className="badge badge-observed">OBSERVED IN-SITU</span>
+          </div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
+            <div><strong>Traverse Path:</strong> 45.25 km across Jezero Basin & Western Fan (Sols 14–1000+)</div>
+            <div><strong>Sample Depot:</strong> Three Forks Sample Cache (10 hermetic titanium tubes)</div>
+            <div style={{ marginTop: '0.4rem', color: '#38bdf8', fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.08)', padding: '0.35rem', borderRadius: '2px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+              🛡️ <strong>Provenance Rule:</strong> Authentic rover paths and sample coordinates are strictly preserved from PDS archives, separated from hypothetical astronaut EVA traverses.
+            </div>
+          </div>
+          <div className="card-footer-action">
+            <button
+              type="button"
+              className="mode-btn"
+              onClick={() => onNavigate('digital-twin')}
+            >
+              Inspect Rover Tracks on Map →
+            </button>
+          </div>
+        </div>
+
+        {/* Multi-Region Exploration Status */}
+        <div className="card overview-card" style={{ borderLeft: '3px solid #eab308' }}>
+          <div className="card-header">
+            <h3>Pan-Martian Multi-Region Atlas</h3>
+            <span className="badge badge-active">12 REGIONS</span>
+          </div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
+            <div><strong>Active Twin:</strong> Jezero Crater Western Delta Fan (1m HiRISE DTM)</div>
+            <div><strong>Priority Regions:</strong> Gale, Valles Marineris, Olympus Mons, Hellas, Utopia, Elysium, Arcadia + 5 more</div>
+            <div style={{ marginTop: '0.4rem', color: '#eab308', fontSize: '0.75rem', background: 'rgba(234, 179, 8, 0.08)', padding: '0.35rem', borderRadius: '2px', border: '1px solid rgba(234, 179, 8, 0.2)' }}>
+              🌐 <strong>Planetary Scale:</strong> Seamlessly transition between 3D spherical globe, regional dossiers, and 1m local digital twins.
+            </div>
+          </div>
+          <div className="card-footer-action">
+            <button
+              type="button"
+              className="mode-btn"
+              onClick={() => onNavigate('map-explorer')}
+            >
+              Open Multi-Region Atlas →
+            </button>
+          </div>
+        </div>
+
         {/* Active Sortie Telemetry */}
         <div className="card overview-card">
           <div className="card-header">

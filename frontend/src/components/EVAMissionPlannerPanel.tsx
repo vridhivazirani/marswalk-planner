@@ -23,6 +23,7 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
   const [missionPlan, setMissionPlan] = useState<MissionPlanSummaryDTO | null>(null)
   const [assumptions, setAssumptions] = useState<MissionPlanningAssumptionsDTO | null>(null)
   const [showAssumptions, setShowAssumptions] = useState<boolean>(false)
+  const [showBiophysicsConfig, setShowBiophysicsConfig] = useState<boolean>(false)
   const [isPlanning, setIsPlanning] = useState<boolean>(false)
   const [planError, setPlanError] = useState<string | null>(null)
 
@@ -31,6 +32,36 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
       .then((data) => setAssumptions(data))
       .catch((err: unknown) => console.error('Failed to load mission assumptions:', err))
   }, [])
+
+  const handleUpdateCrew = (field: string, val: number) => {
+    if (!assumptions) return
+    setAssumptions({
+      ...assumptions,
+      crew: { ...assumptions.crew, [field]: val },
+    })
+  }
+
+  const handleUpdateEquipment = (field: string, val: number) => {
+    if (!assumptions) return
+    setAssumptions({
+      ...assumptions,
+      equipment: { ...assumptions.equipment, [field]: val },
+    })
+  }
+
+  const handleUpdateTimeline = (field: string, val: number) => {
+    if (!assumptions) return
+    setAssumptions({
+      ...assumptions,
+      timeline: { ...assumptions.timeline, [field]: val },
+    })
+  }
+
+  const handleResetBaselines = () => {
+    fetchDefaultAssumptions()
+      .then((data) => setAssumptions(data))
+      .catch((err: unknown) => console.error('Failed to reset mission assumptions:', err))
+  }
 
   const handleSimulateMission = () => {
     setIsPlanning(true)
@@ -42,9 +73,9 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
       profile,
       scienceStops,
       isRoundTrip,
-      undefined,
-      undefined,
-      undefined,
+      assumptions?.crew,
+      assumptions?.equipment,
+      assumptions?.timeline,
       'astar',
       true,
     )
@@ -165,6 +196,162 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
           </label>
         </div>
       </div>
+
+      {/* Biophysical & Life-Support Configurator Toggle */}
+      <div style={{ marginTop: '0.6rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={() => setShowBiophysicsConfig(!showBiophysicsConfig)}
+          style={{
+            background: showBiophysicsConfig ? '#1f2937' : '#141416',
+            border: '1px solid #374151',
+            color: '#e5e7eb',
+            fontSize: '0.74rem',
+            padding: '0.3rem 0.6rem',
+            borderRadius: '2px',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {showBiophysicsConfig ? '▲ Hide Astronaut Biophysical Sliders' : '⚙️ Configure Spacesuit & Physiological Parameters (Crew, Mass, O2, Batteries)'}
+        </button>
+
+        {showBiophysicsConfig && (
+          <button
+            type="button"
+            onClick={handleResetBaselines}
+            style={{
+              background: 'transparent',
+              border: '1px solid #4b5563',
+              color: '#9ca3af',
+              fontSize: '0.7rem',
+              padding: '0.2rem 0.5rem',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+          >
+            ↺ Reset to Baselines
+          </button>
+        )}
+      </div>
+
+      {showBiophysicsConfig && assumptions && (
+        <div
+          style={{
+            marginTop: '0.6rem',
+            background: '#0d0d0f',
+            border: '1px solid #27272a',
+            padding: '0.85rem',
+            borderRadius: '3px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '1rem',
+            fontSize: '0.74rem',
+          }}
+        >
+          {/* Crew Size */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+              <span style={{ color: '#a1a1aa' }}>Crew Size:</span>
+              <strong style={{ color: '#38bdf8' }}>{assumptions.crew.nominal_crew_count} astronauts</strong>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="4"
+              step="1"
+              value={assumptions.crew.nominal_crew_count}
+              onChange={(e) => handleUpdateCrew('nominal_crew_count', parseInt(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          {/* Walking Speed */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+              <span style={{ color: '#a1a1aa' }}>Nominal Speed:</span>
+              <strong style={{ color: '#38bdf8' }}>{assumptions.timeline.nominal_walking_speed_mps} m/s</strong>
+            </div>
+            <input
+              type="range"
+              min="0.5"
+              max="1.4"
+              step="0.1"
+              value={assumptions.timeline.nominal_walking_speed_mps}
+              onChange={(e) => handleUpdateTimeline('nominal_walking_speed_mps', parseFloat(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          {/* Spacesuit Mass */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+              <span style={{ color: '#a1a1aa' }}>Spacesuit Mass:</span>
+              <strong style={{ color: '#38bdf8' }}>{assumptions.crew.suit_mass_kg} kg</strong>
+            </div>
+            <input
+              type="range"
+              min="40"
+              max="120"
+              step="5"
+              value={assumptions.crew.suit_mass_kg}
+              onChange={(e) => handleUpdateCrew('suit_mass_kg', parseFloat(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          {/* Oxygen Usable Capacity */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+              <span style={{ color: '#a1a1aa' }}>Usable O2 Capacity:</span>
+              <strong style={{ color: '#10b981' }}>{assumptions.equipment.total_usable_o2_capacity_g} g</strong>
+            </div>
+            <input
+              type="range"
+              min="800"
+              max="2400"
+              step="100"
+              value={assumptions.equipment.total_usable_o2_capacity_g}
+              onChange={(e) => handleUpdateEquipment('total_usable_o2_capacity_g', parseFloat(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          {/* Battery Capacity */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+              <span style={{ color: '#a1a1aa' }}>Battery Capacity:</span>
+              <strong style={{ color: '#f59e0b' }}>{assumptions.equipment.total_battery_capacity_wh} Wh</strong>
+            </div>
+            <input
+              type="range"
+              min="1200"
+              max="3600"
+              step="100"
+              value={assumptions.equipment.total_battery_capacity_wh}
+              onChange={(e) => handleUpdateEquipment('total_battery_capacity_wh', parseFloat(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          {/* Science Stop Duration */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+              <span style={{ color: '#a1a1aa' }}>Stop Duration:</span>
+              <strong style={{ color: '#c084fc' }}>{assumptions.timeline.science_stop_duration_minutes} min/stop</strong>
+            </div>
+            <input
+              type="range"
+              min="5"
+              max="45"
+              step="5"
+              value={assumptions.timeline.science_stop_duration_minutes}
+              onChange={(e) => handleUpdateTimeline('science_stop_duration_minutes', parseFloat(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </div>
+        </div>
+      )}
 
       {planError && (
         <div className="card status-error" style={{ marginTop: '0.8rem', padding: '0.6rem' }}>

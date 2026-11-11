@@ -14,7 +14,10 @@ from app.mission.assumptions import (
     MissionPlanningAssumptions,
     OperationalTimelineAssumptions,
 )
-from app.mission.calculator import EVAMissionCalculator
+from app.mission.calculator import (
+    EVAMissionCalculator,
+    calculate_pandolf_santee_metabolic_power,
+)
 from app.mission.models import WarningSeverity
 from app.routing.models import PathWaypoint, RouteMetrics, RoutePlan
 
@@ -236,3 +239,59 @@ def test_api_mission_endpoints(client: TestClient) -> None:
     assert "SAFETY_FIRST" in data_comp["profiles"]
     assert "SCIENCE_FIRST" in data_comp["profiles"]
     assert "BALANCED" in data_comp["profiles"]
+
+
+def test_pandolf_santee_metabolic_equations() -> None:
+    """Verify adapted Pandolf/Santee equation slope penalties and load scaling."""
+    # 1. Level walking
+    p_level = calculate_pandolf_santee_metabolic_power(
+        body_mass_kg=75.0,
+        suit_mass_kg=50.0,
+        speed_mps=1.0,
+        slope_grade_pct=0.0,
+    )
+    assert 350.0 <= p_level <= 450.0
+
+    # 2. Uphill grade increases metabolic power monotonically
+    p_uphill_5 = calculate_pandolf_santee_metabolic_power(
+        body_mass_kg=75.0,
+        suit_mass_kg=50.0,
+        speed_mps=1.0,
+        slope_grade_pct=5.0,
+    )
+    p_uphill_15 = calculate_pandolf_santee_metabolic_power(
+        body_mass_kg=75.0,
+        suit_mass_kg=50.0,
+        speed_mps=1.0,
+        slope_grade_pct=15.0,
+    )
+    assert p_uphill_5 > p_level
+    assert p_uphill_15 > p_uphill_5
+
+    # 3. Downhill slope provides mechanical gravity assist
+    p_downhill_5 = calculate_pandolf_santee_metabolic_power(
+        body_mass_kg=75.0,
+        suit_mass_kg=50.0,
+        speed_mps=1.0,
+        slope_grade_pct=-5.0,
+    )
+    assert p_downhill_5 < p_level
+
+    # 4. Spacesuit mass penalty: heavier suit increases metabolic expenditure
+    p_heavy_suit = calculate_pandolf_santee_metabolic_power(
+        body_mass_kg=75.0,
+        suit_mass_kg=100.0,
+        speed_mps=1.0,
+        slope_grade_pct=0.0,
+    )
+    assert p_heavy_suit > p_level
+
+    # 5. Non-negative physiological floor
+    p_min = calculate_pandolf_santee_metabolic_power(
+        body_mass_kg=40.0,
+        suit_mass_kg=0.0,
+        speed_mps=0.1,
+        slope_grade_pct=-30.0,
+    )
+    assert p_min >= 100.0
+

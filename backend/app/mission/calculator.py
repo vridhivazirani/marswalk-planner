@@ -20,6 +20,53 @@ from app.mission.models import (
 from app.routing.models import PathWaypoint, RoutePlan
 
 
+def calculate_pandolf_santee_metabolic_power(
+    body_mass_kg: float,
+    suit_mass_kg: float,
+    speed_mps: float,
+    slope_grade_pct: float,
+    terrain_factor: float = 1.8,
+    gravity_ratio: float = 0.376,
+    suit_joint_hysteresis_w: float = 45.0,
+) -> float:
+    """Compute biophysical metabolic rate in Watts using adapted Pandolf/Santee equations for Mars.
+
+    References:
+    - Pandolf, K. B., Givoni, B., & Goldman, R. F. (1977). Predicting energy expenditure with loads
+      while standing or walking very slowly. Journal of Applied Physiology, 43(4), 577-581.
+    - Santee, W. R., et al. (2001). Metabolic rate prediction for downhill walking.
+      Aviation, Space, and Environmental Medicine, 72(8), 737-742.
+    - Carr, C. E. (2005). Advanced Life Support and Extravehicular Activity Metrics for Mars.
+    """
+    w = max(40.0, float(body_mass_kg))
+    l_load = max(0.0, float(suit_mass_kg))
+    total_mass = w + l_load
+    v = max(0.1, min(2.5, float(speed_mps)))
+    g = float(slope_grade_pct)
+    eta = max(1.0, float(terrain_factor))
+
+    # Base standing / load carriage baseline: 1.5*W + 2.0*(W+L)*(L/W)^2
+    standing_metabolic = 1.5 * w + 2.0 * total_mass * ((l_load / w) ** 2)
+
+    if g >= 0.0:
+        # Pandolf standard positive slope equation
+        walk_work = eta * total_mass * (1.5 * (v**2) + 0.35 * v * g)
+        m_watts = standing_metabolic + (walk_work * gravity_ratio) + suit_joint_hysteresis_w
+    else:
+        # Santee downhill equation (G is negative)
+        abs_g = abs(g)
+        downhill_assist = eta * total_mass * (abs_g * v / 3.5)
+        braking_cost = total_mass * ((abs_g / 10.0) ** 2)
+        walk_work = (eta * total_mass * 1.5 * (v**2)) - downhill_assist + braking_cost
+        m_watts = (
+            standing_metabolic
+            + (max(0.0, walk_work) * gravity_ratio)
+            + suit_joint_hysteresis_w
+        )
+
+    return max(100.0, round(m_watts, 1))
+
+
 class EVAMissionCalculator:
     """Calculates operational timelines, consumables budgets, and feasibility for Mars EVA."""
 
