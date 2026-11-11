@@ -662,11 +662,42 @@ export function GlobalMarsGlobe3D({
     [flyToCoordinates]
   )
 
+// -----------------------------------------------------------------------------
+// COORDINATE PARSING UTILITY
+// -----------------------------------------------------------------------------
+function parseCoordinates(input: string): { lat: number; lon: number } | null {
+  const trimmed = input.trim()
+  // Pattern: e.g. "18.45N, 77.45E" or "18.45, 77.45" or "-14.5, 175.5" or "18.45 N 77.45 E"
+  const cardinalRegex = /^([+-]?\d+(?:\.\d+)?)\s*([NSns])?[,\s]+([+-]?\d+(?:\.\d+)?)\s*([EWew])?$/
+  const m = trimmed.match(cardinalRegex)
+  if (m) {
+    let lat = parseFloat(m[1])
+    const latDir = m[2]?.toUpperCase()
+    let lon = parseFloat(m[3])
+    const lonDir = m[4]?.toUpperCase()
+
+    if (latDir === 'S') lat = -Math.abs(lat)
+    if (latDir === 'N') lat = Math.abs(lat)
+    if (lonDir === 'W') lon = -Math.abs(lon)
+    if (lonDir === 'E') lon = Math.abs(lon)
+
+    if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      return { lat, lon }
+    }
+  }
+  return null
+}
+
   // ---------------------------------------------------------------------------
   // 11. SEARCH AUTOCOMPLETE & EXECUTION
   // ---------------------------------------------------------------------------
+  const [parsedCoord, setParsedCoord] = useState<{ lat: number; lon: number } | null>(null)
+
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
+    const coord = parseCoordinates(query)
+    setParsedCoord(coord)
+
     if (!query.trim()) {
       setSearchResults([])
       return
@@ -832,9 +863,21 @@ export function GlobalMarsGlobe3D({
             <div style={{ position: 'relative' }}>
               <input
                 type="text"
-                placeholder="Search Jezero, Olympus, Hellas..."
+                placeholder="Search feature, crater, or coords (18.45N, 77.45E)..."
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (parsedCoord) {
+                      flyToCoordinates(parsedCoord.lat, parsedCoord.lon)
+                      setSearchResults([])
+                      setSearchQuery('')
+                      setParsedCoord(null)
+                    } else if (searchResults.length > 0) {
+                      handleSelectSearchResult(searchResults[0])
+                    }
+                  }
+                }}
                 style={{
                   width: '100%',
                   background: '#18181b',
@@ -848,7 +891,7 @@ export function GlobalMarsGlobe3D({
                   boxSizing: 'border-box',
                 }}
               />
-              {searchResults.length > 0 && (
+              {(searchResults.length > 0 || parsedCoord) && (
                 <div
                   style={{
                     position: 'absolute',
@@ -858,11 +901,40 @@ export function GlobalMarsGlobe3D({
                     background: '#18181b',
                     border: '1px solid #3f3f46',
                     marginTop: '2px',
-                    maxHeight: '220px',
+                    maxHeight: '240px',
                     overflowY: 'auto',
                     zIndex: 50,
                   }}
                 >
+                  {parsedCoord && (
+                    <div
+                      onClick={() => {
+                        flyToCoordinates(parsedCoord.lat, parsedCoord.lon)
+                        setSearchResults([])
+                        setSearchQuery('')
+                        setParsedCoord(null)
+                      }}
+                      style={{
+                        padding: '0.5rem 0.6rem',
+                        background: '#0e2b3d',
+                        borderBottom: '1px solid #22d3ee',
+                        cursor: 'pointer',
+                        fontSize: '0.74rem',
+                        color: '#38bdf8',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                      }}
+                    >
+                      <span>📍</span>
+                      <span>
+                        FLY TO COORDINATES: {parsedCoord.lat > 0 ? `${parsedCoord.lat.toFixed(2)}°N` : `${Math.abs(parsedCoord.lat).toFixed(2)}°S`},{' '}
+                        {parsedCoord.lon > 0 ? `${parsedCoord.lon.toFixed(2)}°E` : `${Math.abs(parsedCoord.lon).toFixed(2)}°W`}
+                      </span>
+                    </div>
+                  )}
+
                   {searchResults.map((item) => {
                     const isFeat = 'feature_type' in item
                     const name = isFeat ? item.name : `${item.mission} (${item.craft_name})`

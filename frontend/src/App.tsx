@@ -14,6 +14,7 @@ import { DisclaimerBanner } from './components/DisclaimerBanner'
 import { NavigationSidebar } from './components/layout/NavigationSidebar'
 import type { PageId } from './components/layout/NavigationSidebar'
 import { MissionControlHeader } from './components/layout/MissionControlHeader'
+import { MissionInitializationScreen } from './components/MissionInitializationScreen'
 
 // 12 Operational Mission Control Pages
 import { MissionOverviewPage } from './pages/MissionOverviewPage'
@@ -53,6 +54,13 @@ const PAGE_TITLES: Record<PageId, string> = {
 }
 
 function App() {
+  const [isInitialized, setIsInitialized] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('skip_init') === 'true') return true
+    }
+    return false
+  })
   const [activePage, setActivePage] = useState<PageId>(() => {
     const hash = window.location.hash.replace('#', '') as PageId
     if (hash && hash in PAGE_TITLES) return hash
@@ -152,6 +160,10 @@ function App() {
         console.error('Inspection query failed:', err)
         setIsInspecting(false)
       })
+  }
+
+  if (!isInitialized) {
+    return <MissionInitializationScreen onComplete={() => setIsInitialized(true)} />
   }
 
   return (
