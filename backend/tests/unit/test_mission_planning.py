@@ -295,3 +295,33 @@ def test_pandolf_santee_metabolic_equations() -> None:
     )
     assert p_min >= 100.0
 
+
+def test_multi_destination_mission_planning(client: TestClient) -> None:
+    """Verify sequential multi-waypoint planning, legs, PNR, and emergency RTB calculation."""
+    payload = {
+        "origin": {"lat": 18.4446, "lon": 77.4509},
+        "waypoints": [
+            {"lat": 18.4485, "lon": 77.4320},
+            {"lat": 18.4550, "lon": 77.4050},
+        ],
+        "profile": "BALANCED",
+        "return_to_origin": True,
+        "science_duration_per_stop_min": 15.0,
+    }
+    resp = client.post("/api/v1/mission/multi-destination", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert data["waypoint_count"] == 2
+    assert data["return_to_origin"] is True
+    assert len(data["legs"]) == 3  # Leg 1 -> Leg 2 -> Return to base
+    assert data["total_distance_m"] > 0
+    assert data["total_duration_hours"] > 0
+    assert data["total_o2_consumed_g"] > 0
+    assert data["total_battery_consumed_wh"] > 0
+    assert "remaining_o2_reserve_pct" in data
+    assert "remaining_battery_reserve_pct" in data
+    assert len(data["emergency_return_paths"]) >= 1
+    assert data["legs"][2]["is_return_leg"] is True
+
+

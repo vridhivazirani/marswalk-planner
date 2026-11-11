@@ -152,6 +152,87 @@ export async function planEVAMission(
   return res.json() as Promise<MissionPlanResponse>
 }
 
+export interface MultiDestinationLegDTO {
+  leg_index: number
+  label: string
+  from_coord: LatLon
+  to_coord: LatLon
+  distance_m: number
+  walking_time_minutes: number
+  metabolic_energy_wh: number
+  o2_consumed_g: number
+  battery_consumed_wh: number
+  is_return_leg: boolean
+  route_feature: RouteFeature
+}
+
+export interface EmergencyReturnPathDTO {
+  from_waypoint_index: number
+  rtb_distance_m: number
+  rtb_duration_minutes: number
+  rtb_o2_required_g: number
+  rtb_battery_required_wh: number
+  safe_reserve_margin_o2: boolean
+  safe_reserve_margin_battery: boolean
+  rtb_route: RouteFeature
+}
+
+export interface MultiDestinationMissionResponse {
+  origin: LatLon
+  profile_name: string
+  waypoint_count: number
+  return_to_origin: boolean
+  total_distance_m: number
+  total_duration_hours: number
+  total_walk_time_minutes: number
+  total_science_time_minutes: number
+  total_rest_time_minutes: number
+  total_metabolic_energy_kwh: number
+  total_o2_consumed_g: number
+  total_battery_consumed_wh: number
+  remaining_o2_reserve_pct: number
+  remaining_battery_reserve_pct: number
+  point_of_no_return_leg: number | null
+  feasibility_status: 'FEASIBLE' | 'MARGINAL' | 'VIOLATION'
+  flight_warnings: string[]
+  legs: MultiDestinationLegDTO[]
+  emergency_return_paths: EmergencyReturnPathDTO[]
+  epistemic_class: string
+  disclaimer: string
+}
+
+export async function planMultiDestinationMission(params: {
+  origin: LatLon
+  waypoints: LatLon[]
+  profile?: string
+  returnToOrigin?: boolean
+  scienceDurationPerStopMin?: number
+  crewAssumptions?: Partial<CrewAssumptionsDTO>
+  equipmentAssumptions?: Partial<EquipmentAssumptionsDTO>
+  timelineAssumptions?: Partial<TimelineAssumptionsDTO>
+}): Promise<MultiDestinationMissionResponse> {
+  const payload = {
+    origin: params.origin,
+    waypoints: params.waypoints,
+    profile: params.profile ?? 'BALANCED',
+    return_to_origin: params.returnToOrigin ?? true,
+    science_duration_per_stop_min: params.scienceDurationPerStopMin ?? 15.0,
+    crew_assumptions: params.crewAssumptions,
+    equipment_assumptions: params.equipmentAssumptions,
+    timeline_assumptions: params.timelineAssumptions,
+  }
+  const res = await fetch('/api/v1/mission/multi-destination', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(errorBody.detail || `Multi-destination planning failed: ${res.statusText}`)
+  }
+  return res.json() as Promise<MultiDestinationMissionResponse>
+}
+
 export async function compareMissionProfiles(
   start: LatLon,
   destination: LatLon,

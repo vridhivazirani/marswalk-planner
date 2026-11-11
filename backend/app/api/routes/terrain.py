@@ -190,6 +190,9 @@ def extract_transect_profile_endpoint(req: TerrainTransectRequestDTO) -> dict[st
     )
 
 
+CACHE_HEADERS = {"Cache-Control": "public, max-age=86400, stale-while-revalidate=3600"}
+
+
 @router.get("/raster/{layer_id}.png", summary="Serve terrain intelligence QC visualization PNG")
 def get_terrain_raster_png(layer_id: str) -> FileResponse:
     """Serve visualization PNG overlay for a specified terrain layer."""
@@ -208,4 +211,4 @@ def get_terrain_raster_png(layer_id: str) -> FileResponse:
             detail=f"Terrain visualization overlay not found for '{layer_id}'. Available: {avail}",
         )
 
-    return FileResponse(target, media_type="image/png")
+    return FileResponse(target, media_type="image/png", headers=CACHE_HEADERS)

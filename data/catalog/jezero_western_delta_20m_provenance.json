@@ -23,7 +23,7 @@
   "min_value": -2598.9443359375,
   "max_value": -2240.466796875,
   "mean_value": -2481.738037109375,
-  "processed_utc": "2026-11-11T20:28:04.518534+00:00",
+  "processed_utc": "2026-11-11T21:08:26.311770+00:00",
   "software_versions": {
     "rasterio": "1.5.2",
     "gdal": "3.12.2"

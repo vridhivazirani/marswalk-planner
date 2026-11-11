@@ -252,30 +252,58 @@ export function RegionalMarsMap({
 
     L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-    // Global Mars MOLA background context tile layer
+    // Global Mars MOLA background context tile layer with smooth oversampling and bounds clamping
     L.tileLayer(
       'https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0//default/default028mm/{z}/{y}/{x}.jpg',
       {
-        maxZoom: 14,
+        maxNativeZoom: 7,
+        maxZoom: 16,
+        noWrap: false,
+        bounds: [[-90, -180], [90, 180]],
         opacity: 0.75,
       }
     ).addTo(map)
 
-    // Base background dark CRS canvas
-    const bounds: L.LatLngBoundsExpression = [
+    // Authentic Georeferenced ARD Local Digital Twin Raster Bounds (7.2km x 11.7km)
+    const localTwinBounds: L.LatLngBoundsExpression = [
+      [18.39180, 77.34370],
+      [18.58953, 77.46584],
+    ]
+
+    // Regional USGS SIM-3464 Geologic Map Context Bounds (~31.8km x 30.2km)
+    const regionalContextBounds: L.LatLngBoundsExpression = [
       [18.21103, 77.16047],
       [18.72119, 77.69898],
     ]
 
-    // CTX 6m Orthomosaic Image Overlay
-    const ctxOverlay = L.imageOverlay('/api/v1/twin/raster/ortho.png', bounds, {
+    // Regional Context Boundary Outline
+    L.rectangle(regionalContextBounds, {
+      color: '#525252',
+      weight: 1,
+      dashArray: '3, 4',
+      fill: false,
+      interactive: false,
+    }).addTo(map)
+
+    // Local Western Delta Twin Boundary Outline
+    L.rectangle(localTwinBounds, {
+      color: '#38bdf8',
+      weight: 1.5,
+      dashArray: '4, 4',
+      fillColor: '#38bdf8',
+      fillOpacity: 0.04,
+      interactive: false,
+    }).addTo(map)
+
+    // CTX 6m Orthomosaic Image Overlay (placed at exact georeferenced ARD bounds)
+    const ctxOverlay = L.imageOverlay('/api/v1/twin/raster/ortho.png', localTwinBounds, {
       opacity: 1.0,
       interactive: false,
     }).addTo(map)
     ctxRasterLayerRef.current = ctxOverlay
 
-    // CTX 20m DTM Hillshade/Elevation Overlay
-    const dtmOverlay = L.imageOverlay('/api/v1/twin/raster/elevation.png', bounds, {
+    // CTX 20m DTM Hillshade/Elevation Overlay (placed at exact georeferenced ARD bounds)
+    const dtmOverlay = L.imageOverlay('/api/v1/twin/raster/elevation.png', localTwinBounds, {
       opacity: 0.0,
       interactive: false,
     }).addTo(map)
@@ -289,8 +317,8 @@ export function RegionalMarsMap({
     sampleCoresGroupRef.current = L.layerGroup().addTo(map)
     footprintsGroupRef.current = L.layerGroup().addTo(map)
 
-    // Fit map bounds initially
-    map.fitBounds(bounds)
+    // Fit map bounds initially to regional context
+    map.fitBounds(regionalContextBounds)
 
     // Track cursor movement for telemetry HUD
     map.on('mousemove', (e: L.LeafletMouseEvent) => {

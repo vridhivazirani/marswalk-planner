@@ -94,6 +94,7 @@ function App() {
   })
   const [routes, setRoutes] = useState<RouteFeature[]>([])
   const [emergencyPlan, setEmergencyPlan] = useState<DynamicReroutePlanDTO | null>(null)
+  const [queuedSortieWaypoints, setQueuedSortieWaypoints] = useState<Array<{ lat: number; lon: number; name: string }>>([])
 
   // Mission profile and weights state
   const [activeProfile, setActiveProfile] = useState<string>('BALANCED')
@@ -265,6 +266,10 @@ function App() {
                     setSelectedTarget(tgt)
                     setActivePage('route-planner')
                   }}
+                  onSendWaypointsToEVAPlanner={(wps) => {
+                    setQueuedSortieWaypoints(wps.map((w) => ({ lat: w.lat, lon: w.lon, name: w.name })))
+                    setActivePage('simulation')
+                  }}
                 />
               )}
 
@@ -302,6 +307,7 @@ function App() {
                   startPoint={startPoint}
                   destPoint={destPoint}
                   onRoutesCalculated={setRoutes}
+                  queuedWaypoints={queuedSortieWaypoints}
                 />
               )}
 

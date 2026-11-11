@@ -62,6 +62,9 @@ def evaluate_custom_costmap(req: CustomWeightsRequest) -> dict[str, Any]:
     }
 
 
+CACHE_HEADERS = {"Cache-Control": "public, max-age=86400, stale-while-revalidate=3600"}
+
+
 @router.get("/raster/{profile_name}.png", summary="Serve cost map heatmap PNG for a profile")
 def get_costmap_raster_png(profile_name: str) -> FileResponse:
     """Stream high-contrast PNG heatmap for the requested profile."""
@@ -72,7 +75,7 @@ def get_costmap_raster_png(profile_name: str) -> FileResponse:
         target = PROCESSED_DIR / "jezero_western_delta_20m_qc_costmap_balanced.png"
     if not target.exists():
         raise HTTPException(status_code=404, detail="Cost map heatmap not found")
-    return FileResponse(target, media_type="image/png")
+    return FileResponse(target, media_type="image/png", headers=CACHE_HEADERS)
 
 
 @router.get("/inspect", summary="Explain unified cost and terms for a specific coordinate")

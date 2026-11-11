@@ -7,12 +7,14 @@ interface MissionSimulationPageProps {
   startPoint: { lat: number; lon: number }
   destPoint: { lat: number; lon: number }
   onRoutesCalculated: (routes: RouteFeature[]) => void
+  queuedWaypoints?: Array<{ lat: number; lon: number; name: string }>
 }
 
 export const MissionSimulationPage: React.FC<MissionSimulationPageProps> = ({
   startPoint,
   destPoint,
   onRoutesCalculated,
+  queuedWaypoints,
 }) => {
   return (
     <div className="page-container">
@@ -34,6 +36,7 @@ export const MissionSimulationPage: React.FC<MissionSimulationPageProps> = ({
         startPoint={startPoint}
         destPoint={destPoint}
         onRoutesCalculated={onRoutesCalculated}
+        initialWaypoints={queuedWaypoints}
       />
 
       {/* Environmental Scenario Assessment Module */}

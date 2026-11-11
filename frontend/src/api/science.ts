@@ -48,6 +48,34 @@ export interface ScienceInspectionResponse {
   }
 }
 
+export interface ScientificObjectiveDTO {
+  id: string
+  number: number
+  title: string
+  description: string
+  scientific_hypothesis: string
+  diagnostic_spectral_indices: string[]
+  supporting_instruments: string[]
+  target_geological_units: string[]
+  candidate_target_ids: string[]
+  primary_investigation_methods: string[]
+  epistemic_class: string
+  disclaimer: string
+}
+
+export interface ScientificObjectivesResponse {
+  count: number
+  objectives: ScientificObjectiveDTO[]
+}
+
+export async function fetchScientificObjectives(): Promise<ScientificObjectivesResponse> {
+  const res = await fetch('/api/v1/science/objectives')
+  if (!res.ok) {
+    throw new Error(`Failed to fetch scientific objectives: ${res.statusText}`)
+  }
+  return res.json() as Promise<ScientificObjectivesResponse>
+}
+
 export async function fetchScienceTargets(): Promise<ScienceTargetsGeoJSON> {
   const res = await fetch('/api/v1/science/targets')
   if (!res.ok) {

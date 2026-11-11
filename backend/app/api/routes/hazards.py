@@ -42,12 +42,15 @@ def get_hazard_profile() -> dict[str, Any]:
     return HazardProfile().to_dict()
 
 
+CACHE_HEADERS = {"Cache-Control": "public, max-age=86400, stale-while-revalidate=3600"}
+
+
 @router.get("/raster/overall.png", summary="Serve overall hazard heatmap PNG")
 def get_overall_hazard_png() -> FileResponse:
     target = PROCESSED_DIR / "jezero_western_delta_20m_qc_overall_hazard.png"
     if not target.exists():
         raise HTTPException(status_code=404, detail="Hazard heatmap not generated")
-    return FileResponse(target, media_type="image/png")
+    return FileResponse(target, media_type="image/png", headers=CACHE_HEADERS)
 
 
 @router.get("/inspect", summary="Explain hazard score and constraints for a coordinate")

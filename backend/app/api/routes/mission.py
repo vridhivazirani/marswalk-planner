@@ -86,6 +86,21 @@ class MissionCompareRequest(BaseModel):
     simplify: bool = Field(True, description="Enable obstacle-safe simplification")
 
 
+class MultiDestinationMissionRequest(BaseModel):
+    """Request payload for multi-destination sequential EVA mission planning."""
+
+    origin: LatLonPoint
+    waypoints: list[LatLonPoint] = Field(..., min_length=1, max_length=10)
+    profile: str = Field("BALANCED", description="SAFETY_FIRST, SCIENCE_FIRST, or BALANCED")
+    return_to_origin: bool = Field(True, description="Whether EVA requires returning to origin")
+    science_duration_per_stop_min: float = Field(15.0, ge=0)
+    crew_assumptions: CrewAssumptionsInput | None = None
+    equipment_assumptions: EquipmentAssumptionsInput | None = None
+    timeline_assumptions: TimelineAssumptionsInput | None = None
+    algorithm: str = Field("astar", description="'astar' or 'dijkstra'")
+    simplify: bool = Field(True, description="Enable obstacle-safe simplification")
+
+
 def _build_assumptions(
     crew_in: CrewAssumptionsInput | None,
     equip_in: EquipmentAssumptionsInput | None,
@@ -193,6 +208,43 @@ def compare_mission_profiles_endpoint(req: MissionCompareRequest) -> dict[str, A
             simplify=req.simplify,
         )
         return {"profiles": comparison}
+    except (
+        BlockedStartError,
+        BlockedDestinationError,
+        OutOfBoundsCoordinateError,
+        ValueError,
+    ) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except UnreachableDestinationError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+
+@router.post("/multi-destination", summary="Plan sequential multi-destination EVA sortie")
+def plan_multi_destination_mission_endpoint(
+    req: MultiDestinationMissionRequest,
+) -> dict[str, Any]:
+    """Compute optimal multi-leg EVA sortie with sequential science stops, PNR, and RTBs."""
+    service = MissionPlanningService()
+    assumptions = _build_assumptions(
+        req.crew_assumptions,
+        req.equipment_assumptions,
+        req.timeline_assumptions,
+    )
+
+    waypoint_tuples = [(wp.lat, wp.lon) for wp in req.waypoints]
+
+    try:
+        return service.plan_multi_destination_mission(
+            origin_lat=req.origin.lat,
+            origin_lon=req.origin.lon,
+            waypoint_coords=waypoint_tuples,
+            profile_name=req.profile,
+            return_to_origin=req.return_to_origin,
+            science_duration_per_stop_min=req.science_duration_per_stop_min,
+            assumptions=assumptions,
+            algorithm=req.algorithm,
+            simplify=req.simplify,
+        )
     except (
         BlockedStartError,
         BlockedDestinationError,

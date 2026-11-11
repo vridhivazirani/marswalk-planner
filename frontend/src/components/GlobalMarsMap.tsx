@@ -69,6 +69,11 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
   const [showInfoPanel, setShowInfoPanel] = useState<boolean>(false)
   const [showLegend, setShowLegend] = useState<boolean>(true)
   const [currentZoom, setCurrentZoom] = useState<number>(3)
+  const [tileStats, setTileStats] = useState<{ total: number; loaded: number; failed: number }>({
+    total: 0,
+    loaded: 0,
+    failed: 0,
+  })
 
   // Load backend catalog data
   useEffect(() => {
@@ -231,6 +236,18 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
       activeTileLayerRef.current = null
     }
 
+    const attachTileEvents = (tileLayer: L.TileLayer | L.TileLayer.WMS) => {
+      tileLayer.on('tileloadstart', () => {
+        setTileStats((prev) => ({ ...prev, total: prev.total + 1 }))
+      })
+      tileLayer.on('tileload', () => {
+        setTileStats((prev) => ({ ...prev, loaded: prev.loaded + 1 }))
+      })
+      tileLayer.on('tileerror', () => {
+        setTileStats((prev) => ({ ...prev, failed: prev.failed + 1 }))
+      })
+    }
+
     if (selected.service_type === 'WMS' && selected.wms_url && selected.wms_layers) {
       // USGS Astrogeology OpenGIS WMS
       const wmsLayer = L.tileLayer.wms(selected.wms_url, {
@@ -238,17 +255,24 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
         format: selected.format || 'image/jpeg',
         transparent: false,
         version: '1.1.1',
-        maxZoom: 12,
+        maxNativeZoom: 7,
+        maxZoom: 16,
+        bounds: [[-90, -180], [90, 180]],
         opacity: basemapOpacity,
       }).addTo(map)
+      attachTileEvents(wmsLayer)
       activeTileLayerRef.current = wmsLayer
     } else if (selected.service_type === 'WMTS' && selected.wmts_tile_url) {
       // NASA Trek WMTS tile server
       const wmtsLayer = L.tileLayer(selected.wmts_tile_url, {
-        maxZoom: 12,
+        maxNativeZoom: 7,
+        maxZoom: 16,
+        noWrap: false,
+        bounds: [[-90, -180], [90, 180]],
         tms: false,
         opacity: basemapOpacity,
       }).addTo(map)
+      attachTileEvents(wmtsLayer)
       activeTileLayerRef.current = wmtsLayer
     }
   }, [selectedBasemapId, basemaps, basemapOpacity])
@@ -622,7 +646,10 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
             </label>
             <select
               value={selectedBasemapId}
-              onChange={(e) => setSelectedBasemapId(e.target.value)}
+              onChange={(e) => {
+                setSelectedBasemapId(e.target.value)
+                setTileStats({ total: 0, loaded: 0, failed: 0 })
+              }}
               className="w-full bg-[#111111] border border-[#303030] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-white transition-colors cursor-pointer"
             >
               {basemaps.map((b) => (
@@ -899,7 +926,7 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
             </>
           )}
 
-          {/* Scale Disclosure Warning */}
+          {/* Scale Disclosure Warning & Tile Cache Telemetry */}
           <div className="border-t border-[#262626] pt-1.5 flex justify-between items-center text-[10px] text-[#737373]">
             <span>Zoom Level: {currentZoom}</span>
             <span className="text-[#a3a3a3]">
@@ -908,6 +935,15 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
                 : currentZoom <= 9
                 ? 'Scale: Regional (~200m/px)'
                 : 'Scale: Local Footprint (<20m/px)'}
+            </span>
+          </div>
+
+          {/* Real Tile Pipeline Telemetry */}
+          <div className="pt-1 flex items-center justify-between text-[9px] font-mono border-t border-[#1f1f1f]">
+            <span className="text-[#737373]">TILES:</span>
+            <span className={tileStats.failed > 0 ? 'text-amber-400' : 'text-emerald-400'}>
+              {tileStats.loaded}/{tileStats.total} LOADED
+              {tileStats.failed > 0 && ` (${tileStats.failed} RETRIED)`}
             </span>
           </div>
         </div>

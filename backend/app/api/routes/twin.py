@@ -163,6 +163,9 @@ def get_layers() -> dict[str, Any]:
     }
 
 
+CACHE_HEADERS = {"Cache-Control": "public, max-age=86400, stale-while-revalidate=3600"}
+
+
 @router.get("/raster/{layer_name}.png", summary="Serve processed layer PNG overlays")
 def get_raster_layer(layer_name: str) -> FileResponse:
     """Stream optimized PNG image for 2D map overlay and 3D terrain texture draping."""
@@ -180,7 +183,7 @@ def get_raster_layer(layer_name: str) -> FileResponse:
     target = file_map.get(layer_name)
     if not target or not target.exists():
         raise HTTPException(status_code=404, detail=f"Layer {layer_name} not available")
-    return FileResponse(target, media_type="image/png")
+    return FileResponse(target, media_type="image/png", headers=CACHE_HEADERS)
 
 
 @router.get("/vector/perseverance", summary="Get authentic Perseverance rover traverse")

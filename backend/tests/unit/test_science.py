@@ -197,3 +197,29 @@ def test_science_api_inspect_endpoint():
     oob = client.get("/api/v1/science/inspect?lat=0.0&lon=0.0")
     assert oob.status_code == 200
     assert oob.json()["status"] == "OUT_OF_BOUNDS"
+
+
+def test_scientific_objectives_endpoints():
+    """Test GET /api/v1/science/objectives returns all 7 exploration objectives."""
+    res = client.get("/api/v1/science/objectives")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["count"] == 7
+    assert len(data["objectives"]) == 7
+
+    first_obj = data["objectives"][0]
+    assert first_obj["id"] == "obj-water"
+    assert first_obj["number"] == 1
+    assert "ancient water" in first_obj["title"].lower()
+    assert len(first_obj["diagnostic_spectral_indices"]) >= 1
+    assert len(first_obj["candidate_target_ids"]) >= 1
+
+    # Individual objective lookup
+    single = client.get("/api/v1/science/objectives/obj-clays")
+    assert single.status_code == 200
+    assert single.json()["id"] == "obj-clays"
+    assert "clay" in single.json()["title"].lower()
+
+    # 404 for unknown
+    missing = client.get("/api/v1/science/objectives/obj-nonexistent")
+    assert missing.status_code == 404

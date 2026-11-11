@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse
 
 from app.geospatial.crs import MarsCoordinateSystem
 from app.science.config import ScienceProfile
+from app.science.objectives import get_all_objectives, get_objective_by_id
 
 router = APIRouter(prefix="/science", tags=["scientific-opportunity"])
 
@@ -29,13 +30,35 @@ def get_science_profile() -> dict[str, Any]:
     return ScienceProfile().to_dict()
 
 
+CACHE_HEADERS = {"Cache-Control": "public, max-age=86400, stale-while-revalidate=3600"}
+
+
 @router.get("/raster/opportunity.png", summary="Serve composite science opportunity heatmap PNG")
 def get_opportunity_raster_png() -> FileResponse:
     """Serve visual RGBA heatmap of multi-criteria scientific opportunity."""
     target = PROCESSED_DIR / "jezero_western_delta_20m_qc_science_opportunity.png"
     if not target.exists():
         raise HTTPException(status_code=404, detail="Science opportunity heatmap not found")
-    return FileResponse(target, media_type="image/png")
+    return FileResponse(target, media_type="image/png", headers=CACHE_HEADERS)
+
+
+@router.get("/objectives", summary="Get 7 structured scientific exploration objectives")
+def list_scientific_objectives() -> dict[str, Any]:
+    """Return the 7 core Mars surface exploration scientific research objectives."""
+    objs = get_all_objectives()
+    return {
+        "count": len(objs),
+        "objectives": [o.model_dump() for o in objs],
+    }
+
+
+@router.get("/objectives/{objective_id}", summary="Get specific scientific objective by ID")
+def get_scientific_objective(objective_id: str) -> dict[str, Any]:
+    """Return dossier for a single scientific exploration objective."""
+    obj = get_objective_by_id(objective_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail=f"Objective '{objective_id}' not found")
+    return obj.model_dump()
 
 
 @router.get("/targets", summary="Get ranked candidate scientific targets in Jezero Crater")

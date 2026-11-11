@@ -155,6 +155,9 @@ export function MarsMap2D({
             opacity: layer.id === 'ortho_imagery' ? 1.0 : 0.75,
             interactive: false,
           })
+          overlay.on('error', () => {
+            console.warn(`Raster layer ${layer.id} could not be loaded from ${layer.url}`)
+          })
           rasterOverlaysRef.current[layer.id] = overlay
         }
         if (!map.hasLayer(overlay)) {
