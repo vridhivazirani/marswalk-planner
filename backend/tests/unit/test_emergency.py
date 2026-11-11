@@ -70,8 +70,7 @@ def test_scenario_1_boulder_field_reroute(service: EmergencyResponseService) -> 
     assert plan.rerouted_route is not None
     assert plan.rerouted_route.metrics.restricted_cells_crossed == 0
     assert (
-        "DYNAMIC DETOUR SUCCESSFUL" in plan.reasoning
-        or "ROUTE CONFIRMED SECURE" in plan.reasoning
+        "DYNAMIC DETOUR SUCCESSFUL" in plan.reasoning or "ROUTE CONFIRMED SECURE" in plan.reasoning
     )
     assert plan.epistemic_class == EpistemicClass.SIMULATED.value
 

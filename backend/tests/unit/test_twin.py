@@ -44,11 +44,28 @@ def test_twin_layers_endpoint():
 
 
 def test_twin_raster_layer_serving():
-    for name in ["ortho", "elevation", "coverage"]:
+    for name in ["ortho", "elevation", "coverage", "hillshade", "multidirectional_hillshade"]:
         response = client.get(f"/api/v1/twin/raster/{name}.png")
         assert response.status_code == 200
         assert response.headers["content-type"] == "image/png"
         assert len(response.content) > 1000
+
+
+def test_twin_contours_vector_serving():
+    """Verify GET /api/v1/twin/vector/contours returns authentic GeoJSON contours."""
+    res_50 = client.get("/api/v1/twin/vector/contours?interval=50")
+    assert res_50.status_code == 200
+    data_50 = res_50.json()
+    assert data_50["type"] == "FeatureCollection"
+    assert len(data_50["features"]) >= 50
+    feat = data_50["features"][0]
+    assert "elevation_m" in feat["properties"]
+    assert feat["properties"]["datum"] == "Mars Areoid (MOLA)"
+
+    res_10 = client.get("/api/v1/twin/vector/contours?interval=10")
+    assert res_10.status_code == 200
+    data_10 = res_10.json()
+    assert len(data_10["features"]) >= 200
 
 
 def test_twin_perseverance_vector_serving():

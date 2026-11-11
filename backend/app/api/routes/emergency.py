@@ -177,4 +177,3 @@ def abort_to_base(req: EmergencyAbortRequest) -> dict[str, Any]:
     response_data = plan.to_dict()
     response_data["geojson"] = geojson_data
     return response_data
-

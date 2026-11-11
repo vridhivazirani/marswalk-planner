@@ -29,9 +29,9 @@ def test_horn_slope_on_synthetic_plane():
     interior_slope = slope[2:-2, 2:-2]
     assert np.allclose(interior_slope, 45.0, atol=0.5)
 
-    # Aspect: plane rises towards East (+x), aspect angle = 90 deg (facing east)
+    # Aspect: plane rises towards East (+x), downhill steepest descent points West (270 deg)
     interior_aspect = aspect[2:-2, 2:-2]
-    assert np.allclose(interior_aspect, 90.0, atol=1.0)
+    assert np.allclose(interior_aspect, 270.0, atol=1.0)
 
 
 def test_horn_slope_on_flat_surface():
@@ -132,4 +132,3 @@ def test_nodata_boundary_handling():
     # NoData column itself must preserve the NoData sentinel
     assert np.all(slope[:, -1] == -9999.0)
     assert np.all(tri[:, -1] == -9999.0)
-

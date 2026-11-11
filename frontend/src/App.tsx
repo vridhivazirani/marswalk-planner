@@ -18,6 +18,7 @@ import { MissionControlHeader } from './components/layout/MissionControlHeader'
 // 12 Operational Mission Control Pages
 import { MissionOverviewPage } from './pages/MissionOverviewPage'
 import { DigitalTwinPage } from './pages/DigitalTwinPage'
+import { MapExplorerPage } from './pages/MapExplorerPage'
 import { NASADataHubPage } from './pages/NASADataHubPage'
 import { TerrainIntelligencePage } from './pages/TerrainIntelligencePage'
 import { HazardAssessmentPage } from './pages/HazardAssessmentPage'
@@ -38,6 +39,7 @@ const PROFILES: Record<string, CostmapWeightsDTO> = {
 const PAGE_TITLES: Record<PageId, string> = {
   'overview': 'Mission Overview',
   'digital-twin': 'Mars Digital Twin',
+  'map-explorer': 'Planetary Map Explorer & Multi-Scale Atlas',
   'data-hub': 'NASA Planetary Data Hub',
   'terrain': 'Terrain Intelligence Engine',
   'hazards': 'Hazard Intelligence Assessment',
@@ -51,7 +53,14 @@ const PAGE_TITLES: Record<PageId, string> = {
 }
 
 function App() {
-  const [activePage, setActivePage] = useState<PageId>('overview')
+  const [activePage, setActivePage] = useState<PageId>(() => {
+    const hash = window.location.hash.replace('#', '') as PageId
+    if (hash && hash in PAGE_TITLES) return hash
+    const params = new URLSearchParams(window.location.search)
+    const pageParam = params.get('page') as PageId
+    if (pageParam && pageParam in PAGE_TITLES) return pageParam
+    return 'overview'
+  })
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null)
   const [layersMeta, setLayersMeta] = useState<DigitalTwinLayersResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
@@ -209,6 +218,15 @@ function App() {
                   selectedCost={selectedCost}
                   selectedTarget={selectedTarget}
                   isInspecting={isInspecting}
+                />
+              )}
+
+              {activePage === 'map-explorer' && (
+                <MapExplorerPage
+                  activeLayers={activeLayers}
+                  onToggleLayer={handleLayerToggle}
+                  onSelectCoords={handleSelectCoords}
+                  onNavigateToPage={setActivePage}
                 />
               )}
 

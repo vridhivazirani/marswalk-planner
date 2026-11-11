@@ -27,4 +27,3 @@ def get_dataset(product_id: str) -> dict[str, Any]:
             detail=f"Planetary dataset product '{product_id}' not found in catalog.",
         )
     return ds.to_dict()
-

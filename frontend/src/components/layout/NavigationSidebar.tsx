@@ -3,6 +3,7 @@ import React from 'react'
 export type PageId =
   | 'overview'
   | 'digital-twin'
+  | 'map-explorer'
   | 'data-hub'
   | 'terrain'
   | 'hazards'
@@ -50,6 +51,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
     {
       title: 'DATA & INTELLIGENCE',
       items: [
+        { id: 'map-explorer', label: 'Map Explorer', icon: '🗺️', badge: '11' },
         { id: 'data-hub', label: 'NASA Data Hub', icon: '🛰️', badge: '10' },
         { id: 'terrain', label: 'Terrain Intelligence', icon: '⛰️' },
         { id: 'hazards', label: 'Hazard Assessment', icon: '⚠️' },
@@ -110,9 +112,8 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
                       <span className="nav-item-label">{item.label}</span>
                       {item.badge && (
                         <span
-                          className={`nav-item-badge ${
-                            item.badge === 'Alert' ? 'alert' : item.badge === 'Active' ? 'active' : ''
-                          }`}
+                          className={`nav-item-badge ${item.badge === 'Alert' ? 'alert' : item.badge === 'Active' ? 'active' : ''
+                            }`}
                         >
                           {item.badge}
                         </span>
@@ -136,4 +137,5 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
     </aside>
   )
 }
+
 

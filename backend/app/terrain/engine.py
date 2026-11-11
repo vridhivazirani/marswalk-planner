@@ -24,14 +24,18 @@ from typing import Any
 import numpy as np
 import rasterio
 
-from app.terrain.classifier import TERRAIN_CLASS_NAMES, classify_terrain
+from app.terrain.classifier import TERRAIN_CLASS_DETAILS, TERRAIN_CLASS_NAMES, classify_terrain
 from app.terrain.derivatives import (
+    compute_curvatures,
     compute_local_elevation_variation,
+    compute_local_relief,
     compute_slope_aspect_horn,
+    compute_surface_roughness,
     compute_terrain_ruggedness_index,
+    compute_vector_ruggedness_measure,
 )
 from app.terrain.hazards_detector import (
-    detect_boulder_candidates,
+    detect_boulder_candidates_advanced,
     detect_crater_depression_candidates,
     detect_sand_dune_candidates,
 )
@@ -122,20 +126,51 @@ class TerrainIntelligenceEngine:
         created_files["tri"] = tri_path
 
         # -------------------------------------------------------------
-        # 3. Local Elevation Variation (LEV)
+        # 3. Local Elevation Variation (LEV), Relief & Roughness
         # -------------------------------------------------------------
-        logger.info("Computing Local Elevation Variation (LEV)...")
+        logger.info("Computing LEV, Local Relief, Surface Roughness, and Curvatures...")
         lev = compute_local_elevation_variation(dem, size=5, nodata=STANDARD_NODATA)
-
         lev_path = self.processed_dir / f"{grid_name}_lev_variation_m.tif"
         self._write_tif(lev_path, lev, meta, "float32", STANDARD_NODATA)
         created_files["lev"] = lev_path
+
+        relief = compute_local_relief(dem, size=5, nodata=STANDARD_NODATA)
+        relief_path = self.processed_dir / f"{grid_name}_local_relief_m.tif"
+        self._write_tif(relief_path, relief, meta, "float32", STANDARD_NODATA)
+        created_files["relief"] = relief_path
+
+        roughness = compute_surface_roughness(dem, size=5, nodata=STANDARD_NODATA)
+        roughness_path = self.processed_dir / f"{grid_name}_surface_roughness_m.tif"
+        self._write_tif(roughness_path, roughness, meta, "float32", STANDARD_NODATA)
+        created_files["roughness"] = roughness_path
+
+        prof_curv, plan_curv, mean_curv = compute_curvatures(
+            dem, res_m=res_m, nodata=STANDARD_NODATA
+        )
+        prof_path = self.processed_dir / f"{grid_name}_profile_curvature.tif"
+        self._write_tif(prof_path, prof_curv, meta, "float32", STANDARD_NODATA)
+        created_files["profile_curvature"] = prof_path
+
+        plan_path = self.processed_dir / f"{grid_name}_planform_curvature.tif"
+        self._write_tif(plan_path, plan_curv, meta, "float32", STANDARD_NODATA)
+        created_files["planform_curvature"] = plan_path
+
+        vrm = compute_vector_ruggedness_measure(slope, aspect, size=5, nodata=STANDARD_NODATA)
+        vrm_path = self.processed_dir / f"{grid_name}_vrm.tif"
+        self._write_tif(vrm_path, vrm, meta, "float32", STANDARD_NODATA)
+        created_files["vrm"] = vrm_path
 
         # -------------------------------------------------------------
         # 4. Computer Vision Hazard Candidates
         # -------------------------------------------------------------
         logger.info("Detecting Boulder/Rock, Sand/Dune, and Crater candidates...")
-        boulder_score, _ = detect_boulder_candidates(imagery, tri, valid_mask)
+        boulder_score, _, bld_stats = detect_boulder_candidates_advanced(
+            imagery=imagery,
+            tri=tri,
+            nodata_mask=valid_mask,
+            sun_azimuth_deg=240.0,
+            res_m=res_m,
+        )
         sand_score, _ = detect_sand_dune_candidates(imagery, slope, tri, valid_mask)
         crater_score, _ = detect_crater_depression_candidates(lev, slope, valid_mask)
 
@@ -154,7 +189,7 @@ class TerrainIntelligenceEngine:
         # -------------------------------------------------------------
         # 5. Terrain Classification & Confidence Map
         # -------------------------------------------------------------
-        logger.info("Classifying terrain units and computing confidence...")
+        logger.info("Classifying terrain units into 7 classes and computing confidence...")
         classes, confidence = classify_terrain(
             slope, tri, lev, boulder_score, sand_score, crater_score, valid_mask, source_id
         )
@@ -210,22 +245,57 @@ class TerrainIntelligenceEngine:
                     "DERIVED",
                 ).to_dict(),
                 TerrainLayerMetadata(
+                    "relief",
+                    "Local Relief",
+                    "metres",
+                    float(relief[valid_mask].min()),
+                    float(relief[valid_mask].max()),
+                    float(relief[valid_mask].mean()),
+                    "Moving-window max-min elevation range (5x5 cells = 100m)",
+                    elev_path.name,
+                    "DERIVED",
+                ).to_dict(),
+                TerrainLayerMetadata(
+                    "roughness",
+                    "Surface Roughness",
+                    "metres",
+                    float(roughness[valid_mask].min()),
+                    float(roughness[valid_mask].max()),
+                    float(roughness[valid_mask].mean()),
+                    "Moving-window elevation standard deviation (Shepard et al., 2001)",
+                    elev_path.name,
+                    "DERIVED",
+                ).to_dict(),
+                TerrainLayerMetadata(
+                    "vrm",
+                    "Vector Ruggedness Measure",
+                    "index (0 to 1)",
+                    float(vrm[valid_mask].min()),
+                    float(vrm[valid_mask].max()),
+                    float(vrm[valid_mask].mean()),
+                    "Sappington et al. (2007) 3D normal vector dispersion",
+                    elev_path.name,
+                    "DERIVED",
+                ).to_dict(),
+                TerrainLayerMetadata(
                     "classification",
-                    "Terrain Classification",
+                    "7-Class Heuristic Terrain Classification",
                     "unit_id",
                     0.0,
-                    5.0,
+                    6.0,
                     None,
-                    "Rule-based heuristic segmentation with physical limits",
+                    "Explainable rule-based geomorphic classification",
                     "multisensor",
                     "HEURISTIC",
                 ).to_dict(),
             ],
             "class_legend": TERRAIN_CLASS_NAMES,
+            "class_details": TERRAIN_CLASS_DETAILS,
             "class_distribution": {
                 name: int(np.count_nonzero(classes == code))
                 for code, name in TERRAIN_CLASS_NAMES.items()
             },
+            "boulder_candidate_stats": bld_stats,
         }
         catalog_path.write_text(json.dumps(metadata, indent=2))
         created_files["catalog"] = catalog_path
@@ -270,24 +340,26 @@ class TerrainIntelligenceEngine:
 
     @staticmethod
     def _generate_class_qc(classes: np.ndarray, out_path: Path) -> None:
-        """Terrain Class Colormap:
-        0: Dark Navy (Unknown)
-        1: Light Slate (Smooth Regolith)
-        2: Sand Gold (Dunes/Ripples)
-        3: Crimson / Burnt Sienna (Boulder Field)
-        4: Bright Magenta (Steep Scarp / Cliff)
-        5: Cyan / Teal (Crater / Depression)
+        """Terrain Class Colormap for 7 classes:
+        0: Unknown (Dark Charcoal)
+        1: Smooth Terrain (Muted Silver)
+        2: Rocky Terrain (Light Silver)
+        3: Rough Terrain / Cliff (Aerospace White)
+        4: Potential Loose Material (Medium Gray)
+        5: Dune-Like Features (Dark Slate)
+        6: Cratered Terrain (Deep Gray)
         """
         h, w = classes.shape
         rgb = np.zeros((3, h, w), dtype=np.uint8)
 
         palette = {
-            0: (20, 20, 30),  # Unknown
-            1: (180, 175, 165),  # Smooth Regolith
-            2: (235, 185, 55),  # Sand Dunes / TARs
-            3: (200, 75, 45),  # Boulder Field
-            4: (230, 25, 120),  # Steep Cliff (>25 deg)
-            5: (45, 165, 200),  # Crater / Channel Depression
+            0: (24, 24, 24),  # Unknown
+            1: (163, 163, 163),  # Smooth
+            2: (212, 212, 212),  # Rocky
+            3: (245, 245, 245),  # Rough
+            4: (115, 115, 115),  # Loose material
+            5: (82, 82, 82),  # Dunes / TARs
+            6: (56, 56, 56),  # Cratered
         }
 
         for c_id, (cr, cg, cb) in palette.items():

@@ -50,6 +50,12 @@ export async function fetchPerseveranceGeoJSON(signal?: AbortSignal): Promise<Ge
   return (await res.json()) as GeoJSON.FeatureCollection
 }
 
+export async function fetchElevationContoursGeoJSON(interval = 50, signal?: AbortSignal): Promise<GeoJSON.FeatureCollection> {
+  const res = await fetch(`/api/v1/twin/vector/contours?interval=${interval}`, { signal })
+  if (!res.ok) throw new Error(`Failed to load elevation contours: HTTP ${res.status}`)
+  return (await res.json()) as GeoJSON.FeatureCollection
+}
+
 export async function fetchElevationGrid(step = 4, signal?: AbortSignal): Promise<ElevationGridResponse> {
   const res = await fetch(`/api/v1/twin/elevation/grid?step=${step}`, { signal })
   if (!res.ok) throw new Error(`Failed to load 3D elevation grid: HTTP ${res.status}`)

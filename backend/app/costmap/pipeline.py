@@ -237,6 +237,13 @@ class CostmapEngine:
         rgb[2] = b
 
         with rasterio.open(
-            out_path, "w", driver="PNG", width=w, height=h, count=3, dtype="uint8"
+            out_path,
+            "w",
+            driver="PNG",
+            width=w,
+            height=h,
+            count=3,
+            dtype="uint8",
+            transform=rasterio.transform.from_origin(0, h, 1, 1),
         ) as dst:
             dst.write(rgb)

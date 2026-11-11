@@ -68,6 +68,39 @@ def get_layers() -> dict[str, Any]:
                 "description": "Elevation: Blue (-2600m floor) to Yellow/Red (-2240m delta scarp).",
             },
             {
+                "id": "hillshade",
+                "name": "Analytical Topographic Hillshade (NW 315° / 45°)",
+                "type": "raster",
+                "epistemic_class": "DERIVED",
+                "url": "/api/v1/twin/raster/hillshade.png",
+                "description": (
+                    "Single-azimuth Lambertian illumination (NW 315°, altitude 45°) highlighting "
+                    "delta scarp cliffs, impact craters, and bedrock fractures."
+                ),
+            },
+            {
+                "id": "multidirectional_hillshade",
+                "name": "Multi-Directional Relief Shading (Unbiased 4-Angle Blend)",
+                "type": "raster",
+                "epistemic_class": "DERIVED",
+                "url": "/api/v1/twin/raster/multidirectional_hillshade.png",
+                "description": (
+                    "Aspect-unbiased composite hillshade blending 4 oblique lighting directions "
+                    "(225°, 270°, 315°, 360°) to reveal terrain morphology in all orientations."
+                ),
+            },
+            {
+                "id": "elevation_contours",
+                "name": "Topographic Elevation Contours (50m MOLA Intervals)",
+                "type": "vector",
+                "epistemic_class": "DERIVED",
+                "url": "/api/v1/twin/vector/contours?interval=50",
+                "description": (
+                    "Authentic vector elevation contour lines derived from 20m DTM. "
+                    "Heights relative to Mars areoid."
+                ),
+            },
+            {
                 "id": "slope_overlay",
                 "name": "Horn's Slope & Steep Hazard Mask (deg)",
                 "type": "raster",
@@ -136,6 +169,10 @@ def get_raster_layer(layer_name: str) -> FileResponse:
     file_map = {
         "ortho": PROCESSED_DIR / "jezero_western_delta_20m_ortho_imagery.png",
         "elevation": PROCESSED_DIR / "jezero_western_delta_20m_elev_colormap.png",
+        "hillshade": PROCESSED_DIR / "jezero_western_delta_20m_hillshade.png",
+        "multidirectional_hillshade": (
+            PROCESSED_DIR / "jezero_western_delta_20m_multidirectional_hillshade.png"
+        ),
         "coverage": PROCESSED_DIR / "jezero_western_delta_20m_qc_source_coverage.png",
         "slope": PROCESSED_DIR / "jezero_western_delta_20m_qc_slope.png",
         "classes": PROCESSED_DIR / "jezero_western_delta_20m_qc_classes.png",
@@ -165,6 +202,18 @@ def get_perseverance_vector() -> dict[str, Any]:
         "type": "FeatureCollection",
         "features": wp_data.get("features", []) + tr_data.get("features", []),
     }
+
+
+@router.get("/vector/contours", summary="Get topographic elevation contour GeoJSON")
+def get_elevation_contours(interval: int = 50) -> dict[str, Any]:
+    """Return authentic GeoJSON contour lines for the Jezero study area (10m or 50m intervals)."""
+    if interval not in (10, 50):
+        interval = 50
+    contour_file = PROCESSED_DIR / f"jezero_western_delta_contours_{interval}m.geojson"
+    if not contour_file.exists():
+        raise HTTPException(status_code=404, detail=f"{interval}m contour data not found")
+    with open(contour_file, encoding="utf-8") as f:
+        return json.load(f)
 
 
 @router.get("/elevation/grid", summary="Get 3D elevation matrix for terrain mesh")

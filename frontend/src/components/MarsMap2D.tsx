@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { DigitalTwinLayersResponse } from '../api/twin'
-import { fetchPerseveranceGeoJSON } from '../api/twin'
+import { fetchPerseveranceGeoJSON, fetchElevationContoursGeoJSON } from '../api/twin'
 import type { CandidateTargetFeature } from '../api/science'
 import { fetchScienceTargets } from '../api/science'
 import type { RouteFeature } from '../api/routing'
 import type { DynamicReroutePlanDTO } from '../api/emergency'
+import { fetchJezeroRegionalFootprints, type JezeroRegionalFootprintsResponse } from '../api/atlas'
 
 interface Map2DProps {
   metadata: DigitalTwinLayersResponse
@@ -36,11 +37,30 @@ export function MarsMap2D({
   const scienceTargetsGroupRef = useRef<L.LayerGroup | null>(null)
   const routesLayerGroupRef = useRef<L.LayerGroup | null>(null)
   const emergencyLayerGroupRef = useRef<L.LayerGroup | null>(null)
+  const footprintsGroupRef = useRef<L.LayerGroup | null>(null)
+  const contoursLayerGroupRef = useRef<L.LayerGroup | null>(null)
   const boundsRectRef = useRef<L.Rectangle | null>(null)
   const roverFetchedRef = useRef(false)
 
   // Aerospace Monochrome vs Scientific Spectrum view mode (default: true = pure dark monochrome)
   const [isMonoMode, setIsMonoMode] = useState<boolean>(true)
+  const [showCoverageFootprints, setShowCoverageFootprints] = useState<boolean>(true)
+  const [regionalFootprints, setRegionalFootprints] = useState<JezeroRegionalFootprintsResponse | null>(null)
+
+  // Load Jezero regional footprints (Phase 3)
+  useEffect(() => {
+    let cancelled = false
+    fetchJezeroRegionalFootprints()
+      .then((data) => {
+        if (!cancelled) setRegionalFootprints(data)
+      })
+      .catch((err: unknown) => {
+        console.error('Failed loading regional footprints:', err)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Initialize Leaflet Map using Plate Carrée / Equirectangular CRS (L.CRS.EPSG4326 for Mars lat/lon)
   useEffect(() => {
@@ -99,6 +119,14 @@ export function MarsMap2D({
     // Layer group for emergency reroutes and simulated hazard overlays
     const emergGroup = L.layerGroup().addTo(map)
     emergencyLayerGroupRef.current = emergGroup
+
+    // Layer group for authentic coverage footprints and geological context (Phase 3)
+    const footGroup = L.layerGroup().addTo(map)
+    footprintsGroupRef.current = footGroup
+
+    // Layer group for topographic elevation contours (Phase 4)
+    const contGroup = L.layerGroup().addTo(map)
+    contoursLayerGroupRef.current = contGroup
 
     mapInstanceRef.current = map
 
@@ -187,6 +215,48 @@ export function MarsMap2D({
       }
     } else if (map.hasLayer(vecGroup)) {
       map.removeLayer(vecGroup)
+    }
+  }, [activeLayers, isMonoMode])
+
+  // Manage Topographic Elevation Contours (Phase 4)
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    const contGroup = contoursLayerGroupRef.current
+    if (!map || !contGroup) return
+
+    if (activeLayers['elevation_contours']) {
+      if (!map.hasLayer(contGroup)) {
+        map.addLayer(contGroup)
+      }
+      if (contGroup.getLayers().length === 0) {
+        fetchElevationContoursGeoJSON(50)
+          .then((data) => {
+            contGroup.clearLayers()
+            const geoLayer = L.geoJSON(data, {
+              style: (feature) => {
+                const isIndex = feature?.properties?.is_index_contour
+                return {
+                  color: isMonoMode ? (isIndex ? '#ffffff' : '#737373') : (isIndex ? '#ffd700' : '#4fc3f7'),
+                  weight: isIndex ? 1.8 : 0.9,
+                  opacity: isIndex ? 0.85 : 0.6,
+                }
+              },
+              onEachFeature: (feature, layer) => {
+                const elev = feature.properties?.elevation_m
+                layer.bindTooltip(`Contour: ${elev > 0 ? '+' : ''}${elev} m (MOLA Datum)`, {
+                  sticky: true,
+                  className: 'mars-mono-tooltip',
+                })
+              },
+            })
+            contGroup.addLayer(geoLayer)
+          })
+          .catch((err: unknown) => {
+            console.error('Failed loading elevation contours:', err)
+          })
+      }
+    } else if (map.hasLayer(contGroup)) {
+      map.removeLayer(contGroup)
     }
   }, [activeLayers, isMonoMode])
 
@@ -335,6 +405,63 @@ export function MarsMap2D({
     }
   }, [emergencyPlan, isMonoMode])
 
+  // Render authentic Jezero regional footprints & geological formations (Phase 3)
+  useEffect(() => {
+    const group = footprintsGroupRef.current
+    if (!group) return
+    group.clearLayers()
+
+    if (!showCoverageFootprints || !regionalFootprints) return
+
+    // 1. HiRISE 1.0m Local DTM Footprint (Solid white border)
+    const hirise = regionalFootprints.layers.hirise_1m
+    const hiriseRect = L.rectangle(hirise.bounds, {
+      color: isMonoMode ? '#ffffff' : '#00e5ff',
+      weight: 2,
+      dashArray: isMonoMode ? '4, 4' : undefined,
+      fillColor: isMonoMode ? '#ffffff' : '#00e5ff',
+      fillOpacity: 0.04,
+    }).bindTooltip(
+      `<strong>${hirise.name}</strong><br/>` +
+        `Native Resolution: ${hirise.resolution} (High Confidence Micro-Terrain)<br/>` +
+        `Source: ${hirise.product_id} (${hirise.epistemic_class})`,
+      { permanent: false, direction: 'top', className: 'mars-mono-tooltip' }
+    )
+    group.addLayer(hiriseRect)
+
+    // 2. CTX 20.0m Regional DTM Footprint (Muted dashed outer boundary)
+    const ctx = regionalFootprints.layers.ctx_20m
+    const ctxRect = L.rectangle(ctx.bounds, {
+      color: isMonoMode ? '#737373' : '#ffab00',
+      weight: 1.5,
+      dashArray: '8, 6',
+      fill: false,
+    }).bindTooltip(
+      `<strong>${ctx.name}</strong><br/>` +
+        `Resolution: ${ctx.resolution} (Regional Fallback Context)<br/>` +
+        `Coverage: Jezero Crater Basin & Rim`,
+      { permanent: false, direction: 'top', className: 'mars-mono-tooltip' }
+    )
+    group.addLayer(ctxRect)
+
+    // 3. Geological Context Highlights
+    regionalFootprints.geological_context.forEach((geo) => {
+      const geoRect = L.rectangle(geo.bounds, {
+        color: isMonoMode ? '#a3a3a3' : '#ffd700',
+        weight: 1,
+        dashArray: '3, 3',
+        fillColor: isMonoMode ? '#a3a3a3' : '#ffd700',
+        fillOpacity: 0.06,
+      }).bindTooltip(
+        `<strong>${geo.name}</strong><br/>` +
+          `Unit: <em>${geo.type}</em><br/>` +
+          `${geo.description}`,
+        { permanent: false, direction: 'top', className: 'mars-mono-tooltip' }
+      )
+      group.addLayer(geoRect)
+    })
+  }, [regionalFootprints, showCoverageFootprints, isMonoMode])
+
   return (
     <div className={`map2d-wrapper ${isMonoMode ? 'mono-map-mode' : ''}`}>
       <div ref={mapContainerRef} className="leaflet-map-canvas" />
@@ -365,6 +492,14 @@ export function MarsMap2D({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
           <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: isMonoMode ? '2px dashed #a3a3a3' : '2px dashed #00e5ff' }} />
           <span>20m DTM Study Boundary (Analysis Extent)</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: isMonoMode ? '2px dashed #ffffff' : '2px dashed #00e5ff' }} />
+          <span>HiRISE 1m Local Coverage (Sub-Meter Confidence)</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+          <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: isMonoMode ? '2px dashed #737373' : '2px dashed #ffab00' }} />
+          <span>CTX 20m Regional Context (Coarse Fallback)</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
           <span style={{ display: 'inline-block', width: '20px', height: '0px', borderTop: isMonoMode ? '3px solid #ffffff' : '3px solid #00e676' }} />
@@ -427,6 +562,17 @@ export function MarsMap2D({
         </div>
 
         <h3>Exploration Layers</h3>
+        <label className="layer-checkbox-label">
+          <input
+            type="checkbox"
+            checked={showCoverageFootprints}
+            onChange={(e) => setShowCoverageFootprints(e.target.checked)}
+          />
+          <span className="layer-title">HiRISE 1m / CTX 20m Footprints</span>
+          <span className="badge badge-observed">
+            OBSERVED
+          </span>
+        </label>
         {metadata.layers.map((layer) => (
           <label key={layer.id} className="layer-checkbox-label">
             <input

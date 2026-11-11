@@ -189,7 +189,6 @@ def test_simplifier_corner_cut_prevention():
     assert not line_of_sight_clear(graph, 0, 0, 1, 1)
 
 
-
 def test_jezero_suite_route_profiles():
     """Test computing comparative routes across Jezero Western Delta study area."""
     engine = RouteOptimizationEngine()

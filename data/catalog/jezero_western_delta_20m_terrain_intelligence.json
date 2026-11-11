@@ -1,6 +1,6 @@
 {
   "grid_name": "jezero_western_delta_20m",
-  "processed_utc": "2026-11-10T21:20:37.068066+00:00",
+  "processed_utc": "2026-11-11T00:18:19.390843+00:00",
   "layers": [
     {
       "layer_id": "slope",
@@ -25,31 +25,146 @@
       "epistemic_class": "DERIVED"
     },
     {
+      "layer_id": "relief",
+      "name": "Local Relief",
+      "units": "metres",
+      "min_val": 0.22900390625,
+      "max_val": 60.710205078125,
+      "mean_val": 7.4119415283203125,
+      "method": "Moving-window max-min elevation range (5x5 cells = 100m)",
+      "source_layer": "jezero_western_delta_20m_elevation.tif",
+      "epistemic_class": "DERIVED"
+    },
+    {
+      "layer_id": "roughness",
+      "name": "Surface Roughness",
+      "units": "metres",
+      "min_val": 0.0,
+      "max_val": 16.324827194213867,
+      "mean_val": 2.0345137119293213,
+      "method": "Moving-window elevation standard deviation (Shepard et al., 2001)",
+      "source_layer": "jezero_western_delta_20m_elevation.tif",
+      "epistemic_class": "DERIVED"
+    },
+    {
+      "layer_id": "vrm",
+      "name": "Vector Ruggedness Measure",
+      "units": "index (0 to 1)",
+      "min_val": 2.980232238769531e-07,
+      "max_val": 0.08945363759994507,
+      "mean_val": 0.0012919751461595297,
+      "method": "Sappington et al. (2007) 3D normal vector dispersion",
+      "source_layer": "jezero_western_delta_20m_elevation.tif",
+      "epistemic_class": "DERIVED"
+    },
+    {
       "layer_id": "classification",
-      "name": "Terrain Classification",
+      "name": "7-Class Heuristic Terrain Classification",
       "units": "unit_id",
       "min_val": 0.0,
-      "max_val": 5.0,
+      "max_val": 6.0,
       "mean_val": null,
-      "method": "Rule-based heuristic segmentation with physical limits",
+      "method": "Explainable rule-based geomorphic classification",
       "source_layer": "multisensor",
       "epistemic_class": "HEURISTIC"
     }
   ],
   "class_legend": {
-    "0": "UNKNOWN_NO_DATA",
-    "1": "SMOOTH_REGOLITH",
-    "2": "SAND_RIPPLES_DUNES",
-    "3": "BOULDER_FIELD_ROCK",
-    "4": "STEEP_SCARP_CLIFF",
-    "5": "CRATER_DEPRESSION"
+    "0": "UNKNOWN_TERRAIN",
+    "1": "SMOOTH_TERRAIN",
+    "2": "ROCKY_TERRAIN",
+    "3": "ROUGH_TERRAIN",
+    "4": "POTENTIAL_LOOSE_MATERIAL",
+    "5": "DUNE_LIKE_FEATURES",
+    "6": "CRATERED_TERRAIN"
+  },
+  "class_details": {
+    "0": {
+      "id": 0,
+      "name": "Unknown Terrain",
+      "code": "UNKNOWN_TERRAIN",
+      "description": "Missing or out-of-coverage elevation data. Impassable by default per AGENTS.md Rule 7.",
+      "traversability": "IMPASSABLE_DEFAULT",
+      "speed_factor": 0.0,
+      "hazard_risk": "CRITICAL_UNKNOWN",
+      "color_hex": "#181818"
+    },
+    "1": {
+      "id": 1,
+      "name": "Smooth Terrain",
+      "code": "SMOOTH_TERRAIN",
+      "description": "Flat to gently sloping lacustrine regolith with minimal micro-roughness. Optimal human walking corridor.",
+      "traversability": "PASSABLE_OPTIMAL",
+      "speed_factor": 1.0,
+      "hazard_risk": "NOMINAL",
+      "color_hex": "#a3a3a3"
+    },
+    "2": {
+      "id": 2,
+      "name": "Rocky Terrain",
+      "code": "ROCKY_TERRAIN",
+      "description": "High concentration of candidate boulders (>0.5m) and blocky scree. Significant tripping and circumvention risk.",
+      "traversability": "RESTRICTED_CAUTION",
+      "speed_factor": 0.45,
+      "hazard_risk": "ELEVATED_OBSTACLE",
+      "color_hex": "#d4d4d4"
+    },
+    "3": {
+      "id": 3,
+      "name": "Rough Terrain",
+      "code": "ROUGH_TERRAIN",
+      "description": "Dissected relief, high Terrain Ruggedness Index, or steep slopes (>15\u00b0\u201325\u00b0). High metabolic walking cost.",
+      "traversability": "HIGH_COST_OR_BARRIER",
+      "speed_factor": 0.3,
+      "hazard_risk": "HIGH_SLOPE_ROUGHNESS",
+      "color_hex": "#ffffff"
+    },
+    "4": {
+      "id": 4,
+      "name": "Potential Loose Material",
+      "code": "POTENTIAL_LOOSE_MATERIAL",
+      "description": "Unconsolidated fine-grained airfall dust or loose sandy mantles. Risk of foot sinkage and slip.",
+      "traversability": "SOFT_GROUND_DRAG",
+      "speed_factor": 0.6,
+      "hazard_risk": "MODERATE_SINKAGE",
+      "color_hex": "#737373"
+    },
+    "5": {
+      "id": 5,
+      "name": "Dune-Like Features",
+      "code": "DUNE_LIKE_FEATURES",
+      "description": "Periodic Transverse Aeolian Ridges (TARs) and active ripple fields. Wheel-sinkage and human mobility impedance.",
+      "traversability": "RESTRICTED_AVOIDANCE",
+      "speed_factor": 0.35,
+      "hazard_risk": "HIGH_AEOLIAN_SLIP",
+      "color_hex": "#525252"
+    },
+    "6": {
+      "id": 6,
+      "name": "Cratered Terrain",
+      "code": "CRATERED_TERRAIN",
+      "description": "Impact craters, incised channels, and concave depression bowls with steep inner slopes.",
+      "traversability": "TOPOGRAPHIC_DEPRESSION",
+      "speed_factor": 0.4,
+      "hazard_risk": "CIRCUMVENTION_RECOMMENDED",
+      "color_hex": "#383838"
+    }
   },
   "class_distribution": {
-    "UNKNOWN_NO_DATA": 0,
-    "SMOOTH_REGOLITH": 73622,
-    "SAND_RIPPLES_DUNES": 81403,
-    "BOULDER_FIELD_ROCK": 56468,
-    "STEEP_SCARP_CLIFF": 638,
-    "CRATER_DEPRESSION": 1
+    "UNKNOWN_TERRAIN": 0,
+    "SMOOTH_TERRAIN": 27587,
+    "ROCKY_TERRAIN": 36279,
+    "ROUGH_TERRAIN": 28501,
+    "POTENTIAL_LOOSE_MATERIAL": 52569,
+    "DUNE_LIKE_FEATURES": 67196,
+    "CRATERED_TERRAIN": 0
+  },
+  "boulder_candidate_stats": {
+    "candidate_count_pixels": 7409,
+    "mean_score_on_candidates": 0.6234015226364136,
+    "max_score": 1.0,
+    "sun_azimuth_deg": 240.0,
+    "method": "Morphological White/Black Top-Hat with Directional Shadow Pairing & Sobel Edge Filtering",
+    "epistemic_class": "HEURISTIC"
   }
 }

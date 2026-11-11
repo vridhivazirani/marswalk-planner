@@ -153,4 +153,3 @@ class DynamicReroutePlan:
             "epistemic_class": self.epistemic_class,
             "disclaimer": self.disclaimer,
         }
-
