@@ -15,6 +15,7 @@ import { NavigationSidebar } from './components/layout/NavigationSidebar'
 import type { PageId } from './components/layout/NavigationSidebar'
 import { MissionControlHeader } from './components/layout/MissionControlHeader'
 import { MissionInitializationScreen } from './components/MissionInitializationScreen'
+import { AIMarsResearchAssistant } from './components/AIMarsResearchAssistant'
 
 // 12 Operational Mission Control Pages
 import { MissionOverviewPage } from './pages/MissionOverviewPage'
@@ -321,6 +322,10 @@ function App() {
                   activeRoute={routes.length > 0 ? routes[0] : null}
                   emergencyPlan={emergencyPlan}
                   selectedTarget={selectedTarget}
+                  onRestoreBookmark={(lat, lon) => {
+                    setDestPoint({ lat, lon })
+                    setActivePage('digital-twin')
+                  }}
                 />
               )}
 
@@ -331,6 +336,17 @@ function App() {
           )}
         </main>
       </div>
+
+      {/* Floating AI Mars Research Assistant */}
+      <AIMarsResearchAssistant
+        currentContext={{
+          lat: destPoint.lat,
+          lon: destPoint.lon,
+          active_region_id: 'reg-jezero',
+          active_page: activePage,
+          active_layers: ['CTX_MOSAIC', 'HIRISE_TRN_DTM', 'CRISM_BD2210'],
+        }}
+      />
     </>
   )
 }

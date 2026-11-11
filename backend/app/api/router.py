@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    assistant,
     atlas,
     catalog,
     costmap,
@@ -21,6 +22,7 @@ from app.api.routes import (
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["system"])
 api_router.include_router(atlas.router)
+api_router.include_router(assistant.router)
 api_router.include_router(regions.router)
 api_router.include_router(catalog.router)
 api_router.include_router(twin.router)
