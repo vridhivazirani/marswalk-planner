@@ -154,6 +154,7 @@ export function MarsMap2D({
           overlay = L.imageOverlay(layer.url, bounds, {
             opacity: layer.id === 'ortho_imagery' ? 1.0 : 0.75,
             interactive: false,
+            className: layer.id === 'ortho_imagery' ? 'ortho-base-raster' : 'scientific-colormap-raster',
           })
           overlay.on('error', () => {
             console.warn(`Raster layer ${layer.id} could not be loaded from ${layer.url}`)

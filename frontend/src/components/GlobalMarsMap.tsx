@@ -132,10 +132,12 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
       crs: L.CRS.EPSG4326,
       center: [18.4485, 77.4320], // Default centered on Jezero Crater region
       zoom: 3,
-      minZoom: 1,
-      maxZoom: 12,
+      minZoom: 2,
+      maxZoom: 14,
+      maxBounds: [[-90, -360], [90, 360]],
+      maxBoundsViscosity: 0.75,
       attributionControl: false,
-      worldCopyJump: false,
+      worldCopyJump: true,
     })
 
     // Track zoom level
@@ -256,8 +258,8 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
         transparent: false,
         version: '1.1.1',
         maxNativeZoom: 7,
-        maxZoom: 16,
-        bounds: [[-90, -180], [90, 180]],
+        maxZoom: 14,
+        noWrap: false,
         opacity: basemapOpacity,
       }).addTo(map)
       attachTileEvents(wmsLayer)
@@ -266,9 +268,8 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
       // NASA Trek WMTS tile server
       const wmtsLayer = L.tileLayer(selected.wmts_tile_url, {
         maxNativeZoom: 7,
-        maxZoom: 16,
+        maxZoom: 14,
         noWrap: false,
-        bounds: [[-90, -180], [90, 180]],
         tms: false,
         opacity: basemapOpacity,
       }).addTo(map)
@@ -289,13 +290,12 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
       const customIcon = L.divIcon({
         className: 'custom-feature-marker',
         html: `
-          <div style="display: flex; align-items: center; gap: 4px; background: rgba(17, 17, 17, 0.90); border: 1px solid #737373; padding: 2px 6px; border-radius: 2px; white-space: nowrap; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-            <div style="width: 6px; height: 6px; border-radius: 50%; background: #ffffff;"></div>
-            <span style="font-family: monospace; font-size: 10px; color: #f5f5f5; font-weight: 600;">${feat.name}</span>
+          <div style="display: inline-flex; align-items: center; gap: 5px; background: rgba(18, 18, 20, 0.94); border: 1px solid #737373; padding: 2px 7px; border-radius: 2px; white-space: nowrap; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.6); pointer-events: auto;">
+            <div style="width: 6px; height: 6px; border-radius: 50%; background: #ffffff; flex-shrink: 0; box-shadow: 0 0 4px #ffffff;"></div>
+            <span style="font-family: var(--font-mono, monospace); font-size: 10px; color: #f5f5f5; font-weight: 600;">${feat.name}</span>
           </div>
         `,
-        iconSize: [80, 20],
-        iconAnchor: [40, 10],
+        iconAnchor: [12, 12],
       })
 
       const marker = L.marker([feat.lat, feat.lon], { icon: customIcon })
@@ -338,15 +338,14 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
       const customIcon = L.divIcon({
         className: 'custom-landing-marker',
         html: `
-          <div style="display: flex; align-items: center; gap: 4px; background: rgba(9, 9, 9, 0.92); border: 1px solid ${isActive ? '#ffffff' : '#525252'}; padding: 2px 6px; border-radius: 2px; white-space: nowrap; cursor: pointer;">
-            <div style="width: 6px; height: 6px; border: 1px solid #ffffff; background: ${isActive ? '#ffffff' : 'transparent'};"></div>
-            <span style="font-family: monospace; font-size: 9px; color: ${isActive ? '#ffffff' : '#a3a3a3'}; font-weight: ${isActive ? 'bold' : 'normal'};">
+          <div style="display: inline-flex; align-items: center; gap: 5px; background: rgba(18, 18, 20, 0.94); border: 1px solid ${isActive ? '#22c55e' : '#737373'}; padding: 2px 7px; border-radius: 2px; white-space: nowrap; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.6); pointer-events: auto;">
+            <div style="width: 6px; height: 6px; border-radius: 50%; background: ${isActive ? '#22c55e' : '#ffffff'}; flex-shrink: 0; box-shadow: 0 0 5px ${isActive ? '#22c55e' : '#ffffff'};"></div>
+            <span style="font-family: var(--font-mono, monospace); font-size: 10px; color: #f5f5f5; font-weight: ${isActive ? '700' : '500'};">
               ${site.mission}
             </span>
           </div>
         `,
-        iconSize: [80, 20],
-        iconAnchor: [40, 10],
+        iconAnchor: [12, 12],
       })
 
       const marker = L.marker([site.lat, site.lon], { icon: customIcon })

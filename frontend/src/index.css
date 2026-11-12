@@ -516,10 +516,10 @@ input[type="range"] {
   background: #090909 !important;
 }
 
-/* Grayscale Monochrome Map Mode */
-.mono-map-mode .leaflet-image-layer,
+/* Grayscale Monochrome Map Mode: Apply strictly to base orthophoto, preserving scientific spectrums */
+.mono-map-mode .ortho-base-raster,
 .mono-map-mode .leaflet-tile-pane {
-  filter: grayscale(100%) contrast(1.12) brightness(0.92);
+  filter: grayscale(100%) contrast(1.12) brightness(0.95);
 }
 
 .twin-header {

@@ -116,3 +116,4 @@ Following the audit and stabilization in Phase Zero, the implementation proceeds
 5. **Phase Five — Environmental Simulation:** 10 curated Mars environmental what-if scenarios with diurnal and dust climatology.
 6. **Phase Six — Mission Control:** Integrated operations dashboard with mission timeline, start/pause/resume simulation, and emergency dynamic reroutes.
 7. **Phase Seven — Integrated Science and Mission Reports:** Multi-format exportable mission dossiers (Markdown, GeoJSON, CSV, JSON) with complete geodetic metadata and non-negotiable research disclaimer.
+
