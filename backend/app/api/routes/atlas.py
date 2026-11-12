@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
+import urllib.request
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.catalog.atlas_catalog import (
@@ -48,24 +52,10 @@ from app.terrain.regional_jezero import (
 
 router = APIRouter(prefix="/atlas", tags=["planetary-atlas"])
 
+TILE_CACHE_DIR = Path(__file__).resolve().parents[4] / "data" / "cache" / "tiles"
+TILE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 GLOBAL_BASEMAPS = [
-    {
-        "id": "mola_shaded_relief",
-        "name": "MOLA Shaded Relief (B&W Aerospace Monochrome)",
-        "service_type": "WMS",
-        "wms_url": (
-            "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map"
-        ),
-        "wms_layers": "MOLA_bw",
-        "format": "image/jpeg",
-        "resolution": "463 m/pixel (128 px/deg)",
-        "crs": "IAU_2015:49900 (Mars Plate Carrée)",
-        "epistemic_class": "DERIVED",
-        "description": (
-            "USGS Astrogeology analytical shaded relief basemap derived from MOLA altimetry."
-        ),
-        "is_default": True,
-    },
     {
         "id": "mola_color_topography",
         "name": "MOLA Colorized Planetary Topography",
@@ -74,11 +64,30 @@ GLOBAL_BASEMAPS = [
             "https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m"
             "/1.0.0//default/default028mm/{z}/{y}/{x}.jpg"
         ),
+        "proxy_tile_url": "/api/v1/atlas/tiles/wmts/mola_color_topography/{z}/{y}/{x}.jpg",
         "resolution": "463 m/pixel",
         "crs": "IAU_2015:49900 (Equatorial Mars Sphere)",
         "epistemic_class": "DERIVED",
         "description": (
             "Authentic NASA Mars Trek MOLA colorized elevation blended with shaded relief."
+        ),
+        "is_default": True,
+    },
+    {
+        "id": "mola_shaded_relief",
+        "name": "MOLA Shaded Relief (B&W Aerospace Monochrome)",
+        "service_type": "WMS",
+        "wms_url": (
+            "https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map"
+        ),
+        "proxy_wms_url": "/api/v1/atlas/tiles/wms/mola_shaded_relief",
+        "wms_layers": "MOLA_bw",
+        "format": "image/jpeg",
+        "resolution": "463 m/pixel (128 px/deg)",
+        "crs": "IAU_2015:49900 (Mars Plate Carrée)",
+        "epistemic_class": "DERIVED",
+        "description": (
+            "USGS Astrogeology analytical shaded relief basemap derived from MOLA altimetry."
         ),
         "is_default": False,
     },
@@ -143,6 +152,7 @@ GLOBAL_BASEMAPS = [
             "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m"
             "/1.0.0//default/default028mm/{z}/{y}/{x}.jpg"
         ),
+        "proxy_tile_url": "/api/v1/atlas/tiles/wmts/viking_mdim21/{z}/{y}/{x}.jpg",
         "resolution": "232 m/pixel",
         "crs": "IAU_2015:49900",
         "epistemic_class": "OBSERVED",
@@ -247,6 +257,75 @@ def get_global_basemaps() -> dict[str, Any]:
         "crs": "IAU_2015:49900",
         "authority": "USGS Astrogeology & NASA Trek Planetary Tile Services",
     }
+
+
+@router.get("/tiles/wmts/{layer_id}/{z}/{y}/{x}.jpg", summary="High-speed cached WMTS tile proxy")
+def get_cached_wmts_tile(layer_id: str, z: int, y: int, x: int) -> Response:
+    """Stream cached planetary tile with local disk cache and immutable HTTP caching headers."""
+    layer = next((b for b in GLOBAL_BASEMAPS if b["id"] == layer_id), None)
+    if not layer or "wmts_tile_url" not in layer:
+        raise HTTPException(status_code=404, detail=f"WMTS layer '{layer_id}' not found.")
+
+    cache_file = TILE_CACHE_DIR / f"{layer_id}_{z}_{y}_{x}.jpg"
+    if cache_file.exists():
+        return FileResponse(
+            cache_file,
+            media_type="image/jpeg",
+            headers={"Cache-Control": "public, max-age=604800, immutable"},
+        )
+
+    upstream_url = (
+        layer["wmts_tile_url"]
+        .replace("{z}", str(z))
+        .replace("{y}", str(y))
+        .replace("{x}", str(x))
+    )
+    try:
+        req = urllib.request.Request(upstream_url, headers={"User-Agent": "Marswalk/1.0"})
+        with urllib.request.urlopen(req, timeout=6.0) as resp:
+            data = resp.read()
+        cache_file.write_bytes(data)
+        return Response(
+            content=data,
+            media_type="image/jpeg",
+            headers={"Cache-Control": "public, max-age=604800, immutable"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Upstream tile unavailable: {e}") from e
+
+
+@router.get("/tiles/wms/{layer_id}", summary="High-speed cached WMS tile proxy")
+def get_cached_wms_tile(layer_id: str, request: Request) -> Response:
+    """Stream cached WMS tile from USGS with local disk cache and deterministic bbox hashing."""
+    layer = next((b for b in GLOBAL_BASEMAPS if b["id"] == layer_id), None)
+    if not layer or "wms_url" not in layer:
+        raise HTTPException(status_code=404, detail=f"WMS layer '{layer_id}' not found.")
+
+    query = request.url.query
+    cache_key = hashlib.md5(f"{layer_id}_{query}".encode()).hexdigest()
+    cache_file = TILE_CACHE_DIR / f"wms_{layer_id}_{cache_key}.jpg"
+
+    if cache_file.exists():
+        return FileResponse(
+            cache_file,
+            media_type="image/jpeg",
+            headers={"Cache-Control": "public, max-age=604800, immutable"},
+        )
+
+    sep = "&" if "?" in layer["wms_url"] else "?"
+    upstream_url = f"{layer['wms_url']}{sep}{query}"
+    try:
+        req = urllib.request.Request(upstream_url, headers={"User-Agent": "Marswalk/1.0"})
+        with urllib.request.urlopen(req, timeout=12.0) as resp:
+            data = resp.read()
+        cache_file.write_bytes(data)
+        return Response(
+            content=data,
+            media_type="image/jpeg",
+            headers={"Cache-Control": "public, max-age=604800, immutable"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Upstream WMS unavailable: {e}") from e
 
 
 @router.get(

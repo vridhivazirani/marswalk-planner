@@ -130,19 +130,22 @@ export function RegionalMarsMap({
     let cancelled = false
     async function initRegionalAtlas() {
       try {
-        const [
-          studyAreaRes,
-          catsRes,
-          layersRes,
-          geoRes,
-          crismRes,
-          samplesRes,
-          travRes,
-          wpRes,
-        ] = await Promise.all([
+        // Step 1: Load critical structural metadata first for immediate UI interactivity
+        const [studyAreaRes, catsRes, layersRes] = await Promise.all([
           fetchRegionalStudyArea(),
           fetchRegionalCategories(),
           fetchRegionalLayers(),
+        ])
+
+        if (cancelled) return
+
+        setStudyArea(studyAreaRes)
+        setCategories(catsRes.categories)
+        setLayers(layersRes.layers)
+        setLoading(false)
+
+        // Step 2: Load heavy vector layers non-blockingly in the background
+        const [geoRes, crismRes, samplesRes, travRes, wpRes] = await Promise.all([
           fetchRegionalGeology(),
           fetchRegionalCrism(),
           fetchRoverSamples(),
@@ -152,9 +155,6 @@ export function RegionalMarsMap({
 
         if (cancelled) return
 
-        setStudyArea(studyAreaRes)
-        setCategories(catsRes.categories)
-        setLayers(layersRes.layers)
         setGeologyUnits(geoRes.units)
         setCrismObs(crismRes.observations)
         setSampleCores(samplesRes.samples)
@@ -170,7 +170,6 @@ export function RegionalMarsMap({
         })
         setMaxAvailableSol(maxSol)
         setSolRange(maxSol)
-        setLoading(false)
       } catch (err) {
         if (cancelled) return
         setError(err instanceof Error ? err.message : 'Failed to load regional Jezero data')
@@ -241,6 +240,7 @@ export function RegionalMarsMap({
 
     // Center on Jezero Basin [18.4485, 77.4320] in Mars Plate Carrée CRS
     const map = L.map(mapContainerRef.current, {
+      preferCanvas: true,
       crs: L.CRS.EPSG4326,
       center: [18.4485, 77.4320],
       zoom: 11,
@@ -252,15 +252,17 @@ export function RegionalMarsMap({
 
     L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-    // Global Mars MOLA background context tile layer with smooth oversampling and bounds clamping
+    // Global Mars MOLA background context tile layer via high-speed disk cache proxy
     L.tileLayer(
-      'https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0//default/default028mm/{z}/{y}/{x}.jpg',
+      '/api/v1/atlas/tiles/wmts/mola_color_topography/{z}/{y}/{x}.jpg',
       {
         maxNativeZoom: 7,
         maxZoom: 16,
         noWrap: false,
         bounds: [[-90, -180], [90, 180]],
         opacity: 0.75,
+        updateWhenIdle: true,
+        keepBuffer: 3,
       }
     ).addTo(map)
 
@@ -320,9 +322,22 @@ export function RegionalMarsMap({
     // Fit map bounds initially to regional context
     map.fitBounds(regionalContextBounds)
 
-    // Track cursor movement for telemetry HUD
+    // Track cursor movement for telemetry HUD with requestAnimationFrame throttling
+    let mouseRafId: number | null = null
     map.on('mousemove', (e: L.LeafletMouseEvent) => {
-      setCursorCoords({ lat: e.latlng.lat, lon: e.latlng.lng })
+      if (mouseRafId !== null) return
+      mouseRafId = requestAnimationFrame(() => {
+        setCursorCoords({ lat: e.latlng.lat, lon: e.latlng.lng })
+        mouseRafId = null
+      })
+    })
+
+    map.on('mouseout', () => {
+      if (mouseRafId !== null) {
+        cancelAnimationFrame(mouseRafId)
+        mouseRafId = null
+      }
+      setCursorCoords(null)
     })
 
     // Click handler for elevation sampling & transect profiling

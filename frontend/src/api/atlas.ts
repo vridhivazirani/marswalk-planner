@@ -147,6 +147,8 @@ export interface GlobalBasemap {
   wms_url?: string
   wms_layers?: string
   wmts_tile_url?: string
+  proxy_tile_url?: string
+  proxy_wms_url?: string
   format?: string
   resolution: string
   crs: string

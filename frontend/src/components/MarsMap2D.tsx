@@ -71,6 +71,7 @@ export function MarsMap2D({
     // L.CRS.EPSG4326 operates in direct equirectangular lat/lon coordinates.
     // On the Mars sphere, degrees map directly to the canonical IAU_2015:49900 planetocentric frame.
     const map = L.map(mapContainerRef.current, {
+      preferCanvas: true,
       crs: L.CRS.EPSG4326,
       center: [center[0], center[1]],
       zoom: 13,
@@ -90,12 +91,21 @@ export function MarsMap2D({
 
     map.fitBounds(boundsRect.getBounds(), { padding: [20, 20] })
 
-    // Track cursor location in authentic Mars coordinates
+    // Track cursor location in authentic Mars coordinates with requestAnimationFrame throttling
+    let mouseRafId: number | null = null
     map.on('mousemove', (e: L.LeafletMouseEvent) => {
-      onHoverCoords({ lat: e.latlng.lat, lon: e.latlng.lng })
+      if (mouseRafId !== null) return
+      mouseRafId = requestAnimationFrame(() => {
+        onHoverCoords({ lat: e.latlng.lat, lon: e.latlng.lng })
+        mouseRafId = null
+      })
     })
 
     map.on('mouseout', () => {
+      if (mouseRafId !== null) {
+        cancelAnimationFrame(mouseRafId)
+        mouseRafId = null
+      }
       onHoverCoords(null)
     })
 

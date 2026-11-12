@@ -500,3 +500,33 @@ def test_api_global_coverage_endpoint():
     d_gale = res_gale.json()
     assert d_gale["active_tier"] == "GLOBAL"
     assert d_gale["jezero_focus_available"] is False
+
+
+def test_api_basemaps_has_proxy_urls():
+    """Verify GET /api/v1/atlas/global/basemaps returns optimized proxy URLs."""
+    res = client.get("/api/v1/atlas/global/basemaps")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["count"] >= 3
+    basemaps = data["basemaps"]
+    wmts_bm = next((b for b in basemaps if b["service_type"] == "WMTS"), None)
+    assert wmts_bm is not None
+    assert "proxy_tile_url" in wmts_bm
+    assert "/api/v1/atlas/tiles/wmts/" in wmts_bm["proxy_tile_url"]
+
+
+def test_api_tile_proxy_wmts_unknown_layer():
+    """Verify WMTS tile proxy returns 404 for unknown layer ID."""
+    res = client.get("/api/v1/atlas/tiles/wmts/nonexistent_layer/0/0/0.jpg")
+    assert res.status_code == 404
+
+
+def test_api_tile_proxy_wmts_serving():
+    """Verify WMTS tile proxy serves or caches tiles from upstream."""
+    res = client.get("/api/v1/atlas/tiles/wmts/mola_color_topography/0/0/0.jpg")
+    # If network/upstream is available it returns 200 image/jpeg, or 502/504 if upstream offline
+    assert res.status_code in [200, 502, 504]
+    if res.status_code == 200:
+        assert res.headers["content-type"] in ["image/jpeg", "image/png"]
+        assert "max-age=604800" in res.headers.get("cache-control", "")
+

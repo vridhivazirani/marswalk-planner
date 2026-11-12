@@ -49,6 +49,8 @@ data/processed/*
 !data/processed/README.md
 data/sample/*
 !data/sample/README.md
+data/cache/*
+!data/cache/README.md
 # data/catalog/ and data/manifests/ ARE tracked (small JSON metadata).
 
 # --- Planetary / raster / spectral file types (anywhere in the repo) ---

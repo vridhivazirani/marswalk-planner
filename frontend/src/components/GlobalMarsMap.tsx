@@ -35,7 +35,7 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
 
   // Remote data state
   const [basemaps, setBasemaps] = useState<GlobalBasemap[]>([])
-  const [selectedBasemapId, setSelectedBasemapId] = useState<string>('mola_shaded_relief')
+  const [selectedBasemapId, setSelectedBasemapId] = useState<string>('mola_color_topography')
   const [basemapOpacity, setBasemapOpacity] = useState<number>(1.0)
   const [features, setFeatures] = useState<PlanetaryFeature[]>([])
   const [landingSites, setLandingSites] = useState<MarsLandingSite[]>([])
@@ -89,7 +89,12 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
           fetchGlobalGeology(),
         ])
         if (cancelled) return
-        setBasemaps(basemapRes.basemaps || [])
+        const bList = basemapRes.basemaps || []
+        setBasemaps(bList)
+        const defB = bList.find((b) => b.is_default)
+        if (defB) {
+          setSelectedBasemapId(defB.id)
+        }
         setFeatures(featureRes.features)
         setLandingSites(landingRes.landing_sites)
         setNavTargets(targetRes.targets)
@@ -130,6 +135,7 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
 
     // Mars Equirectangular Projection on IAU 2015 Sphere (R = 3,396,190 m)
     const map = L.map(mapContainerRef.current, {
+      preferCanvas: true,
       crs: L.CRS.EPSG4326,
       center: [18.4485, 77.4320], // Default centered on Jezero Crater region
       zoom: 3,
@@ -150,15 +156,24 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
       setCurrentZoom(map.getZoom())
     })
 
-    // Track mouse coordinates in Mars canonical frame
+    // Throttled mouse coordinates tracking in Mars canonical frame using requestAnimationFrame
+    let mouseRafId: number | null = null
     map.on('mousemove', (e: L.LeafletMouseEvent) => {
-      let lon = e.latlng.lng % 360
-      if (lon > 180) lon -= 360
-      if (lon < -180) lon += 360
-      setCursorCoords({ lat: e.latlng.lat, lon })
+      if (mouseRafId !== null) return
+      mouseRafId = requestAnimationFrame(() => {
+        let lon = e.latlng.lng % 360
+        if (lon > 180) lon -= 360
+        if (lon < -180) lon += 360
+        setCursorCoords({ lat: e.latlng.lat, lon })
+        mouseRafId = null
+      })
     })
 
     map.on('mouseout', () => {
+      if (mouseRafId !== null) {
+        cancelAnimationFrame(mouseRafId)
+        mouseRafId = null
+      }
       setCursorCoords(null)
     })
 
@@ -255,9 +270,13 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
       })
     }
 
-    if (selected.service_type === 'WMS' && selected.wms_url && selected.wms_layers) {
-      // USGS Astrogeology OpenGIS WMS
-      const wmsLayer = L.tileLayer.wms(selected.wms_url, {
+    // Use high-performance local disk-cache proxy if available, fallback to direct upstream
+    const wmtsTileUrl = selected.proxy_tile_url || selected.wmts_tile_url
+    const wmsUrl = selected.proxy_wms_url || selected.wms_url
+
+    if (selected.service_type === 'WMS' && wmsUrl && selected.wms_layers) {
+      // USGS Astrogeology OpenGIS WMS (via local tile cache proxy if configured)
+      const wmsLayer = L.tileLayer.wms(wmsUrl, {
         layers: selected.wms_layers,
         format: selected.format || 'image/jpeg',
         transparent: false,
@@ -266,24 +285,28 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
         maxZoom: 14,
         noWrap: false,
         opacity: basemapOpacity,
+        updateWhenIdle: true,
+        keepBuffer: 3,
       }).addTo(map)
       attachTileEvents(wmsLayer)
       activeTileLayerRef.current = wmsLayer
-    } else if (selected.service_type === 'WMTS' && selected.wmts_tile_url) {
-      // NASA Trek WMTS tile server
-      const wmtsLayer = L.tileLayer(selected.wmts_tile_url, {
+    } else if (selected.service_type === 'WMTS' && wmtsTileUrl) {
+      // NASA Trek WMTS tile server (via local tile cache proxy)
+      const wmtsLayer = L.tileLayer(wmtsTileUrl, {
         maxNativeZoom: 7,
         maxZoom: 14,
         noWrap: false,
         tms: false,
         opacity: basemapOpacity,
+        updateWhenIdle: true,
+        keepBuffer: 4,
       }).addTo(map)
       attachTileEvents(wmtsLayer)
       activeTileLayerRef.current = wmtsLayer
     }
   }, [selectedBasemapId, basemaps, basemapOpacity])
 
-  // Render IAU Planetary Features overlay
+  // Render IAU Planetary Features overlay with scale-aware culling
   useEffect(() => {
     const group = featuresLayerGroupRef.current
     if (!group) return
@@ -291,7 +314,12 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
 
     if (!showFeatures) return
 
-    features.forEach((feat) => {
+    // Scale-aware filtering: at overview zoom (<=3), show major planetary landmarks to prevent visual clutter
+    const visibleFeatures = currentZoom <= 3
+      ? features.filter((f) => f.diameter_km >= 350 || ['Olympus Mons', 'Valles Marineris', 'Jezero Crater', 'Gale Crater'].includes(f.name))
+      : features
+
+    visibleFeatures.forEach((feat) => {
       const customIcon = L.divIcon({
         className: 'custom-feature-marker',
         html: `
@@ -328,9 +356,9 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
 
       group.addLayer(marker)
     })
-  }, [features, showFeatures, handleSampleAtCoords])
+  }, [features, showFeatures, handleSampleAtCoords, currentZoom])
 
-  // Render Historical Landing Sites overlay
+  // Render Historical Landing Sites overlay with scale-aware culling
   useEffect(() => {
     const group = landingSitesGroupRef.current
     if (!group) return
@@ -338,7 +366,12 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
 
     if (!showLandingSites) return
 
-    landingSites.forEach((site) => {
+    // Scale-aware filtering: at overview zoom (<=3), show active or primary historic missions
+    const visibleSites = currentZoom <= 3
+      ? landingSites.filter((s) => s.status.toLowerCase().includes('active') || ['Perseverance', 'Curiosity', 'Viking 1', 'InSight', 'Zhurong'].some((k) => s.mission.includes(k) || s.craft_name.includes(k)))
+      : landingSites
+
+    visibleSites.forEach((site) => {
       const isActive = site.status.toLowerCase().includes('active')
       const customIcon = L.divIcon({
         className: 'custom-landing-marker',
@@ -375,7 +408,7 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
 
       group.addLayer(marker)
     })
-  }, [landingSites, showLandingSites, handleSampleAtCoords])
+  }, [landingSites, showLandingSites, handleSampleAtCoords, currentZoom])
 
   // Render USGS SIM-3292 Global Geology Regions
   useEffect(() => {
