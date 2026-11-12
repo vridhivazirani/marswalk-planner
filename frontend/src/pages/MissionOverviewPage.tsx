@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react'
 import type { RouteFeature } from '../api/routing'
 import type { DynamicReroutePlanDTO } from '../api/emergency'
 import type { PageId } from '../components/layout/NavigationSidebar'
+import type { ExplorerTab } from './MapExplorerPage'
 import { GlobalMarsMap } from '../components/GlobalMarsMap'
+import { GlobalMarsGlobe3D } from '../components/GlobalMarsGlobe3D'
 import { fetchAtlasCatalogue } from '../api/atlas'
 
 export interface MissionOverviewPageProps {
-  onNavigate: (
-    page: PageId,
-    tab?: 'GLOBAL_GLOBE' | 'GLOBAL_MAP' | 'REGIONAL_MAP' | 'CATALOGUE'
-  ) => void
+  onNavigate: (page: PageId, tab?: ExplorerTab) => void
   isBackendHealthy?: boolean | null
   activeRoute?: RouteFeature | null
   emergencyPlan?: DynamicReroutePlanDTO | null
@@ -17,6 +16,8 @@ export interface MissionOverviewPageProps {
   startPoint?: { lat: number; lon: number }
   destPoint?: { lat: number; lon: number }
 }
+
+type ActiveExperience = '01_EXPLORER' | '02_MONOCHROME' | '03_GLOBE' | '04_ATLAS'
 
 export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
   onNavigate,
@@ -26,6 +27,7 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
   routesCount = 0,
 }) => {
   const [datasetCount, setDatasetCount] = useState<number>(37)
+  const [activeExperience, setActiveExperience] = useState<ActiveExperience>('01_EXPLORER')
 
   useEffect(() => {
     let cancelled = false
@@ -43,6 +45,19 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
     }
   }, [])
 
+  const getCorrespondingTab = (exp: ActiveExperience): ExplorerTab => {
+    switch (exp) {
+      case '01_EXPLORER':
+        return 'MARS_EXPLORER'
+      case '02_MONOCHROME':
+        return 'MARS_MONOCHROME'
+      case '03_GLOBE':
+        return 'GLOBAL_GLOBE'
+      case '04_ATLAS':
+        return 'GLOBAL_MAP'
+    }
+  }
+
   return (
     <div
       style={{
@@ -54,9 +69,9 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
       }}
     >
       {/* =========================================================================
-          1. HERO SECTION (EDITORIAL & AEROSPACE MINIMALISM)
+          1. HERO HEADER (AEROSPACE EDITORIAL MINIMALISM)
           ========================================================================= */}
-      <section style={{ marginBottom: '2.5rem' }}>
+      <section style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
           <span
             style={{
@@ -80,7 +95,7 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
               color: '#a1a1aa',
             }}
           >
-            PLANETARY ATLAS
+            FOUR EXPLORATION EXPERIENCES
           </span>
         </div>
 
@@ -92,13 +107,13 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
             flexWrap: 'wrap',
             gap: '1.5rem',
             borderBottom: '1px solid #1f1f23',
-            paddingBottom: '2rem',
+            paddingBottom: '1.75rem',
           }}
         >
           <div>
             <h1
               style={{
-                fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
+                fontSize: 'clamp(2.4rem, 4.8vw, 4.2rem)',
                 fontWeight: 300,
                 letterSpacing: '-0.03em',
                 lineHeight: 1.05,
@@ -111,19 +126,17 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
             <p
               style={{
                 margin: '0.75rem 0 0',
-                fontSize: 'clamp(0.95rem, 1.4vw, 1.15rem)',
+                fontSize: 'clamp(0.95rem, 1.3vw, 1.15rem)',
                 color: '#8e8e93',
                 fontWeight: 400,
                 letterSpacing: '0.01em',
               }}
             >
-              Global Planetary Surface Intelligence & Scientific Cartography.
+              Global Planetary Surface Intelligence & Four Distinct Exploration Environments.
             </p>
           </div>
 
-          {/* =========================================================================
-              3. SCIENTIFIC STATUS INDICATORS (COMPACT, RESTRAINED MONOCHROME)
-              ========================================================================= */}
+          {/* Scientific Status Indicators */}
           <div
             style={{
               display: 'flex',
@@ -173,42 +186,531 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
       </section>
 
       {/* =========================================================================
-          2. MARS TOPOGRAPHY VISUAL (AUTHENTIC INTERACTIVE PLANETARY ATLAS)
+          2. INTERACTIVE EXPLORATION STAGE (LIVE MULTI-EXPERIENCE VIEWPORT)
           ========================================================================= */}
-      <section style={{ marginBottom: '2.5rem' }}>
+      <section style={{ marginBottom: '3rem' }}>
+        {/* Stage Header & Experience Selector Pills */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            marginBottom: '0.85rem',
+          }}
+        >
+          <div style={{ display: 'inline-flex', gap: '0.35rem', background: '#0e0e11', border: '1px solid #222226', padding: '3px', borderRadius: '4px' }}>
+            <button
+              type="button"
+              onClick={() => setActiveExperience('01_EXPLORER')}
+              style={{
+                background: activeExperience === '01_EXPLORER' ? '#c2410c' : 'transparent',
+                color: activeExperience === '01_EXPLORER' ? '#ffffff' : '#a1a1aa',
+                border: 'none',
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.75rem',
+                fontFamily: 'var(--font-mono, monospace)',
+                fontWeight: 700,
+                borderRadius: '2px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>🔭</span>
+              <span>01 Mars Explorer</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveExperience('02_MONOCHROME')}
+              style={{
+                background: activeExperience === '02_MONOCHROME' ? '#ffffff' : 'transparent',
+                color: activeExperience === '02_MONOCHROME' ? '#000000' : '#a1a1aa',
+                border: 'none',
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.75rem',
+                fontFamily: 'var(--font-mono, monospace)',
+                fontWeight: 700,
+                borderRadius: '2px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>🌓</span>
+              <span>02 Mars Monochrome</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveExperience('03_GLOBE')}
+              style={{
+                background: activeExperience === '03_GLOBE' ? '#ffffff' : 'transparent',
+                color: activeExperience === '03_GLOBE' ? '#000000' : '#a1a1aa',
+                border: 'none',
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.75rem',
+                fontFamily: 'var(--font-mono, monospace)',
+                fontWeight: 700,
+                borderRadius: '2px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>🪐</span>
+              <span>03 3D Globe</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveExperience('04_ATLAS')}
+              style={{
+                background: activeExperience === '04_ATLAS' ? '#ffffff' : 'transparent',
+                color: activeExperience === '04_ATLAS' ? '#000000' : '#a1a1aa',
+                border: 'none',
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.75rem',
+                fontFamily: 'var(--font-mono, monospace)',
+                fontWeight: 700,
+                borderRadius: '2px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>🌐</span>
+              <span>04 2D Atlas</span>
+            </button>
+          </div>
+
+          {/* Right Header Controls: Active Data Badge & Fullscreen Launch */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                background: '#0e0e11',
+                border: '1px solid #222226',
+                padding: '0.4rem 0.75rem',
+                borderRadius: '3px',
+                fontFamily: 'var(--font-mono, monospace)',
+                fontSize: '0.68rem',
+                color: '#a1a1aa',
+                letterSpacing: '0.04em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background:
+                    activeExperience === '01_EXPLORER'
+                      ? '#ea580c'
+                      : activeExperience === '02_MONOCHROME'
+                      ? '#ffffff'
+                      : activeExperience === '03_GLOBE'
+                      ? '#38bdf8'
+                      : '#34d399',
+                }}
+              />
+              <span>
+                {activeExperience === '01_EXPLORER' && 'VIKING MDIM 2.1 (232m) • OBSERVED'}
+                {activeExperience === '02_MONOCHROME' && 'MOLA SHADED RELIEF (463m) • DERIVED'}
+                {activeExperience === '03_GLOBE' && 'THREE.JS SPHERE (R = 3,396.19 km) • IAU 2015'}
+                {activeExperience === '04_ATLAS' && 'JEZERO TWIN (1m/20m) • MULTI-SCALE'}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('map-explorer', getCorrespondingTab(activeExperience))}
+              style={{
+                background: '#141418',
+                border: '1px solid #303036',
+                color: '#ffffff',
+                padding: '0.4rem 0.95rem',
+                fontSize: '0.75rem',
+                fontFamily: 'var(--font-mono, monospace)',
+                fontWeight: 700,
+                borderRadius: '3px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#ffffff'
+                e.currentTarget.style.background = '#1e1e24'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#303036'
+                e.currentTarget.style.background = '#141418'
+              }}
+            >
+              <span>OPEN FULLSCREEN WORKSPACE</span>
+              <span>↗</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Viewport Frame with Live Active Experience */}
         <div
           style={{
             position: 'relative',
-            height: 'clamp(480px, 58vh, 660px)',
+            height: 'clamp(500px, 62vh, 700px)',
             width: '100%',
             background: '#09090b',
             border: '1px solid #222226',
             borderRadius: '4px',
             overflow: 'hidden',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.7)',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.75)',
           }}
         >
-          {/* Authentic NASA-backed Interactive Global Mars Atlas */}
-          <GlobalMarsMap
-            onEnterJezero={() => {
-              onNavigate('map-explorer', 'REGIONAL_MAP')
-            }}
-          />
+
+          {/* 01. Mars Explorer (Natural Colour) */}
+          {activeExperience === '01_EXPLORER' && (
+            <GlobalMarsMap
+              key="stage-natural"
+              compact={true}
+              displayMode="natural"
+              initialBasemapId="viking_mdim21"
+              onEnterJezero={() => onNavigate('map-explorer', 'REGIONAL_MAP')}
+            />
+          )}
+
+          {/* 02. Mars Monochrome (Grayscale Relief) */}
+          {activeExperience === '02_MONOCHROME' && (
+            <GlobalMarsMap
+              key="stage-monochrome"
+              compact={true}
+              displayMode="monochrome"
+              initialBasemapId="mola_shaded_relief"
+              onEnterJezero={() => onNavigate('map-explorer', 'REGIONAL_MAP')}
+            />
+          )}
+
+          {/* 03. 3D Mars Globe (Interactive Three.js) */}
+          {activeExperience === '03_GLOBE' && (
+            <GlobalMarsGlobe3D
+              key="stage-globe"
+              onEnterJezero={() => onNavigate('map-explorer', 'REGIONAL_MAP')}
+              onEnterRegion={() => onNavigate('map-explorer', 'REGIONAL_MAP')}
+            />
+          )}
+
+          {/* 04. 2D Mars Atlas (Cartographic Layers) */}
+          {activeExperience === '04_ATLAS' && (
+            <GlobalMarsMap
+              key="stage-atlas"
+              compact={true}
+              displayMode="atlas"
+              initialBasemapId="mola_color_topography"
+              onEnterJezero={() => onNavigate('map-explorer', 'REGIONAL_MAP')}
+            />
+          )}
         </div>
       </section>
 
       {/* =========================================================================
-          4. EXPLORATION NAVIGATION (THREE ELEGANT DESTINATIONS)
+          3. FOUR EXPLORATION EXPERIENCES (FOUR LARGE DISTINCT NAVIGATION CARDS)
           ========================================================================= */}
       <section style={{ marginBottom: '3.5rem' }}>
         <div
           style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #1f1f23',
+            paddingBottom: '0.75rem',
+            marginBottom: '1.5rem',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'var(--font-mono, monospace)',
+              fontSize: '0.72rem',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: '#ffffff',
+              fontWeight: 800,
+            }}
+          >
+            FOUR EXPLORATION EXPERIENCES
+          </span>
+
+          <span
+            style={{
+              fontFamily: 'var(--font-mono, monospace)',
+              fontSize: '0.7rem',
+              color: '#71717a',
+            }}
+          >
+            SELECT AN ENVIRONMENT TO LAUNCH
+          </span>
+        </div>
+
+        <div
+          style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))',
             gap: '1.25rem',
           }}
         >
-          {/* DESTINATION 1: 3D GLOBE */}
+          {/* CARD 01: MARS EXPLORER */}
+          <div
+            onClick={() => onNavigate('map-explorer', 'MARS_EXPLORER')}
+            style={{
+              background: '#0d0d10',
+              border: '1px solid #1f1f23',
+              borderRadius: '4px',
+              padding: '1.75rem 1.5rem',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              minHeight: '310px',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#ea580c'
+              e.currentTarget.style.background = '#121217'
+              e.currentTarget.style.transform = 'translateY(-2px)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#1f1f23'
+              e.currentTarget.style.background = '#0d0d10'
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    color: '#ea580c',
+                  }}
+                >
+                  01 // NATURAL COLOUR
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '0.62rem',
+                    background: 'rgba(234, 88, 12, 0.12)',
+                    border: '1px solid rgba(234, 88, 12, 0.3)',
+                    color: '#fb923c',
+                    padding: '2px 6px',
+                    borderRadius: '2px',
+                  }}
+                >
+                  VIKING MDIM 2.1
+                </span>
+              </div>
+
+              <h2
+                style={{
+                  margin: '0 0 0.5rem',
+                  fontSize: '1.5rem',
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                  color: '#ffffff',
+                }}
+              >
+                Mars Explorer
+              </h2>
+
+              <p
+                style={{
+                  margin: '0 0 1rem',
+                  fontSize: '0.85rem',
+                  color: '#d4d4d8',
+                  fontWeight: 500,
+                  lineHeight: 1.4,
+                }}
+              >
+                Full-spectrum natural-colour visual exploration of authentic Martian surface terrain.
+              </p>
+
+              <p style={{ margin: 0, color: '#8e8e93', fontSize: '0.82rem', lineHeight: 1.55 }}>
+                Navigate across volcanic shields, ancient fluvial deltas, and impact structures using USGS-controlled true-albedo orbital mosaics. Verified planetary science imagery with zero artistic fabrication.
+              </p>
+            </div>
+
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  fontSize: '0.7rem',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  color: '#71717a',
+                  marginBottom: '1rem',
+                }}
+              >
+                <span>• 232 m/px</span>
+                <span>• True Albedo</span>
+                <span>• Landmark Fly-To</span>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #1a1a1e',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '0.74rem',
+                  color: '#fb923c',
+                  fontWeight: 700,
+                }}
+              >
+                <span>NASA / USGS VERIFIED</span>
+                <span>LAUNCH EXPLORER →</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 02: MARS MONOCHROME */}
+          <div
+            onClick={() => onNavigate('map-explorer', 'MARS_MONOCHROME')}
+            style={{
+              background: '#0d0d10',
+              border: '1px solid #1f1f23',
+              borderRadius: '4px',
+              padding: '1.75rem 1.5rem',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              minHeight: '310px',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#ffffff'
+              e.currentTarget.style.background = '#121217'
+              e.currentTarget.style.transform = 'translateY(-2px)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#1f1f23'
+              e.currentTarget.style.background = '#0d0d10'
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    color: '#ffffff',
+                  }}
+                >
+                  02 // MONOCHROME
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '0.62rem',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    color: '#ffffff',
+                    padding: '2px 6px',
+                    borderRadius: '2px',
+                  }}
+                >
+                  MOLA SHADED RELIEF
+                </span>
+              </div>
+
+              <h2
+                style={{
+                  margin: '0 0 0.5rem',
+                  fontSize: '1.5rem',
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                  color: '#ffffff',
+                }}
+              >
+                Mars Monochrome
+              </h2>
+
+              <p
+                style={{
+                  margin: '0 0 1rem',
+                  fontSize: '0.85rem',
+                  color: '#d4d4d8',
+                  fontWeight: 500,
+                  lineHeight: 1.4,
+                }}
+              >
+                Pure black-and-white planetary cartography engineered for structural and terrain analysis.
+              </p>
+
+              <p style={{ margin: 0, color: '#8e8e93', fontSize: '0.82rem', lineHeight: 1.55 }}>
+                Stripping away surface albedo color reveals crater rims, grabens, fault scarps, and elevation gradients with maximum clarity. Preserves the clean minimalist monochrome visual identity in an interactive exploration environment.
+              </p>
+            </div>
+
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  fontSize: '0.7rem',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  color: '#71717a',
+                  marginBottom: '1rem',
+                }}
+              >
+                <span>• 463 m/px</span>
+                <span>• High-Contrast Relief</span>
+                <span>• Morphological GIS</span>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #1a1a1e',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '0.74rem',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                }}
+              >
+                <span>AEROSPACE MONOCHROME</span>
+                <span>LAUNCH MONOCHROME →</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 03: 3D MARS GLOBE */}
           <div
             onClick={() => onNavigate('map-explorer', 'GLOBAL_GLOBE')}
             style={{
@@ -220,12 +722,14 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              minHeight: '210px',
+              minHeight: '310px',
               transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              position: 'relative',
+              overflow: 'hidden',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#ffffff'
-              e.currentTarget.style.background = '#131317'
+              e.currentTarget.style.borderColor = '#38bdf8'
+              e.currentTarget.style.background = '#121217'
               e.currentTarget.style.transform = 'translateY(-2px)'
             }}
             onMouseLeave={(e) => {
@@ -235,62 +739,98 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
             }}
           >
             <div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                  marginBottom: '0.6rem',
-                }}
-              >
-                <h2
-                  style={{
-                    margin: 0,
-                    fontSize: '1.25rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                    color: '#ffffff',
-                    fontFamily: 'var(--font-mono, monospace)',
-                  }}
-                >
-                  3D Globe
-                </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <span
                   style={{
                     fontFamily: 'var(--font-mono, monospace)',
-                    fontSize: '0.65rem',
-                    color: '#71717a',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    color: '#38bdf8',
                   }}
                 >
-                  SPHERE
+                  03 // SPHERICAL ORBIT
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '0.62rem',
+                    background: 'rgba(56, 189, 248, 0.12)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    color: '#7dd3fc',
+                    padding: '2px 6px',
+                    borderRadius: '2px',
+                  }}
+                >
+                  THREE.JS WEBGL
                 </span>
               </div>
-              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.88rem', lineHeight: 1.5 }}>
-                Interactive spherical Mars exploration. Free orbital rotation, real physical radius (R = 3,396.19 km), and planetary feature inspection.
+
+              <h2
+                style={{
+                  margin: '0 0 0.5rem',
+                  fontSize: '1.5rem',
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                  color: '#ffffff',
+                }}
+              >
+                3D Mars Globe
+              </h2>
+
+              <p
+                style={{
+                  margin: '0 0 1rem',
+                  fontSize: '0.85rem',
+                  color: '#d4d4d8',
+                  fontWeight: 500,
+                  lineHeight: 1.4,
+                }}
+              >
+                Fully interactive Three.js planetary sphere with real physical radius and orbital camera.
+              </p>
+
+              <p style={{ margin: 0, color: '#8e8e93', fontSize: '0.82rem', lineHeight: 1.55 }}>
+                Built on the IAU 2015 Mars sphere (R = 3,396.19 km). Free orbital rotation, multi-tier altitude zoom, atmospheric limb glow, surface raycasting, and smooth camera fly-to targeting to historical landing sites.
               </p>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: '1.25rem',
-                borderTop: '1px solid #1a1a1e',
-                marginTop: '1.25rem',
-                fontFamily: 'var(--font-mono, monospace)',
-                fontSize: '0.72rem',
-                color: '#ffffff',
-                fontWeight: 600,
-              }}
-            >
-              <span style={{ color: '#71717a' }}>THREE.JS • WEBGL</span>
-              <span>LAUNCH GLOBE →</span>
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  fontSize: '0.7rem',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  color: '#71717a',
+                  marginBottom: '1rem',
+                }}
+              >
+                <span>• R = 3,396.19 km</span>
+                <span>• 60 FPS Orbit</span>
+                <span>• Fly-To Targeting</span>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #1a1a1e',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '0.74rem',
+                  color: '#7dd3fc',
+                  fontWeight: 700,
+                }}
+              >
+                <span>SPHERICAL GEODESY</span>
+                <span>ORBIT 3D GLOBE →</span>
+              </div>
             </div>
           </div>
 
-          {/* DESTINATION 2: 2D ATLAS */}
+          {/* CARD 04: 2D MARS ATLAS */}
           <div
             onClick={() => onNavigate('map-explorer', 'GLOBAL_MAP')}
             style={{
@@ -302,12 +842,14 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              minHeight: '210px',
+              minHeight: '310px',
               transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              position: 'relative',
+              overflow: 'hidden',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#ffffff'
-              e.currentTarget.style.background = '#131317'
+              e.currentTarget.style.borderColor = '#34d399'
+              e.currentTarget.style.background = '#121217'
               e.currentTarget.style.transform = 'translateY(-2px)'
             }}
             onMouseLeave={(e) => {
@@ -317,147 +859,101 @@ export const MissionOverviewPage: React.FC<MissionOverviewPageProps> = ({
             }}
           >
             <div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                  marginBottom: '0.6rem',
-                }}
-              >
-                <h2
-                  style={{
-                    margin: 0,
-                    fontSize: '1.25rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                    color: '#ffffff',
-                    fontFamily: 'var(--font-mono, monospace)',
-                  }}
-                >
-                  2D Atlas
-                </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <span
                   style={{
                     fontFamily: 'var(--font-mono, monospace)',
-                    fontSize: '0.65rem',
-                    color: '#71717a',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    color: '#34d399',
                   }}
                 >
-                  CYLINDRICAL
+                  04 // SCIENTIFIC CARTOGRAPHY
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono, monospace)',
+                    fontSize: '0.62rem',
+                    background: 'rgba(52, 211, 153, 0.12)',
+                    border: '1px solid rgba(52, 211, 153, 0.3)',
+                    color: '#86efac',
+                    padding: '2px 6px',
+                    borderRadius: '2px',
+                  }}
+                >
+                  1M / 20M DIGITAL TWIN
                 </span>
               </div>
-              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.88rem', lineHeight: 1.5 }}>
-                Global planetary cartography. Full-resolution MOLA elevation shading, THEMIS thermal mosaic, continuous longitude tiling, and live point sampling.
+
+              <h2
+                style={{
+                  margin: '0 0 0.5rem',
+                  fontSize: '1.5rem',
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                  color: '#ffffff',
+                }}
+              >
+                2D Mars Atlas
+              </h2>
+
+              <p
+                style={{
+                  margin: '0 0 1rem',
+                  fontSize: '0.85rem',
+                  color: '#d4d4d8',
+                  fontWeight: 500,
+                  lineHeight: 1.4,
+                }}
+              >
+                High-performance GIS cartography linking global elevation to the Jezero Crater Digital Twin.
+              </p>
+
+              <p style={{ margin: 0, color: '#8e8e93', fontSize: '0.82rem', lineHeight: 1.55 }}>
+                Plate Carrée projection equipped with local disk tile proxying, canvas vector rendering, 45.2 km Perseverance traverse ground truth, CRISM mineral units, and 12 multi-resolution regional dossiers.
               </p>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: '1.25rem',
-                borderTop: '1px solid #1a1a1e',
-                marginTop: '1.25rem',
-                fontFamily: 'var(--font-mono, monospace)',
-                fontSize: '0.72rem',
-                color: '#ffffff',
-                fontWeight: 600,
-              }}
-            >
-              <span style={{ color: '#71717a' }}>PLATE CARRÉE • 463M</span>
-              <span>OPEN 2D MAP →</span>
-            </div>
-          </div>
-
-          {/* DESTINATION 3: REGIONAL ATLAS */}
-          <div
-            onClick={() => onNavigate('map-explorer', 'REGIONAL_MAP')}
-            style={{
-              background: '#0d0d10',
-              border: '1px solid #1f1f23',
-              borderRadius: '4px',
-              padding: '1.75rem 1.5rem',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: '210px',
-              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#ffffff'
-              e.currentTarget.style.background = '#131317'
-              e.currentTarget.style.transform = 'translateY(-2px)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#1f1f23'
-              e.currentTarget.style.background = '#0d0d10'
-              e.currentTarget.style.transform = 'translateY(0)'
-            }}
-          >
             <div>
               <div
                 style={{
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                  marginBottom: '0.6rem',
+                  gap: '0.75rem',
+                  fontSize: '0.7rem',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  color: '#71717a',
+                  marginBottom: '1rem',
                 }}
               >
-                <h2
-                  style={{
-                    margin: 0,
-                    fontSize: '1.25rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                    color: '#ffffff',
-                    fontFamily: 'var(--font-mono, monospace)',
-                  }}
-                >
-                  Regional Atlas
-                </h2>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono, monospace)',
-                    fontSize: '0.65rem',
-                    color: '#71717a',
-                  }}
-                >
-                  12 SITES
-                </span>
+                <span>• 1 m/px Jezero</span>
+                <span>• Canvas Vectors</span>
+                <span>• 37 Data Layers</span>
               </div>
-              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.88rem', lineHeight: 1.5 }}>
-                Explore 12 priority planetary regions including Jezero Delta, Gale Crater, Olympus Mons summit, and Valles Marineris canyon systems.
-              </p>
-            </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: '1.25rem',
-                borderTop: '1px solid #1a1a1e',
-                marginTop: '1.25rem',
-                fontFamily: 'var(--font-mono, monospace)',
-                fontSize: '0.72rem',
-                color: '#ffffff',
-                fontWeight: 600,
-              }}
-            >
-              <span style={{ color: '#71717a' }}>MULTI-SCALE DOSSIERS</span>
-              <span>SELECT REGION →</span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #1a1a1e',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '0.74rem',
+                  color: '#86efac',
+                  fontWeight: 700,
+                }}
+              >
+                <span>LEAFLET PLANETARY GIS</span>
+                <span>LAUNCH 2D ATLAS →</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* =========================================================================
-          5. MISSION OPERATIONS & SCIENTIFIC WORKSPACES (ELEGANT SUBSYSTEMS)
+          4. MISSION OPERATIONS & SCIENTIFIC WORKSPACES (COMPACT LAUNCHPADS)
           ========================================================================= */}
       <section>
         <div

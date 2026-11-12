@@ -18,12 +18,21 @@ import {
   type LayerCoverageDTO,
 } from '../api/atlas'
 
-interface GlobalMarsMapProps {
+export interface GlobalMarsMapProps {
   onEnterJezero?: () => void
   onSelectCoordinates?: (coords: { lat: number; lon: number }) => void
+  initialBasemapId?: string
+  displayMode?: 'natural' | 'monochrome' | 'atlas' | 'default'
+  compact?: boolean
 }
 
-export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMarsMapProps) {
+export function GlobalMarsMap({
+  onEnterJezero,
+  onSelectCoordinates,
+  initialBasemapId,
+  displayMode = 'default',
+  compact = false,
+}: GlobalMarsMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const activeTileLayerRef = useRef<L.TileLayer | L.TileLayer.WMS | null>(null)
@@ -35,7 +44,12 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
 
   // Remote data state
   const [basemaps, setBasemaps] = useState<GlobalBasemap[]>([])
-  const [selectedBasemapId, setSelectedBasemapId] = useState<string>('mola_color_topography')
+  const [selectedBasemapId, setSelectedBasemapId] = useState<string>(() => {
+    if (initialBasemapId) return initialBasemapId
+    if (displayMode === 'natural') return 'viking_mdim21'
+    if (displayMode === 'monochrome') return 'mola_shaded_relief'
+    return 'mola_color_topography'
+  })
   const [basemapOpacity, setBasemapOpacity] = useState<number>(1.0)
   const [features, setFeatures] = useState<PlanetaryFeature[]>([])
   const [landingSites, setLandingSites] = useState<MarsLandingSite[]>([])
@@ -76,6 +90,22 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
     failed: 0,
   })
 
+  // Sync basemap selection when displayMode or initialBasemapId props change (React render phase state adjustment)
+  const [prevModeProps, setPrevModeProps] = useState<{ id?: string; mode?: string }>({
+    id: initialBasemapId,
+    mode: displayMode,
+  })
+  if (initialBasemapId !== prevModeProps.id || displayMode !== prevModeProps.mode) {
+    setPrevModeProps({ id: initialBasemapId, mode: displayMode })
+    if (initialBasemapId) {
+      setSelectedBasemapId(initialBasemapId)
+    } else if (displayMode === 'natural') {
+      setSelectedBasemapId('viking_mdim21')
+    } else if (displayMode === 'monochrome') {
+      setSelectedBasemapId('mola_shaded_relief')
+    }
+  }
+
   // Load backend catalog data
   useEffect(() => {
     let cancelled = false
@@ -91,9 +121,11 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
         if (cancelled) return
         const bList = basemapRes.basemaps || []
         setBasemaps(bList)
-        const defB = bList.find((b) => b.is_default)
-        if (defB) {
-          setSelectedBasemapId(defB.id)
+        if (!initialBasemapId && displayMode !== 'natural' && displayMode !== 'monochrome') {
+          const defB = bList.find((b) => b.is_default)
+          if (defB) {
+            setSelectedBasemapId(defB.id)
+          }
         }
         setFeatures(featureRes.features)
         setLandingSites(landingRes.landing_sites)
@@ -110,7 +142,7 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [initialBasemapId, displayMode])
 
   // Handle elevation & coverage sampling at coordinates
   const handleSampleAtCoords = useCallback(async (lat: number, lon: number) => {
@@ -575,95 +607,101 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
 
   return (
     <div className="global-mars-map-wrapper">
-      {/* Top Aerospace Control Bar */}
-      <div className="global-mars-map-header">
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs font-mono font-bold tracking-wider text-white uppercase flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-            GLOBAL MARS ATLAS
-          </span>
-          <span className="text-[10px] font-mono text-[#737373] hidden xl:inline">|</span>
-          <span className="text-[10px] font-mono text-[#a3a3a3] hidden xl:inline">
-            IAU_2015:49900
-          </span>
-        </div>
+      {/* Top Aerospace Control Bar (omitted in compact embedded preview mode) */}
+      {!compact && (
+        <div className="global-mars-map-header">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs font-mono font-bold tracking-wider text-white uppercase flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+              GLOBAL MARS ATLAS
+            </span>
+            <span className="text-[10px] font-mono text-[#737373] hidden xl:inline">|</span>
+            <span className="text-[10px] font-mono text-[#a3a3a3] hidden xl:inline">
+              IAU_2015:49900
+            </span>
+          </div>
 
-        {/* Search by feature or keyword */}
-        <div className="relative max-w-xs w-full hidden md:block">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search crater, volcano, lander..."
-            className="w-full bg-[#181818] border border-[#303030] rounded px-2.5 py-1 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-white font-mono"
-          />
-          {searchResults.length > 0 && (
-            <div className="absolute top-8 left-0 w-full bg-[#181818] border border-[#303030] rounded shadow-2xl z-[1500] max-h-60 overflow-y-auto font-mono text-xs divide-y divide-[#262626]">
-              {searchResults.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleSelectSearchResult(item)}
-                  className="px-3 py-1.5 hover:bg-[#262626] cursor-pointer flex justify-between items-center"
-                >
-                  <span className="text-white">
-                    {'craft_name' in item ? item.craft_name : item.name}
-                  </span>
-                  <span className="text-[10px] text-[#737373]">
-                    {item.lat.toFixed(1)}°, {item.lon.toFixed(1)}°
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+          {/* Search by feature or keyword */}
+          <div className="relative max-w-xs w-full hidden md:block">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search crater, volcano, lander..."
+              className="w-full bg-[#181818] border border-[#303030] rounded px-2.5 py-1 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-white font-mono"
+            />
+            {searchResults.length > 0 && (
+              <div className="absolute top-8 left-0 w-full bg-[#181818] border border-[#303030] rounded shadow-2xl z-[1500] max-h-60 overflow-y-auto font-mono text-xs divide-y divide-[#262626]">
+                {searchResults.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelectSearchResult(item)}
+                    className="px-3 py-1.5 hover:bg-[#262626] cursor-pointer flex justify-between items-center"
+                  >
+                    <span className="text-white">
+                      {'craft_name' in item ? item.craft_name : item.name}
+                    </span>
+                    <span className="text-[10px] text-[#737373]">
+                      {item.lat.toFixed(1)}°, {item.lon.toFixed(1)}°
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* Quick Planetary Navigation Targets */}
-        <div className="flex items-center gap-1 overflow-x-auto max-w-md py-1">
-          <button
-            onClick={handleFocusJezero}
-            className="px-2 py-1 text-[11px] font-mono bg-[#202020] hover:bg-white hover:text-black border border-[#303030] rounded transition-colors text-white font-semibold flex items-center gap-1 shrink-0"
-            title="Focus camera on Jezero Crater Western Delta"
-          >
-            🎯 JEZERO
-          </button>
-          {navTargets
-            .filter((t) => t.id !== 'nav-jezero-delta')
-            .map((target) => (
-              <button
-                key={target.id}
-                onClick={() => handleFlyToTarget(target)}
-                className="px-2 py-1 text-[11px] font-mono bg-[#181818] hover:bg-[#262626] border border-[#303030] rounded text-[#a3a3a3] hover:text-white transition-colors shrink-0"
-              >
-                {target.name.split(' ')[0]}
-              </button>
-            ))}
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setShowInfoPanel(!showInfoPanel)}
-            className={`px-2.5 py-1 text-xs font-mono border rounded transition-colors ${
-              showInfoPanel ? 'bg-white text-black border-white' : 'bg-[#181818] text-[#a3a3a3] border-[#303030] hover:text-white'
-            }`}
-          >
-            PROVENANCE
-          </button>
-
-          {onEnterJezero && (
+          {/* Quick Planetary Navigation Targets */}
+          <div className="flex items-center gap-1 overflow-x-auto max-w-md py-1">
             <button
-              onClick={onEnterJezero}
-              className="px-3 py-1 text-xs font-mono font-bold bg-white text-black hover:bg-[#e5e5e5] rounded flex items-center gap-1.5 transition-colors shrink-0 shadow"
+              onClick={handleFocusJezero}
+              className="px-2 py-1 text-[11px] font-mono bg-[#202020] hover:bg-white hover:text-black border border-[#303030] rounded transition-colors text-white font-semibold flex items-center gap-1 shrink-0"
+              title="Focus camera on Jezero Crater Western Delta"
             >
-              ENTER JEZERO TWIN →
+              🎯 JEZERO
             </button>
-          )}
+            {navTargets
+              .filter((t) => t.id !== 'nav-jezero-delta')
+              .map((target) => (
+                <button
+                  key={target.id}
+                  onClick={() => handleFlyToTarget(target)}
+                  className="px-2 py-1 text-[11px] font-mono bg-[#181818] hover:bg-[#262626] border border-[#303030] rounded text-[#a3a3a3] hover:text-white transition-colors shrink-0"
+                >
+                  {target.name.split(' ')[0]}
+                </button>
+              ))}
+          </div>
+
+          {/* Action Controls */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowInfoPanel(!showInfoPanel)}
+              className={`px-2.5 py-1 text-xs font-mono border rounded transition-colors ${
+                showInfoPanel ? 'bg-white text-black border-white' : 'bg-[#181818] text-[#a3a3a3] border-[#303030] hover:text-white'
+              }`}
+            >
+              PROVENANCE
+            </button>
+
+            {onEnterJezero && (
+              <button
+                onClick={onEnterJezero}
+                className="px-3 py-1 text-xs font-mono font-bold bg-white text-black hover:bg-[#e5e5e5] rounded flex items-center gap-1.5 transition-colors shrink-0 shadow"
+              >
+                ENTER JEZERO TWIN →
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Map Canvas and Floating Panels */}
       <div className="global-mars-map-canvas-container">
-        <div ref={mapContainerRef} className="global-mars-map-canvas" />
+        <div
+          ref={mapContainerRef}
+          className="global-mars-map-canvas"
+          style={displayMode === 'monochrome' ? { filter: 'grayscale(100%) contrast(112%)' } : undefined}
+        />
 
         {/* Collapsible Layer Control Toggle Button */}
         <button

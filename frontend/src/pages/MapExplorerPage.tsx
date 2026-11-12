@@ -29,7 +29,13 @@ export interface MapExplorerPageProps {
 }
 
 type ViewMode = 'GRID' | 'TABLE'
-type ExplorerTab = 'GLOBAL_GLOBE' | 'GLOBAL_MAP' | 'REGIONAL_MAP' | 'CATALOGUE'
+export type ExplorerTab =
+  | 'MARS_EXPLORER'
+  | 'MARS_MONOCHROME'
+  | 'GLOBAL_GLOBE'
+  | 'GLOBAL_MAP'
+  | 'REGIONAL_MAP'
+  | 'CATALOGUE'
 
 const PRODUCT_TYPE_META: Record<
   ProductTypeCode,
@@ -75,6 +81,8 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
       const params = new URLSearchParams(window.location.search)
       const tabParam = params.get('tab')
       if (
+        tabParam === 'MARS_EXPLORER' ||
+        tabParam === 'MARS_MONOCHROME' ||
         tabParam === 'GLOBAL_GLOBE' ||
         tabParam === 'GLOBAL_MAP' ||
         tabParam === 'REGIONAL_MAP' ||
@@ -359,6 +367,52 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
       >
         <button
           type="button"
+          onClick={() => setExplorerTab('MARS_EXPLORER')}
+          style={{
+            background: explorerTab === 'MARS_EXPLORER' ? '#c2410c' : 'transparent',
+            color: explorerTab === 'MARS_EXPLORER' ? '#ffffff' : '#a1a1aa',
+            border: 'none',
+            padding: '0.35rem 0.85rem',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            fontFamily: 'var(--font-mono, monospace)',
+            cursor: 'pointer',
+            borderRadius: '2px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>🔭</span>
+          <span>01 Mars Explorer (Natural)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setExplorerTab('MARS_MONOCHROME')}
+          style={{
+            background: explorerTab === 'MARS_MONOCHROME' ? '#ffffff' : 'transparent',
+            color: explorerTab === 'MARS_MONOCHROME' ? '#000000' : '#a1a1aa',
+            border: 'none',
+            padding: '0.35rem 0.85rem',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            fontFamily: 'var(--font-mono, monospace)',
+            cursor: 'pointer',
+            borderRadius: '2px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>🌓</span>
+          <span>02 Mars Monochrome (B&W)</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setExplorerTab('GLOBAL_GLOBE')}
           style={{
             background: explorerTab === 'GLOBAL_GLOBE' ? '#ffffff' : 'transparent',
@@ -377,7 +431,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           }}
         >
           <span>🪐</span>
-          <span>3D Globe</span>
+          <span>03 3D Globe</span>
         </button>
 
         <button
@@ -400,7 +454,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           }}
         >
           <span>🌐</span>
-          <span>2D Global Atlas</span>
+          <span>04 2D Atlas</span>
         </button>
 
         <button
@@ -449,6 +503,40 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           <span>Dataset Catalogue ({totalCount})</span>
         </button>
       </div>
+
+      {/* =========================================================================
+          EXPERIENCE 01: MARS EXPLORER (NATURAL COLOUR AUTHENTIC MARS)
+          ========================================================================= */}
+      {explorerTab === 'MARS_EXPLORER' && (
+        <div style={{ height: 'calc(100vh - 165px)', minHeight: '680px', marginBottom: '0.5rem' }}>
+          <GlobalMarsMap
+            displayMode="natural"
+            initialBasemapId="viking_mdim21"
+            onEnterJezero={() => {
+              setSelectedRegionId('reg-jezero')
+              setExplorerTab('REGIONAL_MAP')
+            }}
+            onSelectCoordinates={onSelectCoords}
+          />
+        </div>
+      )}
+
+      {/* =========================================================================
+          EXPERIENCE 02: MARS MONOCHROME (AEROSPACE B&W SHADED RELIEF)
+          ========================================================================= */}
+      {explorerTab === 'MARS_MONOCHROME' && (
+        <div style={{ height: 'calc(100vh - 165px)', minHeight: '680px', marginBottom: '0.5rem' }}>
+          <GlobalMarsMap
+            displayMode="monochrome"
+            initialBasemapId="mola_shaded_relief"
+            onEnterJezero={() => {
+              setSelectedRegionId('reg-jezero')
+              setExplorerTab('REGIONAL_MAP')
+            }}
+            onSelectCoordinates={onSelectCoords}
+          />
+        </div>
+      )}
 
       {/* =========================================================================
           TAB 0: GLOBAL 3D MARS GLOBE (MILESTONE 3.0)

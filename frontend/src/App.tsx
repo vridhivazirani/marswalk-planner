@@ -91,11 +91,13 @@ function App() {
   // Mission profile and weights state
   const [activeProfile, setActiveProfile] = useState<string>('BALANCED')
   const [weights, setWeights] = useState<CostmapWeightsDTO>(PROFILES.BALANCED)
-  const [mapExplorerTab, setMapExplorerTab] = useState<'GLOBAL_GLOBE' | 'GLOBAL_MAP' | 'REGIONAL_MAP' | 'CATALOGUE'>('GLOBAL_GLOBE')
+  const [mapExplorerTab, setMapExplorerTab] = useState<
+    'MARS_EXPLORER' | 'MARS_MONOCHROME' | 'GLOBAL_GLOBE' | 'GLOBAL_MAP' | 'REGIONAL_MAP' | 'CATALOGUE'
+  >('GLOBAL_GLOBE')
 
   const handleNavigateWithTab = (
     page: PageId,
-    tab?: 'GLOBAL_GLOBE' | 'GLOBAL_MAP' | 'REGIONAL_MAP' | 'CATALOGUE'
+    tab?: 'MARS_EXPLORER' | 'MARS_MONOCHROME' | 'GLOBAL_GLOBE' | 'GLOBAL_MAP' | 'REGIONAL_MAP' | 'CATALOGUE'
   ) => {
     if (tab) {
       setMapExplorerTab(tab)
