@@ -67,7 +67,8 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
 
   // UI Drawer / Info Panels
   const [showInfoPanel, setShowInfoPanel] = useState<boolean>(false)
-  const [showLegend, setShowLegend] = useState<boolean>(true)
+  const [isLayersOpen, setIsLayersOpen] = useState<boolean>(false)
+  const [isElevationOpen, setIsElevationOpen] = useState<boolean>(false)
   const [currentZoom, setCurrentZoom] = useState<number>(3)
   const [tileStats, setTileStats] = useState<{ total: number; loaded: number; failed: number }>({
     total: 0,
@@ -627,169 +628,223 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
       <div className="global-mars-map-canvas-container">
         <div ref={mapContainerRef} className="global-mars-map-canvas" />
 
-        {/* Top-Left Basemap & Layer Control Box */}
-        <div className="global-map-panel global-map-panel-top-left space-y-3">
-          <div className="flex items-center justify-between border-b border-[#262626] pb-2">
-            <span className="font-bold text-white uppercase tracking-wider">PLANETARY BASEMAP</span>
-            {activeBasemap && (
-              <span className="text-[10px] px-1.5 py-0.5 border border-[#303030] rounded text-[#a3a3a3]">
-                {activeBasemap.epistemic_class}
-              </span>
-            )}
-          </div>
+        {/* Collapsible Layer Control Toggle Button */}
+        <button
+          type="button"
+          onClick={() => setIsLayersOpen(!isLayersOpen)}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            left: '12px',
+            zIndex: 1000,
+            background: isLayersOpen ? '#ffffff' : 'rgba(18, 18, 20, 0.94)',
+            color: isLayersOpen ? '#000000' : '#f5f5f5',
+            border: '1px solid #3f3f46',
+            borderRadius: '3px',
+            padding: '0.35rem 0.75rem',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            fontFamily: 'var(--font-mono, monospace)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(6px)',
+          }}
+          title="Toggle Planetary Basemaps & Overlays Panel"
+        >
+          <span>☰</span>
+          <span>LAYERS</span>
+          <span style={{ fontSize: '0.62rem', padding: '0.05rem 0.35rem', borderRadius: '10px', background: isLayersOpen ? '#000000' : '#27272a', color: isLayersOpen ? '#ffffff' : '#a1a1aa' }}>
+            {[showFeatures, showLandingSites, showGeology, showJezeroBounds].filter(Boolean).length + 1}
+          </span>
+        </button>
 
-          {/* Basemap Selection */}
-          <div className="space-y-1">
-            <label className="text-[10px] text-[#737373] uppercase tracking-wider block">
-              Layer Source:
-            </label>
-            <select
-              value={selectedBasemapId}
-              onChange={(e) => {
-                setSelectedBasemapId(e.target.value)
-                setTileStats({ total: 0, loaded: 0, failed: 0 })
-              }}
-              className="w-full bg-[#111111] border border-[#303030] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-white transition-colors cursor-pointer"
-            >
-              {basemaps.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-
-            {/* Basemap Opacity Slider */}
-            <div className="flex items-center justify-between pt-1 text-[10px] text-[#737373]">
-              <span>Opacity:</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min="0.1"
-                  max="1.0"
-                  step="0.05"
-                  value={basemapOpacity}
-                  onChange={(e) => setBasemapOpacity(parseFloat(e.target.value))}
-                  className="w-24 accent-white cursor-pointer"
-                />
-                <span className="text-white w-7 text-right">{Math.round(basemapOpacity * 100)}%</span>
+        {/* Top-Left Basemap & Layer Control Box (Collapsible) */}
+        {isLayersOpen && (
+          <div
+            className="global-map-panel global-map-panel-top-left space-y-3"
+            style={{
+              top: '48px',
+              left: '12px',
+              maxHeight: 'calc(100% - 90px)',
+              overflowY: 'auto',
+              minWidth: '260px',
+            }}
+          >
+            <div className="flex items-center justify-between border-b border-[#262626] pb-2">
+              <span className="font-bold text-white uppercase tracking-wider">PLANETARY LAYERS</span>
+              <div className="flex items-center gap-1.5">
+                {activeBasemap && (
+                  <span className="text-[10px] px-1.5 py-0.5 border border-[#303030] rounded text-[#a3a3a3]">
+                    {activeBasemap.epistemic_class}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsLayersOpen(false)}
+                  className="text-[#737373] hover:text-white px-1 font-bold text-xs"
+                  title="Close Layers Panel"
+                >
+                  ✕
+                </button>
               </div>
             </div>
 
-            {activeBasemap && (
-              <div className="text-[10px] text-[#a3a3a3] mt-1 line-clamp-2 leading-relaxed">
-                {activeBasemap.description}
-              </div>
-            )}
-          </div>
-
-          {/* Layer Overlays Toggles */}
-          <div className="border-t border-[#262626] pt-2 space-y-2">
-            <div className="text-[10px] text-[#737373] uppercase tracking-wider">Planetary Overlays:</div>
-
-            <label className="flex items-center justify-between cursor-pointer hover:text-white transition-colors">
-              <span className="text-[#a3a3a3] flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-white inline-block"></span>
-                IAU Features (Craters/Mons)
-              </span>
-              <input
-                type="checkbox"
-                checked={showFeatures}
-                onChange={(e) => setShowFeatures(e.target.checked)}
-                className="accent-white cursor-pointer"
-              />
-            </label>
-
-            <label className="flex items-center justify-between cursor-pointer hover:text-white transition-colors">
-              <span className="text-[#a3a3a3] flex items-center gap-1.5">
-                <span className="w-2 h-2 border border-white inline-block"></span>
-                Historical Landing Sites
-              </span>
-              <input
-                type="checkbox"
-                checked={showLandingSites}
-                onChange={(e) => setShowLandingSites(e.target.checked)}
-                className="accent-white cursor-pointer"
-              />
-            </label>
-
+            {/* Basemap Selection */}
             <div className="space-y-1">
-              <label className="flex items-center justify-between cursor-pointer hover:text-white transition-colors">
-                <span className="text-[#a3a3a3] flex items-center gap-1.5">
-                  <span className="w-2 h-2 bg-[#8c564b] inline-block"></span>
-                  USGS SIM-3292 Geology
-                </span>
-                <input
-                  type="checkbox"
-                  checked={showGeology}
-                  onChange={(e) => setShowGeology(e.target.checked)}
-                  className="accent-white cursor-pointer"
-                />
+              <label className="text-[10px] text-[#737373] uppercase tracking-wider block">
+                Layer Source:
               </label>
-              {showGeology && (
-                <div className="flex items-center justify-between pl-3.5 text-[10px] text-[#737373]">
-                  <span>Overlay:</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="range"
-                      min="0.1"
-                      max="1.0"
-                      step="0.05"
-                      value={geologyOpacity}
-                      onChange={(e) => setGeologyOpacity(parseFloat(e.target.value))}
-                      className="w-20 accent-white cursor-pointer"
-                    />
-                    <span className="text-white w-6 text-right">{Math.round(geologyOpacity * 100)}%</span>
-                  </div>
+              <select
+                value={selectedBasemapId}
+                onChange={(e) => {
+                  setSelectedBasemapId(e.target.value)
+                  setTileStats({ total: 0, loaded: 0, failed: 0 })
+                }}
+                className="w-full bg-[#111111] border border-[#303030] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-white transition-colors cursor-pointer"
+              >
+                {basemaps.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Basemap Opacity Slider */}
+              <div className="flex items-center justify-between pt-1 text-[10px] text-[#737373]">
+                <span>Opacity:</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="1.0"
+                    step="0.05"
+                    value={basemapOpacity}
+                    onChange={(e) => setBasemapOpacity(parseFloat(e.target.value))}
+                    className="w-24 accent-white cursor-pointer"
+                  />
+                  <span className="text-white w-7 text-right">{Math.round(basemapOpacity * 100)}%</span>
+                </div>
+              </div>
+
+              {activeBasemap && (
+                <div className="text-[10px] text-[#a3a3a3] mt-1 line-clamp-2 leading-relaxed">
+                  {activeBasemap.description}
                 </div>
               )}
             </div>
 
-            <label className="flex items-center justify-between cursor-pointer hover:text-white transition-colors">
-              <span className="text-[#a3a3a3] flex items-center gap-1.5">
-                <span className="w-2 h-2 border border-dashed border-white inline-block"></span>
-                Jezero Study Bounding Box
-              </span>
-              <input
-                type="checkbox"
-                checked={showJezeroBounds}
-                onChange={(e) => setShowJezeroBounds(e.target.checked)}
-                className="accent-white cursor-pointer"
-              />
-            </label>
-          </div>
+            {/* Layer Overlays Toggles */}
+            <div className="border-t border-[#262626] pt-2 space-y-2">
+              <div className="text-[10px] text-[#737373] uppercase tracking-wider">Planetary Overlays:</div>
 
-          {/* Coordinate Jump Form */}
-          <div className="border-t border-[#262626] pt-2">
-            <form onSubmit={handleJumpToCoords} className="space-y-1.5">
-              <div className="text-[10px] text-[#737373] uppercase tracking-wider">Coordinate Jump:</div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <label className="flex items-center justify-between cursor-pointer hover:text-white transition-colors">
+                <span className="text-[#a3a3a3] flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-white inline-block"></span>
+                  IAU Features (Craters/Mons)
+                </span>
                 <input
-                  type="text"
-                  value={coordInputLat}
-                  onChange={(e) => setCoordInputLat(e.target.value)}
-                  placeholder="Lat (°N)"
-                  className="bg-[#111111] border border-[#303030] rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-white font-mono"
+                  type="checkbox"
+                  checked={showFeatures}
+                  onChange={(e) => setShowFeatures(e.target.checked)}
+                  className="accent-white cursor-pointer"
                 />
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer hover:text-white transition-colors">
+                <span className="text-[#a3a3a3] flex items-center gap-1.5">
+                  <span className="w-2 h-2 border border-white inline-block"></span>
+                  Historical Landing Sites
+                </span>
                 <input
-                  type="text"
-                  value={coordInputLon}
-                  onChange={(e) => setCoordInputLon(e.target.value)}
-                  placeholder="Lon (°E)"
-                  className="bg-[#111111] border border-[#303030] rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-white font-mono"
+                  type="checkbox"
+                  checked={showLandingSites}
+                  onChange={(e) => setShowLandingSites(e.target.checked)}
+                  className="accent-white cursor-pointer"
                 />
+              </label>
+
+              <div className="space-y-1">
+                <label className="flex items-center justify-between cursor-pointer hover:text-white transition-colors">
+                  <span className="text-[#a3a3a3] flex items-center gap-1.5">
+                    <span className="w-2 h-2 bg-[#8c564b] inline-block"></span>
+                    USGS SIM-3292 Geology
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showGeology}
+                    onChange={(e) => setShowGeology(e.target.checked)}
+                    className="accent-white cursor-pointer"
+                  />
+                </label>
+                {showGeology && (
+                  <div className="flex items-center justify-between pl-3.5 text-[10px] text-[#737373]">
+                    <span>Overlay:</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="1.0"
+                        step="0.05"
+                        value={geologyOpacity}
+                        onChange={(e) => setGeologyOpacity(parseFloat(e.target.value))}
+                        className="w-20 accent-white cursor-pointer"
+                      />
+                      <span className="text-white w-6 text-right">{Math.round(geologyOpacity * 100)}%</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <button
-                type="submit"
-                className="w-full bg-[#202020] hover:bg-white hover:text-black border border-[#303030] rounded py-1 text-[10px] font-semibold tracking-wider uppercase transition-colors"
-              >
-                GO TO COORDINATES
-              </button>
-              {coordError && (
-                <div className="text-[10px] text-red-400">{coordError}</div>
-              )}
-            </form>
+
+              <label className="flex items-center justify-between cursor-pointer hover:text-white transition-colors">
+                <span className="text-[#a3a3a3] flex items-center gap-1.5">
+                  <span className="w-2 h-2 border border-dashed border-white inline-block"></span>
+                  Jezero Study Bounding Box
+                </span>
+                <input
+                  type="checkbox"
+                  checked={showJezeroBounds}
+                  onChange={(e) => setShowJezeroBounds(e.target.checked)}
+                  className="accent-white cursor-pointer"
+                />
+              </label>
+            </div>
+
+            {/* Coordinate Jump Form */}
+            <div className="border-t border-[#262626] pt-2">
+              <form onSubmit={handleJumpToCoords} className="space-y-1.5">
+                <div className="text-[10px] text-[#737373] uppercase tracking-wider">Coordinate Jump:</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <input
+                    type="text"
+                    value={coordInputLat}
+                    onChange={(e) => setCoordInputLat(e.target.value)}
+                    placeholder="Lat (°N)"
+                    className="bg-[#111111] border border-[#303030] rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-white font-mono"
+                  />
+                  <input
+                    type="text"
+                    value={coordInputLon}
+                    onChange={(e) => setCoordInputLon(e.target.value)}
+                    placeholder="Lon (°E)"
+                    className="bg-[#111111] border border-[#303030] rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none focus:border-white font-mono"
+                  />
+                </div>
+                {coordError && (
+                  <div className="text-[10px] text-red-400 font-mono">{coordError}</div>
+                )}
+                <button
+                  type="submit"
+                  className="w-full bg-[#202020] hover:bg-white hover:text-black border border-[#303030] rounded py-1 text-[11px] text-white font-semibold transition-colors"
+                >
+                  Jump to Location
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Selected Entity Inspector Card (Slide up from bottom-left) */}
         {selectedEntity && (
@@ -846,106 +901,140 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
           </div>
         )}
 
-        {/* Floating Topographic Elevation Legend & Sampling HUD (Top-Right) */}
-        <div className="global-map-panel global-map-panel-top-right space-y-2.5">
-          <div className="flex items-center justify-between border-b border-[#262626] pb-1.5">
-            <span className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-              <span>⛰️</span> ELEVATION & SAMPLING
+        {/* Collapsible Elevation & Sampling Toggle Pill (Top-Right) */}
+        <button
+          type="button"
+          onClick={() => setIsElevationOpen(!isElevationOpen)}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            zIndex: 1000,
+            background: isElevationOpen ? '#ffffff' : 'rgba(18, 18, 20, 0.94)',
+            color: isElevationOpen ? '#000000' : '#f5f5f5',
+            border: '1px solid #3f3f46',
+            borderRadius: '3px',
+            padding: '0.35rem 0.75rem',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            fontFamily: 'var(--font-mono, monospace)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(6px)',
+          }}
+          title="Toggle Elevation & Sampling Panel"
+        >
+          <span>⛰️</span>
+          <span>ELEVATION</span>
+          {elevationSample && (
+            <span style={{ fontSize: '0.62rem', padding: '0.05rem 0.35rem', borderRadius: '10px', background: isElevationOpen ? '#000000' : '#14532d', color: isElevationOpen ? '#ffffff' : '#86efac' }}>
+              {elevationSample.elevation_m > 0 ? '+' : ''}{Math.round(elevationSample.elevation_m)}m
             </span>
-            <button
-              onClick={() => setShowLegend(!showLegend)}
-              className="text-[10px] text-[#737373] hover:text-white"
-            >
-              {showLegend ? 'HIDE' : 'SHOW'}
-            </button>
-          </div>
-
-          {showLegend && (
-            <>
-              {/* Dynamic Color Scale Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-[#737373]">
-                  <span>-8,200 m (Hellas)</span>
-                  <span>0 m (Datum)</span>
-                  <span>+21,287 m (Olympus)</span>
-                </div>
-                <div
-                  className="w-full h-3 rounded"
-                  style={{
-                    background:
-                      'linear-gradient(to right, #000033 0%, #0000aa 15%, #00ffff 30%, #00aa00 45%, #ffff00 65%, #aa0000 85%, #ffffff 100%)',
-                  }}
-                />
-                <div className="text-[9px] text-[#737373] text-center">
-                  MOLA Areoid Gravitational Datum (R_ref = 3,396,000 m)
-                </div>
-              </div>
-
-              {/* Live Multi-Scale Elevation Reading */}
-              <div className="bg-[#111111] border border-[#262626] rounded p-2 space-y-1 text-[11px]">
-                <div className="flex justify-between items-center">
-                  <span className="text-[#737373]">Sampled Point:</span>
-                  <span className="text-white font-bold">
-                    {elevationSample
-                      ? `${elevationSample.elevation_m > 0 ? '+' : ''}${elevationSample.elevation_m.toLocaleString()} m`
-                      : samplingLoading
-                      ? 'SAMPLING...'
-                      : 'CLICK MAP TO SAMPLE'}
-                  </span>
-                </div>
-
-                {elevationSample && (
-                  <>
-                    <div className="flex justify-between items-center text-[10px]">
-                      <span className="text-[#737373]">Scale Tier:</span>
-                      <span
-                        className={`font-semibold px-1 rounded ${
-                          elevationSample.scale_tier === 'LOCAL'
-                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                            : elevationSample.scale_tier === 'REGIONAL'
-                            ? 'bg-blue-950 text-blue-300 border border-blue-800'
-                            : 'bg-[#202020] text-[#a3a3a3]'
-                        }`}
-                      >
-                        {elevationSample.scale_tier} ({elevationSample.resolution_m < 1000 ? `${elevationSample.resolution_m}m` : `${Math.round(elevationSample.resolution_m / 1000)}km`})
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-[10px]">
-                      <span className="text-[#737373]">Epistemic Class:</span>
-                      <span className="text-white">{elevationSample.epistemic_class}</span>
-                    </div>
-
-                    <div className="text-[10px] text-[#737373] pt-1 border-t border-[#202020] leading-relaxed">
-                      {elevationSample.coverage_disclosure}
-                    </div>
-                  </>
-                )}
-              </div>
-            </>
           )}
+        </button>
 
-          {/* Scale Disclosure Warning & Tile Cache Telemetry */}
-          <div className="border-t border-[#262626] pt-1.5 flex justify-between items-center text-[10px] text-[#737373]">
-            <span>Zoom Level: {currentZoom}</span>
-            <span className="text-[#a3a3a3]">
-              {currentZoom <= 5
-                ? 'Scale: Planetary (15km/px)'
-                : currentZoom <= 9
-                ? 'Scale: Regional (~200m/px)'
-                : 'Scale: Local Footprint (<20m/px)'}
-            </span>
-          </div>
+        {/* Floating Topographic Elevation Legend & Sampling HUD (Top-Right Collapsible) */}
+        {isElevationOpen && (
+          <div
+            className="global-map-panel global-map-panel-top-right space-y-2.5"
+            style={{
+              top: '48px',
+              right: '12px',
+              maxHeight: 'calc(100% - 90px)',
+              overflowY: 'auto',
+              minWidth: '260px',
+            }}
+          >
+            <div className="flex items-center justify-between border-b border-[#262626] pb-1.5">
+              <span className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span>⛰️</span> ELEVATION & SAMPLING
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsElevationOpen(false)}
+                className="text-[#737373] hover:text-white px-1 font-bold text-xs"
+                title="Close Elevation Panel"
+              >
+                ✕
+              </button>
+            </div>
 
-          {/* Real Tile Pipeline Telemetry */}
-          <div className="pt-1 flex items-center justify-between text-[9px] font-mono border-t border-[#1f1f1f]">
-            <span className="text-[#737373]">TILES:</span>
-            <span className={tileStats.failed > 0 ? 'text-amber-400' : 'text-emerald-400'}>
-              {tileStats.loaded}/{tileStats.total} LOADED
-              {tileStats.failed > 0 && ` (${tileStats.failed} RETRIED)`}
-            </span>
+            {/* Dynamic Color Scale Bar */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-[#737373]">
+                <span>-8,200 m (Hellas)</span>
+                <span>0 m (Datum)</span>
+                <span>+21,287 m (Olympus)</span>
+              </div>
+              <div
+                className="w-full h-3 rounded"
+                style={{
+                  background:
+                    'linear-gradient(to right, #000033 0%, #0000aa 15%, #00ffff 30%, #00aa00 45%, #ffff00 65%, #aa0000 85%, #ffffff 100%)',
+                }}
+              />
+              <div className="text-[9px] text-[#737373] text-center">
+                MOLA Areoid Gravitational Datum (R_ref = 3,396,000 m)
+              </div>
+            </div>
+
+            {/* Live Multi-Scale Elevation Reading */}
+            <div className="bg-[#111111] border border-[#262626] rounded p-2 space-y-1 text-[11px]">
+              <div className="flex justify-between items-center">
+                <span className="text-[#737373]">Sampled Point:</span>
+                <span className="text-white font-bold">
+                  {elevationSample
+                    ? `${elevationSample.elevation_m > 0 ? '+' : ''}${elevationSample.elevation_m.toLocaleString()} m`
+                    : samplingLoading
+                    ? 'SAMPLING...'
+                    : 'CLICK MAP TO SAMPLE'}
+                </span>
+              </div>
+
+              {elevationSample && (
+                <>
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-[#737373]">Scale Tier:</span>
+                    <span
+                      className={`font-semibold px-1 rounded ${
+                        elevationSample.scale_tier === 'LOCAL'
+                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                          : elevationSample.scale_tier === 'REGIONAL'
+                          ? 'bg-blue-950 text-blue-300 border border-blue-800'
+                          : 'bg-[#202020] text-[#a3a3a3]'
+                      }`}
+                    >
+                      {elevationSample.scale_tier} ({elevationSample.resolution_m < 1000 ? `${elevationSample.resolution_m}m` : `${Math.round(elevationSample.resolution_m / 1000)}km`})
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-[#737373]">Epistemic Class:</span>
+                    <span className="text-white">{elevationSample.epistemic_class}</span>
+                  </div>
+
+                  <div className="text-[10px] text-[#737373] pt-1 border-t border-[#202020] leading-relaxed">
+                    {elevationSample.coverage_disclosure}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-[#262626] pt-1 text-[10px] text-[#737373] flex justify-between">
+              <span>Zoom Scale:</span>
+              <span className="text-[#a3a3a3]">
+                {currentZoom <= 5
+                  ? 'Planetary (15km/px)'
+                  : currentZoom <= 9
+                  ? 'Regional (~200m/px)'
+                  : 'Local Footprint (<20m/px)'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Dataset Provenance Drawer Modal */}
         {showInfoPanel && (
@@ -981,27 +1070,76 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
           </div>
         )}
 
-        {/* Live Coordinate & Telemetry HUD (Bottom-Right) */}
-        <div className="global-map-panel global-map-panel-bottom-right">
-          <div>
-            <span className="text-[#737373]">LAT:</span>{' '}
-            <span className="text-white font-bold">
-              {cursorCoords ? `${cursorCoords.lat >= 0 ? '+' : ''}${cursorCoords.lat.toFixed(4)}°` : '--.----°'}
+        {/* Section E: Minimalist Bottom Information Strip */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '28px',
+            background: 'rgba(10, 10, 12, 0.94)',
+            borderTop: '1px solid #27272a',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 0.75rem',
+            fontFamily: 'var(--font-mono, monospace)',
+            fontSize: '0.68rem',
+            color: '#a1a1aa',
+            backdropFilter: 'blur(6px)',
+          }}
+        >
+          {/* Left: Active layer and resolution */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ color: '#71717a' }}>LAYER:</span>
+            <span style={{ color: '#f4f4f5', fontWeight: 600 }}>{activeBasemap ? activeBasemap.name : 'NONE'}</span>
+            {activeBasemap && (
+              <span style={{ color: '#71717a' }}>({activeBasemap.resolution})</span>
+            )}
+          </div>
+
+          {/* Center: Geodesy & Zoom scale */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }} className="hidden sm:flex">
+            <span style={{ color: '#71717a' }}>CRS:</span>
+            <span style={{ color: '#e4e4e7' }}>IAU_2015:49900</span>
+            {coverageData && (
+              <>
+                <span style={{ color: '#3f3f46' }}>|</span>
+                <span style={{ color: '#71717a' }}>TIER:</span>
+                <span style={{ color: '#e4e4e7', fontWeight: 600 }}>{coverageData.active_tier}</span>
+              </>
+            )}
+            <span style={{ color: '#3f3f46' }}>|</span>
+            <span style={{ color: '#71717a' }}>ZOOM:</span>
+            <span style={{ color: '#e4e4e7' }}>{currentZoom}</span>
+            <span style={{ color: '#71717a' }}>
+              ({currentZoom <= 5 ? 'Planetary' : currentZoom <= 9 ? 'Regional' : 'Local'})
             </span>
           </div>
-          <div>
-            <span className="text-[#737373]">LON:</span>{' '}
-            <span className="text-white font-bold">
-              {cursorCoords ? `${cursorCoords.lon >= 0 ? '+' : ''}${cursorCoords.lon.toFixed(4)}°` : '--.----°'}
-            </span>
-          </div>
-          {coverageData && (
-            <div className="border-l border-[#303030] pl-3 text-white font-semibold">
-              TIER: {coverageData.active_tier}
+
+          {/* Right: Cursor coordinates & Tile loading status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div>
+              <span style={{ color: '#71717a' }}>LAT:</span>{' '}
+              <span style={{ color: '#ffffff', fontWeight: 600 }}>
+                {cursorCoords ? `${cursorCoords.lat >= 0 ? '+' : ''}${cursorCoords.lat.toFixed(4)}°` : '--.----°'}
+              </span>
             </div>
-          )}
-          <div className="border-l border-[#303030] pl-3 text-[#737373]">
-            IAU_2015:49900
+            <div>
+              <span style={{ color: '#71717a' }}>LON:</span>{' '}
+              <span style={{ color: '#ffffff', fontWeight: 600 }}>
+                {cursorCoords ? `${cursorCoords.lon >= 0 ? '+' : ''}${cursorCoords.lon.toFixed(4)}°` : '--.----°'}
+              </span>
+            </div>
+            <span style={{ color: '#3f3f46' }}>|</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <span style={{ color: '#71717a' }}>TILES:</span>
+              <span style={{ color: tileStats.failed > 0 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>
+                {tileStats.loaded}/{tileStats.total}
+              </span>
+            </div>
           </div>
         </div>
 

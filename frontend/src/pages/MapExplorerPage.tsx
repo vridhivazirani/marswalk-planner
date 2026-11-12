@@ -257,91 +257,94 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
   }
 
   return (
-    <div className="page-container" style={{ padding: '1rem', maxWidth: '1440px', margin: '0 auto' }}>
-      {/* Precision Aerospace Header */}
+    <div className="page-container" style={{ padding: '0.75rem 1rem 0.5rem', maxWidth: '100%', margin: '0 auto' }}>
+      {/* Section A: Clean Minimalist Aerospace Header */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          borderBottom: '1px solid var(--border-default)',
-          paddingBottom: '0.8rem',
-          marginBottom: '1rem',
+          alignItems: 'center',
+          borderBottom: '1px solid #222226',
+          paddingBottom: '0.6rem',
+          marginBottom: '0.6rem',
           flexWrap: 'wrap',
-          gap: '0.8rem',
+          gap: '0.6rem',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.2rem' }}>
-            <h2
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h1
               style={{
                 margin: 0,
-                color: 'var(--text-primary)',
-                fontSize: '1.25rem',
-                letterSpacing: '0.02em',
+                color: '#ffffff',
+                fontSize: '1.05rem',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
                 textTransform: 'uppercase',
+                fontFamily: 'var(--font-mono, monospace)',
               }}
             >
-              Planetary Map Explorer & Multi-Scale Atlas
-            </h2>
+              Planetary Explorer
+            </h1>
             <span
               style={{
-                background: '#202020',
-                border: '1px solid #404040',
-                padding: '0.15rem 0.45rem',
-                fontSize: '0.7rem',
-                color: '#d4d4d4',
-                borderRadius: 'var(--radius-xs)',
-                fontFamily: 'var(--font-mono)',
+                background: '#18181b',
+                border: '1px solid #27272a',
+                padding: '0.1rem 0.4rem',
+                fontSize: '0.65rem',
+                color: '#a1a1aa',
+                borderRadius: '2px',
+                fontFamily: 'var(--font-mono, monospace)',
               }}
             >
-              MILESTONE 1 • DATASET CATALOGUE
+              IAU_2015:49900
             </span>
           </div>
-          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-            Authentic NASA PDS, USGS & ESA Planetary Products • 11 Standardized Map Categories • Provenance & Geodesy Audited
+          <p style={{ margin: '0.15rem 0 0 0', color: '#71717a', fontSize: '0.76rem', fontFamily: 'var(--font-mono, monospace)' }}>
+            Multi-scale cartography & authentic NASA / USGS / ESA planetary datasets
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span
             style={{
-              background: '#111111',
-              border: '1px solid #303030',
-              color: '#a3a3a3',
-              padding: '0.25rem 0.6rem',
-              fontSize: '0.72rem',
-              fontFamily: 'var(--font-mono)',
+              background: '#121214',
+              border: '1px solid #27272a',
+              color: '#a1a1aa',
+              padding: '0.2rem 0.5rem',
+              fontSize: '0.68rem',
+              borderRadius: '2px',
+              fontFamily: 'var(--font-mono, monospace)',
             }}
           >
-            Catalog Total: <strong style={{ color: '#f5f5f5' }}>{totalCount}</strong> Products
+            Catalog: <strong style={{ color: '#ffffff' }}>{totalCount}</strong> Products
           </span>
           <span
             style={{
-              background: '#111111',
-              border: '1px solid #303030',
-              color: '#a3a3a3',
-              padding: '0.25rem 0.6rem',
-              fontSize: '0.72rem',
-              fontFamily: 'var(--font-mono)',
+              background: '#121214',
+              border: '1px solid #27272a',
+              color: '#a1a1aa',
+              padding: '0.2rem 0.5rem',
+              fontSize: '0.68rem',
+              borderRadius: '2px',
+              fontFamily: 'var(--font-mono, monospace)',
             }}
           >
-            Active Layers: <strong style={{ color: '#f5f5f5' }}>{activeCount}</strong>
-          </span>
-          <span className="badge badge-derived" style={{ fontSize: '0.72rem' }}>
-            MARS GEODESY: IAU_2015:49900
+            Active: <strong style={{ color: '#ffffff' }}>{activeCount}</strong> Layers
           </span>
         </div>
       </div>
 
-      {/* Explorer Mode Selector Tabs */}
+      {/* Section B: Primary Segmented Navigation Bar */}
       <div
         style={{
-          display: 'flex',
-          gap: '0.5rem',
-          marginBottom: '1rem',
-          borderBottom: '1px solid var(--border-subtle)',
-          paddingBottom: '0.5rem',
+          display: 'inline-flex',
+          gap: '0.25rem',
+          background: '#121214',
+          border: '1px solid #27272a',
+          padding: '0.2rem',
+          borderRadius: '4px',
+          marginBottom: '0.75rem',
           flexWrap: 'wrap',
         }}
       >
@@ -349,13 +352,13 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           type="button"
           onClick={() => setExplorerTab('GLOBAL_GLOBE')}
           style={{
-            background: explorerTab === 'GLOBAL_GLOBE' ? '#ffffff' : '#141414',
-            color: explorerTab === 'GLOBAL_GLOBE' ? '#000000' : '#a3a3a3',
-            border: '1px solid #303030',
-            padding: '0.45rem 1rem',
-            fontSize: '0.8rem',
+            background: explorerTab === 'GLOBAL_GLOBE' ? '#ffffff' : 'transparent',
+            color: explorerTab === 'GLOBAL_GLOBE' ? '#000000' : '#a1a1aa',
+            border: 'none',
+            padding: '0.35rem 0.85rem',
+            fontSize: '0.75rem',
             fontWeight: 700,
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-mono, monospace)',
             cursor: 'pointer',
             borderRadius: '2px',
             display: 'flex',
@@ -365,20 +368,20 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           }}
         >
           <span>🪐</span>
-          <span>3D MARS GLOBE</span>
+          <span>3D Globe</span>
         </button>
 
         <button
           type="button"
           onClick={() => setExplorerTab('GLOBAL_MAP')}
           style={{
-            background: explorerTab === 'GLOBAL_MAP' ? '#ffffff' : '#141414',
-            color: explorerTab === 'GLOBAL_MAP' ? '#000000' : '#a3a3a3',
-            border: '1px solid #303030',
-            padding: '0.45rem 1rem',
-            fontSize: '0.8rem',
+            background: explorerTab === 'GLOBAL_MAP' ? '#ffffff' : 'transparent',
+            color: explorerTab === 'GLOBAL_MAP' ? '#000000' : '#a1a1aa',
+            border: 'none',
+            padding: '0.35rem 0.85rem',
+            fontSize: '0.75rem',
             fontWeight: 700,
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-mono, monospace)',
             cursor: 'pointer',
             borderRadius: '2px',
             display: 'flex',
@@ -388,20 +391,20 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           }}
         >
           <span>🌐</span>
-          <span>2D GLOBAL MAP</span>
+          <span>2D Global Atlas</span>
         </button>
 
         <button
           type="button"
           onClick={() => setExplorerTab('REGIONAL_MAP')}
           style={{
-            background: explorerTab === 'REGIONAL_MAP' ? '#ffffff' : '#141414',
-            color: explorerTab === 'REGIONAL_MAP' ? '#000000' : '#a3a3a3',
-            border: '1px solid #303030',
-            padding: '0.45rem 1rem',
-            fontSize: '0.8rem',
+            background: explorerTab === 'REGIONAL_MAP' ? '#ffffff' : 'transparent',
+            color: explorerTab === 'REGIONAL_MAP' ? '#000000' : '#a1a1aa',
+            border: 'none',
+            padding: '0.35rem 0.85rem',
+            fontSize: '0.75rem',
             fontWeight: 700,
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-mono, monospace)',
             cursor: 'pointer',
             borderRadius: '2px',
             display: 'flex',
@@ -411,20 +414,20 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           }}
         >
           <span>🛰️</span>
-          <span>MULTI-REGION ATLAS (12 Priority Regions)</span>
+          <span>Regional Atlas</span>
         </button>
 
         <button
           type="button"
           onClick={() => setExplorerTab('CATALOGUE')}
           style={{
-            background: explorerTab === 'CATALOGUE' ? '#ffffff' : '#141414',
-            color: explorerTab === 'CATALOGUE' ? '#000000' : '#a3a3a3',
-            border: '1px solid #303030',
-            padding: '0.45rem 1rem',
-            fontSize: '0.8rem',
+            background: explorerTab === 'CATALOGUE' ? '#ffffff' : 'transparent',
+            color: explorerTab === 'CATALOGUE' ? '#000000' : '#a1a1aa',
+            border: 'none',
+            padding: '0.35rem 0.85rem',
+            fontSize: '0.75rem',
             fontWeight: 700,
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-mono, monospace)',
             cursor: 'pointer',
             borderRadius: '2px',
             display: 'flex',
@@ -434,7 +437,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           }}
         >
           <span>📋</span>
-          <span>DATASET CATALOGUE ({totalCount})</span>
+          <span>Dataset Catalogue ({totalCount})</span>
         </button>
       </div>
 
@@ -442,7 +445,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           TAB 0: GLOBAL 3D MARS GLOBE (MILESTONE 3.0)
           ========================================================================= */}
       {explorerTab === 'GLOBAL_GLOBE' && (
-        <div style={{ height: 'calc(100vh - 200px)', minHeight: '680px', marginBottom: '1.5rem' }}>
+        <div style={{ height: 'calc(100vh - 165px)', minHeight: '680px', marginBottom: '0.5rem' }}>
           <GlobalMarsGlobe3D
             onEnterJezero={() => {
               setSelectedRegionId('reg-jezero')
@@ -461,7 +464,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           TAB 1: GLOBAL MARS 2D MAP VIEW (MILESTONE 2.1)
           ========================================================================= */}
       {explorerTab === 'GLOBAL_MAP' && (
-        <div style={{ height: 'calc(100vh - 200px)', minHeight: '680px', marginBottom: '1.5rem' }}>
+        <div style={{ height: 'calc(100vh - 165px)', minHeight: '680px', marginBottom: '0.5rem' }}>
           <GlobalMarsMap
             onEnterJezero={() => {
               setSelectedRegionId('reg-jezero')
@@ -476,7 +479,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           TAB 2: MULTI-REGION EXPLORATION ENVIRONMENT (STAGE B — 12 PRIORITY REGIONS)
           ========================================================================= */}
       {explorerTab === 'REGIONAL_MAP' && (
-        <div style={{ height: 'calc(100vh - 200px)', minHeight: '680px', marginBottom: '1.5rem' }}>
+        <div style={{ height: 'calc(100vh - 165px)', minHeight: '680px', marginBottom: '0.5rem' }}>
           <RegionalMarsMap
             initialRegionId={selectedRegionId}
             onBackToGlobal={() => setExplorerTab('GLOBAL_GLOBE')}

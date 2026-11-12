@@ -41,7 +41,7 @@ const PROFILES: Record<string, CostmapWeightsDTO> = {
 const PAGE_TITLES: Record<PageId, string> = {
   'overview': 'Mission Overview',
   'digital-twin': 'Mars Digital Twin',
-  'map-explorer': 'Planetary Map Explorer & Multi-Scale Atlas',
+  'map-explorer': 'Planetary Explorer',
   'data-hub': 'NASA Planetary Data Hub',
   'terrain': 'Terrain Intelligence Engine',
   'hazards': 'Hazard Intelligence Assessment',
