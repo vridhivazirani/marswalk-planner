@@ -10,7 +10,8 @@ import { GlobalMarsMap } from '../components/GlobalMarsMap'
 import { RegionalMarsMap } from '../components/RegionalMarsMap'
 import { GlobalMarsGlobe3D } from '../components/GlobalMarsGlobe3D'
 
-interface MapExplorerPageProps {
+export interface MapExplorerPageProps {
+  initialTab?: ExplorerTab
   activeLayers?: Record<string, boolean>
   onToggleLayer?: (layerId: string) => void
   onSelectCoords?: (coords: { lat: number; lon: number }) => void
@@ -62,12 +63,14 @@ const PRODUCT_TYPE_META: Record<
 }
 
 export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
+  initialTab,
   activeLayers = {},
   onToggleLayer,
   onSelectCoords,
   onNavigateToPage,
 }) => {
   const [explorerTab, setExplorerTab] = useState<ExplorerTab>(() => {
+    if (initialTab) return initialTab
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const tabParam = params.get('tab')
@@ -82,6 +85,12 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
     }
     return 'GLOBAL_GLOBE'
   })
+
+  const [prevInitialTab, setPrevInitialTab] = useState(initialTab)
+  if (initialTab && initialTab !== prevInitialTab) {
+    setPrevInitialTab(initialTab)
+    setExplorerTab(initialTab)
+  }
   const [entries, setEntries] = useState<AtlasMapEntry[]>([])
   const [categories, setCategories] = useState<AtlasCategorySummary[]>([])
   const [loading, setLoading] = useState<boolean>(true)

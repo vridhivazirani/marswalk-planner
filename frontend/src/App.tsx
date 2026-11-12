@@ -66,7 +66,7 @@ function App() {
   })
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null)
   const [layersMeta, setLayersMeta] = useState<DigitalTwinLayersResponse | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
+  const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
   // Surface inspection state
@@ -91,6 +91,17 @@ function App() {
   // Mission profile and weights state
   const [activeProfile, setActiveProfile] = useState<string>('BALANCED')
   const [weights, setWeights] = useState<CostmapWeightsDTO>(PROFILES.BALANCED)
+  const [mapExplorerTab, setMapExplorerTab] = useState<'GLOBAL_GLOBE' | 'GLOBAL_MAP' | 'REGIONAL_MAP' | 'CATALOGUE'>('GLOBAL_GLOBE')
+
+  const handleNavigateWithTab = (
+    page: PageId,
+    tab?: 'GLOBAL_GLOBE' | 'GLOBAL_MAP' | 'REGIONAL_MAP' | 'CATALOGUE'
+  ) => {
+    if (tab) {
+      setMapExplorerTab(tab)
+    }
+    setActivePage(page)
+  }
 
   // Layer toggles
   const [activeLayers, setActiveLayers] = useState<Record<string, boolean>>({
@@ -182,12 +193,6 @@ function App() {
             isBackendHealthy={isBackendHealthy}
           />
 
-          {loading && (
-            <div className="page-container">
-              <div className="card">Loading mission telemetry and planetary datasets…</div>
-            </div>
-          )}
-
           {error && (
             <div className="page-container">
               <div className="card status-error">
@@ -196,37 +201,41 @@ function App() {
             </div>
           )}
 
-          {!loading && (
-            <>
-              {activePage === 'overview' && (
-                <MissionOverviewPage
-                  onNavigate={setActivePage}
-                  activeRoute={routes.length > 0 ? routes[0] : null}
-                  emergencyPlan={emergencyPlan}
-                  routesCount={routes.length}
-                  startPoint={startPoint}
-                  destPoint={destPoint}
-                />
-              )}
+          {activePage === 'overview' && (
+            <MissionOverviewPage
+              onNavigate={handleNavigateWithTab}
+              isBackendHealthy={isBackendHealthy}
+              activeRoute={routes.length > 0 ? routes[0] : null}
+              emergencyPlan={emergencyPlan}
+              routesCount={routes.length}
+              startPoint={startPoint}
+              destPoint={destPoint}
+            />
+          )}
 
-              {activePage === 'digital-twin' && (
-                <DigitalTwinPage
-                  layersMeta={layersMeta}
-                  activeLayers={activeLayers}
-                  routes={routes}
-                  emergencyPlan={emergencyPlan}
-                  onLayerToggle={handleLayerToggle}
-                  onSelectCoords={handleSelectCoords}
-                  onSelectTarget={setSelectedTarget}
-                  selectedHazard={selectedHazard}
-                  selectedCost={selectedCost}
-                  selectedTarget={selectedTarget}
-                  isInspecting={isInspecting}
-                />
-              )}
+          {activePage === 'digital-twin' && (
+            loading ? (
+              <div className="page-container"><div className="card">Loading Jezero digital twin layers…</div></div>
+            ) : (
+              <DigitalTwinPage
+                layersMeta={layersMeta}
+                activeLayers={activeLayers}
+                routes={routes}
+                emergencyPlan={emergencyPlan}
+                onLayerToggle={handleLayerToggle}
+                onSelectCoords={handleSelectCoords}
+                onSelectTarget={setSelectedTarget}
+                selectedHazard={selectedHazard}
+                selectedCost={selectedCost}
+                selectedTarget={selectedTarget}
+                isInspecting={isInspecting}
+              />
+            )
+          )}
 
               {activePage === 'map-explorer' && (
                 <MapExplorerPage
+                  initialTab={mapExplorerTab}
                   activeLayers={activeLayers}
                   onToggleLayer={handleLayerToggle}
                   onSelectCoords={handleSelectCoords}
@@ -326,8 +335,6 @@ function App() {
               {activePage === 'settings' && (
                 <SystemSettingsPage isBackendHealthy={isBackendHealthy} />
               )}
-            </>
-          )}
         </main>
       </div>
 

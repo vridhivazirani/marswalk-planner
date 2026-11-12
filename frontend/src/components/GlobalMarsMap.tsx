@@ -544,14 +544,14 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
     <div className="global-mars-map-wrapper">
       {/* Top Aerospace Control Bar */}
       <div className="global-mars-map-header">
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="text-xs font-mono font-bold tracking-wider text-white uppercase flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs font-mono font-bold tracking-wider text-white uppercase flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-            GLOBAL MARS ATLAS (IAU_2015:49900)
+            GLOBAL MARS ATLAS
           </span>
-          <span className="text-[11px] font-mono text-[#737373]">|</span>
-          <span className="text-[11px] font-mono text-[#a3a3a3]">
-            Datum: MOLA Areoid • R = 3,396,190 m
+          <span className="text-[10px] font-mono text-[#737373] hidden xl:inline">|</span>
+          <span className="text-[10px] font-mono text-[#a3a3a3] hidden xl:inline">
+            IAU_2015:49900
           </span>
         </div>
 
