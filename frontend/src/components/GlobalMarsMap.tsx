@@ -139,7 +139,11 @@ export function GlobalMarsMap({ onEnterJezero, onSelectCoordinates }: GlobalMars
       maxBoundsViscosity: 0.75,
       attributionControl: false,
       worldCopyJump: true,
+      zoomControl: false,
     })
+
+    // Dedicated clean zoom control positioned above the bottom telemetry strip
+    L.control.zoom({ position: 'bottomright' }).addTo(map)
 
     // Track zoom level
     map.on('zoomend', () => {
