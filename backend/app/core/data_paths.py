@@ -40,3 +40,4 @@ def get_data_dir(subdir: str = "") -> Path:
 PROCESSED_DIR = get_data_dir("processed")
 CATALOG_DIR = get_data_dir("catalog")
 RAW_DIR = get_data_dir("raw")
+

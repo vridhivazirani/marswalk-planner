@@ -26,9 +26,9 @@ from app.core.data_paths import get_data_dir
 PROJECT_DATA_ROOT = get_data_dir()
 
 # Path to authentic MOLA 4 ppd binary grid
-MOLA_GRID_PATH = PROJECT_DATA_ROOT / "raw/mola/megt90n000cb.img"
-CTX_20M_PATH = PROJECT_DATA_ROOT / "raw/usgs_trn/JEZ_ctx_B_soc_008_DTM_20m.tif"
-HIRISE_1M_PATH = PROJECT_DATA_ROOT / "raw/usgs_trn/HiRISE_DTM_Delta_Jezero_DL_1m.tif"
+MOLA_GRID_PATH = get_data_dir("raw/mola") / "megt90n000cb.img"
+CTX_20M_PATH = get_data_dir("raw/usgs_trn") / "JEZ_ctx_B_soc_008_DTM_20m.tif"
+HIRISE_1M_PATH = get_data_dir("raw/usgs_trn") / "HiRISE_DTM_Delta_Jezero_DL_1m.tif"
 
 # In-memory cached MOLA grid and rendered textures
 _MOLA_GRID: np.ndarray | None = None

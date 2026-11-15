@@ -69,15 +69,38 @@ class RouteOptimizationEngine:
             return
 
         elev_path = self.processed_dir / f"{grid_name}_elevation.tif"
+        if not elev_path.exists():
+            from app.terrain.provider import TerrainDataProvider
+
+            provider = TerrainDataProvider.get_instance(processed_dir=self.processed_dir)
+            if provider.is_available:
+                bundle = provider.get_routing_bundle()
+                self._elevation = bundle["elevation"]
+                self._slope = bundle["slope"]
+                self._tri = bundle["tri"]
+                self._hazard = bundle["hazard"]
+                self._hard_imp = bundle["hard_imp"]
+                self._sigma_z = bundle["sigma_z"]
+                self._science = bundle["science"]
+                self._source_id = bundle["source_id"]
+                self._data_conf = bundle["data_conf"]
+                self._det_conf = bundle["det_conf"]
+                self._res_unc = bundle["res_unc"]
+                self._coverage = bundle["coverage"]
+                self._transform = bundle["transform"]
+                self._bounds = bundle["bounds"]
+                self._height = bundle["height"]
+                self._width = bundle["width"]
+                self._loaded = True
+                return
+            raise FileNotFoundError(f"Missing raster: {elev_path}")
+
         slope_path = self.processed_dir / f"{grid_name}_slope_deg.tif"
         tri_path = self.processed_dir / f"{grid_name}_tri_roughness_m.tif"
         haz_path = self.processed_dir / f"{grid_name}_hazard_overall_score.tif"
         imp_path = self.processed_dir / f"{grid_name}_hazard_hard_impassable.tif"
         sig_path = self.processed_dir / f"{grid_name}_uncertainty_sigma_z.tif"
         sci_path = self.processed_dir / f"{grid_name}_science_opportunity.tif"
-
-        if not elev_path.exists():
-            raise FileNotFoundError(f"Missing raster: {elev_path}")
 
         with rasterio.open(elev_path) as src:
             self._elevation = src.read(1)

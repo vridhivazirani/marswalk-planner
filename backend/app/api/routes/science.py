@@ -76,17 +76,36 @@ def inspect_location_science(
     opp_path = PROCESSED_DIR / "jezero_western_delta_20m_science_opportunity.tif"
     elev_path = PROCESSED_DIR / "jezero_western_delta_20m_elevation.tif"
 
-    if not opp_path.exists() or not elev_path.exists():
-        raise HTTPException(status_code=404, detail="Science rasters not found")
+    if opp_path.exists() and elev_path.exists():
+        mars_sys = MarsCoordinateSystem()
+        x, y = mars_sys.to_projected(lon, lat)
 
-    mars_sys = MarsCoordinateSystem()
-    x, y = mars_sys.to_projected(lon, lat)
+        with rasterio.open(opp_path) as src:
+            in_bounds = (
+                src.bounds.left <= x <= src.bounds.right and src.bounds.bottom <= y <= src.bounds.top
+            )
+            if not in_bounds:
+                return {
+                    "coordinate": {"lat": lat, "lon": lon},
+                    "status": "OUT_OF_BOUNDS",
+                    "composite_opportunity_score": 0.0,
+                    "explanation": "Location is outside the Jezero Western Delta study area.",
+                }
 
-    with rasterio.open(opp_path) as src:
-        in_bounds = (
-            src.bounds.left <= x <= src.bounds.right and src.bounds.bottom <= y <= src.bounds.top
-        )
-        if not in_bounds:
+            py_row, px_col = src.index(x, y)
+            opp_score = float(src.read(1)[py_row, px_col])
+
+        with rasterio.open(elev_path) as e_src:
+            elev_val = float(e_src.read(1)[py_row, px_col])
+    else:
+        from app.terrain.provider import TerrainDataProvider
+
+        provider = TerrainDataProvider.get_instance(processed_dir=PROCESSED_DIR)
+        if not provider.is_available:
+            raise HTTPException(status_code=404, detail="Science rasters not found")
+
+        sample = provider.sample_point(lat=lat, lon=lon)
+        if sample["status"] != "AVAILABLE":
             return {
                 "coordinate": {"lat": lat, "lon": lon},
                 "status": "OUT_OF_BOUNDS",
@@ -94,11 +113,8 @@ def inspect_location_science(
                 "explanation": "Location is outside the Jezero Western Delta study area.",
             }
 
-        py_row, px_col = src.index(x, y)
-        opp_score = float(src.read(1)[py_row, px_col])
-
-    with rasterio.open(elev_path) as e_src:
-        elev_val = float(e_src.read(1)[py_row, px_col])
+        opp_score = float(sample["science_opportunity"])
+        elev_val = float(sample["elevation_m"])
 
     profile = ScienceProfile()
 

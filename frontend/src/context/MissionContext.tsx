@@ -596,19 +596,45 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setInspectionError(null)
       const activeProfile = missionRef.current.eva.routeProfile
 
-      Promise.all([
+      Promise.allSettled([
         inspectLocationHazard(coords.lat, coords.lon),
         inspectLocationCost(coords.lat, coords.lon, activeProfile),
-        inspectTerrainPoint(coords.lat, coords.lon, true, 60.0).catch(() => null),
-        inspectLocationScience(coords.lat, coords.lon).catch(() => null),
-      ])
-        .then(([hazData, costData, terrainData, scienceData]) => {
-          if (inspectionSeqRef.current !== reqId) return
-          setSelectedHazard(hazData)
-          setSelectedCost(costData)
-          setSelectedTerrain(terrainData)
-          setSelectedScience(scienceData)
+        inspectTerrainPoint(coords.lat, coords.lon, true, 60.0),
+        inspectLocationScience(coords.lat, coords.lon),
+      ]).then(([hazResult, costResult, terrainResult, scienceResult]) => {
+        if (inspectionSeqRef.current !== reqId) return
+
+        const hazData = hazResult.status === 'fulfilled' ? hazResult.value : null
+        const costData = costResult.status === 'fulfilled' ? costResult.value : null
+        const terrainData = terrainResult.status === 'fulfilled' ? terrainResult.value : null
+        const scienceData = scienceResult.status === 'fulfilled' ? scienceResult.value : null
+
+        setSelectedHazard(hazData)
+        setSelectedCost(costData)
+        setSelectedTerrain(terrainData)
+        setSelectedScience(scienceData)
+
+        const failures: string[] = []
+        if (hazResult.status === 'rejected') {
+          failures.push(`Hazard: ${hazResult.reason instanceof Error ? hazResult.reason.message : String(hazResult.reason)}`)
+        }
+        if (costResult.status === 'rejected') {
+          failures.push(`Cost: ${costResult.reason instanceof Error ? costResult.reason.message : String(costResult.reason)}`)
+        }
+        if (terrainResult.status === 'rejected') {
+          failures.push(`Terrain: ${terrainResult.reason instanceof Error ? terrainResult.reason.message : String(terrainResult.reason)}`)
+        }
+        if (scienceResult.status === 'rejected') {
+          failures.push(`Science: ${scienceResult.reason instanceof Error ? scienceResult.reason.message : String(scienceResult.reason)}`)
+        }
+
+        if (failures.length > 0 && !hazData && !costData && !terrainData && !scienceData) {
+          setInspectionError(failures.join('; '))
+        } else {
           setInspectionError(null)
+        }
+
+        if (hazData) {
           dispatch({
             type: 'MISSION/SELECT_HAZARD',
             payload: {
@@ -618,24 +644,16 @@ export const MissionProvider: React.FC<{ children: React.ReactNode }> = ({ child
               hazardClassification: hazData.hazard_classification,
               overallHazardScore: hazData.overall_hazard_score,
               epistemicClass: toEpistemicClassTag(
-                hazData.status === 'OUT_OF_BOUNDS' ? 'UNKNOWN' : hazData.epistemic_class,
+                hazData.status === 'OUT_OF_BOUNDS' || hazData.status === 'DATA_UNAVAILABLE'
+                  ? 'UNKNOWN'
+                  : hazData.epistemic_class,
               ),
               inspectedAt: new Date().toISOString(),
             },
           })
-          setIsInspecting(false)
-        })
-        .catch((err: unknown) => {
-          if (inspectionSeqRef.current !== reqId) return
-          const msg = err instanceof Error ? err.message : String(err)
-          console.error('Inspection query failed:', err)
-          setSelectedHazard(null)
-          setSelectedCost(null)
-          setSelectedTerrain(null)
-          setSelectedScience(null)
-          setInspectionError(msg)
-          setIsInspecting(false)
-        })
+        }
+        setIsInspecting(false)
+      })
     },
     [dispatch],
   )

@@ -135,6 +135,46 @@ class MultiResolutionTerrainInspector:
     def _query_regional_point(self, lat: float, lon: float, px: float, py: float) -> dict[str, Any]:
         """Query 20m regional layers at point location."""
         if not self.regional_elev_path.exists():
+            from app.terrain.provider import TerrainDataProvider
+
+            provider = TerrainDataProvider.get_instance()
+            if provider.is_available:
+                sample = provider.sample_point(lat=lat, lon=lon)
+                if sample["status"] != "AVAILABLE":
+                    return {
+                        "is_valid": False,
+                        "reason": sample.get("reasons", ["Data unavailable"])[0],
+                        "elevation_m": None,
+                    }
+                src_id = sample.get("source_id", 1)
+                source_label = (
+                    "HiRISE 1m (fused)"
+                    if src_id == 2
+                    else ("CTX 20m (native)" if src_id == 1 else "Unmapped / Unknown")
+                )
+                slope = sample["slope_deg"]
+                tri = sample["tri_roughness_m"]
+                class_id = 1 if slope < 5.0 else (2 if slope < 15.0 else 3)
+                class_details = TERRAIN_CLASS_DETAILS.get(class_id, TERRAIN_CLASS_DETAILS[1])
+                return {
+                    "is_valid": True,
+                    "elevation_m": round(sample["elevation_m"], 2),
+                    "slope_deg": round(slope, 2) if slope is not None else None,
+                    "tri_m": round(tri, 3) if tri is not None else None,
+                    "terrain_class": {
+                        "id": class_id,
+                        "name": class_details["name"],
+                        "code": class_details["code"],
+                        "description": class_details["description"],
+                        "traversability": class_details["traversability"],
+                        "speed_factor": class_details["speed_factor"],
+                        "hazard_risk": class_details["hazard_risk"],
+                    },
+                    "confidence_score": round(sample["uncertainty"]["data_confidence"], 3),
+                    "source_product": source_label,
+                    "source_resolution_m": 20.0,
+                    "cell_size_m": 20.0,
+                }
             return {"status": "UNAVAILABLE", "message": "Regional rasters not found"}
 
         with rasterio.open(self.regional_elev_path) as src_elev:

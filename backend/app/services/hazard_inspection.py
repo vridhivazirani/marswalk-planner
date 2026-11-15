@@ -122,10 +122,9 @@ class HazardInspectionService:
 
     def inspect_coordinate(self, lat: float, lon: float) -> dict[str, Any]:
         """Inspect and explain hazard score, reliability, and hard constraints at (lat, lon)."""
-        elev_path = self.processed_dir / f"{self.grid_name}_elevation.tif"
-        if not elev_path.exists():
-            raise HazardRastersNotFoundError("Processed rasters not found")
+        from app.terrain.provider import TerrainDataProvider
 
+        elev_path = self.processed_dir / f"{self.grid_name}_elevation.tif"
         required_inputs = {
             "slope": self.processed_dir / f"{self.grid_name}_slope_deg.tif",
             "tri": self.processed_dir / f"{self.grid_name}_tri_roughness_m.tif",
@@ -140,18 +139,21 @@ class HazardInspectionService:
                 self.processed_dir / f"{self.grid_name}_hazard_hard_impassable.tif"
             ),
         }
-        for name, path in required_inputs.items():
-            if not path.exists():
-                raise AuthoritativeHazardInputMissingError(
-                    f"Required authoritative hazard input '{name}' is missing: {path.name}"
-                )
+
+        if elev_path.exists():
+            for name, path in required_inputs.items():
+                if not path.exists():
+                    raise AuthoritativeHazardInputMissingError(
+                        f"Required authoritative hazard input '{name}' is missing: {path.name}"
+                    )
 
         x, y = self.mars_sys.to_projected(lon, lat)
+        provider = TerrainDataProvider.get_instance(processed_dir=self.processed_dir)
 
-        with rasterio.open(elev_path) as e_src:
+        if not elev_path.exists() and self.grid_name == "jezero_western_delta_20m" and provider.is_available:
             in_bounds = (
-                e_src.bounds.left <= x <= e_src.bounds.right
-                and e_src.bounds.bottom <= y <= e_src.bounds.top
+                provider.bounds.left <= x <= provider.bounds.right
+                and provider.bounds.bottom <= y <= provider.bounds.top
             )
             if not in_bounds:
                 return {
@@ -160,27 +162,102 @@ class HazardInspectionService:
                     "is_passable": False,
                     "reason_code": "OUT_OF_STUDY_AREA",
                     "explanation": "Location is outside the Jezero Western Delta study footprint.",
+                    "epistemic_class": "UNKNOWN",
                 }
 
-            py_row, px_col = e_src.index(x, y)
-            if py_row < 0 or py_row >= e_src.height or px_col < 0 or px_col >= e_src.width:
+            col_f = (x - provider.transform.c) / provider.transform.a
+            row_f = (y - provider.transform.f) / provider.transform.e
+            py_row, px_col = int(row_f), int(col_f)
+            if not (0 <= py_row < provider.height and 0 <= px_col < provider.width):
                 return {
                     "coordinate": {"lat": lat, "lon": lon},
                     "status": "OUT_OF_BOUNDS",
                     "is_passable": False,
                     "reason_code": "OUT_OF_STUDY_AREA",
                     "explanation": "Location is outside the Jezero Western Delta study footprint.",
+                    "epistemic_class": "UNKNOWN",
                 }
-            elev_val = float(e_src.read(1, window=Window(px_col, py_row, 1, 1))[0, 0])
 
-        slope_val = _read_pixel(required_inputs["slope"], py_row, px_col)
-        tri_val = _read_pixel(required_inputs["tri"], py_row, px_col)
-        boulder_val = _read_pixel(required_inputs["boulder"], py_row, px_col)
-        sand_val = _read_pixel(required_inputs["sand"], py_row, px_col)
-        crater_val = _read_pixel(required_inputs["crater"], py_row, px_col)
-        source_id = int(_read_pixel(required_inputs["source_id"], py_row, px_col))
-        hirise_obs_val = int(_read_pixel(required_inputs["hirise_obstacles"], py_row, px_col))
-        auth_imp_raw = int(_read_pixel(required_inputs["hard_impassable"], py_row, px_col))
+            assert provider._elevation is not None
+            assert provider._slope is not None
+            assert provider._tri is not None
+            assert provider._boulder is not None
+            assert provider._sand is not None
+            assert provider._crater is not None
+            assert provider._source_id is not None
+            assert provider._hirise_obs is not None
+            assert provider._hard_imp is not None
+            assert provider._sigma_z is not None
+
+            elev_val = float(provider._elevation[py_row, px_col])
+            slope_val = float(provider._slope[py_row, px_col])
+            tri_val = float(provider._tri[py_row, px_col])
+            boulder_val = float(provider._boulder[py_row, px_col])
+            sand_val = float(provider._sand[py_row, px_col])
+            crater_val = float(provider._crater[py_row, px_col])
+            source_id = int(provider._source_id[py_row, px_col])
+            hirise_obs_val = int(provider._hirise_obs[py_row, px_col])
+            auth_imp_raw = int(provider._hard_imp[py_row, px_col])
+            sigma_val = float(provider._sigma_z[py_row, px_col])
+        else:
+            if not elev_path.exists():
+                raise HazardRastersNotFoundError("Processed rasters not found")
+
+            with rasterio.open(elev_path) as e_src:
+                in_bounds = (
+                    e_src.bounds.left <= x <= e_src.bounds.right
+                    and e_src.bounds.bottom <= y <= e_src.bounds.top
+                )
+                if not in_bounds:
+                    return {
+                        "coordinate": {"lat": lat, "lon": lon},
+                        "status": "OUT_OF_BOUNDS",
+                        "is_passable": False,
+                        "reason_code": "OUT_OF_STUDY_AREA",
+                        "explanation": (
+                            "Location is outside the Jezero Western Delta study footprint."
+                        ),
+                    }
+
+                py_row, px_col = e_src.index(x, y)
+                if py_row < 0 or py_row >= e_src.height or px_col < 0 or px_col >= e_src.width:
+                    return {
+                        "coordinate": {"lat": lat, "lon": lon},
+                        "status": "OUT_OF_BOUNDS",
+                        "is_passable": False,
+                        "reason_code": "OUT_OF_STUDY_AREA",
+                        "explanation": (
+                            "Location is outside the Jezero Western Delta study footprint."
+                        ),
+                    }
+                elev_val = float(e_src.read(1, window=Window(px_col, py_row, 1, 1))[0, 0])
+
+            slope_val = _read_pixel(required_inputs["slope"], py_row, px_col)
+            tri_val = _read_pixel(required_inputs["tri"], py_row, px_col)
+            boulder_val = _read_pixel(required_inputs["boulder"], py_row, px_col)
+            sand_val = _read_pixel(required_inputs["sand"], py_row, px_col)
+            crater_val = _read_pixel(required_inputs["crater"], py_row, px_col)
+            source_id = int(_read_pixel(required_inputs["source_id"], py_row, px_col))
+            hirise_obs_val = int(_read_pixel(required_inputs["hirise_obstacles"], py_row, px_col))
+            auth_imp_raw = int(_read_pixel(required_inputs["hard_impassable"], py_row, px_col))
+
+            sigma_path = self.processed_dir / f"{self.grid_name}_uncertainty_sigma_z.tif"
+            sigma_val = (
+                0.2
+                if source_id == 2
+                else (2.0 if source_id == 1 else STANDARD_NODATA_FLOAT)
+            )
+            if sigma_path.exists():
+                raw_sig = _read_pixel(sigma_path, py_row, px_col)
+                sigma_val = (
+                    raw_sig
+                    if (
+                        math.isfinite(raw_sig)
+                        and raw_sig > -9000.0
+                        and abs(raw_sig - 999.0) > 1e-3
+                    )
+                    else STANDARD_NODATA_FLOAT
+                )
 
         is_valid = (
             math.isfinite(elev_val)
@@ -191,20 +268,6 @@ class HazardInspectionService:
             and tri_val > -9000.0
             and source_id in (1, 2)
         )
-
-        sigma_path = self.processed_dir / f"{self.grid_name}_uncertainty_sigma_z.tif"
-        sigma_val = (
-            0.2
-            if source_id == 2
-            else (2.0 if source_id == 1 else STANDARD_NODATA_FLOAT)
-        )
-        if sigma_path.exists():
-            raw_sig = _read_pixel(sigma_path, py_row, px_col)
-            sigma_val = (
-                raw_sig
-                if (math.isfinite(raw_sig) and raw_sig > -9000.0 and abs(raw_sig - 999.0) > 1e-3)
-                else STANDARD_NODATA_FLOAT
-            )
 
         bundle = compute_hazard_bundle(
             slope=np.array([[slope_val]], dtype=np.float32),

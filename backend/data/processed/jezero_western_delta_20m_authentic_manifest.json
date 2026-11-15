@@ -1,0 +1,203 @@
+{
+  "grid": {
+    "grid_name": "jezero_western_delta_20m",
+    "crs": "ESRI:103885",
+    "transform": [
+      20.0,
+      0.0,
+      4584524.3513494255,
+      0.0,
+      -20.0,
+      1101888.646211346
+    ],
+    "bounds": [
+      4584524.3513494255,
+      1090168.646211346,
+      4591764.3513494255,
+      1101888.646211346
+    ],
+    "resolution_m": [
+      20.0,
+      20.0
+    ],
+    "shape": [
+      586,
+      362
+    ],
+    "nodata_default": -9999.0,
+    "provenance_dois": [
+      "10.5066/P9REJ9JN",
+      "10.5066/P906QQT8",
+      "10.5066/P9GV1ND3"
+    ]
+  },
+  "source_layers": {
+    "jezero_western_delta_20m_elevation.tif": {
+      "array_key": "elevation",
+      "sha256": "1b7756adee420baa7865a5821de666f1976065eb05664462d757d32977563cab",
+      "size_bytes": 626535,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_slope_deg.tif": {
+      "array_key": "slope_deg",
+      "sha256": "2d9a8e48dbc866812e5cecee9f0a871c9cb5bc872810ab665dd463c88f459e33",
+      "size_bytes": 767097,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_tri_roughness_m.tif": {
+      "array_key": "tri_roughness_m",
+      "sha256": "2c7e0122fa4168fcb603a5c7e735eb82b629e6a7d7ce1c55b2e779181bbb050e",
+      "size_bytes": 764772,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_hazard_overall_score.tif": {
+      "array_key": "hazard_overall_score",
+      "sha256": "9c563beea948cd3cfa19785654e547fd0f38d813fea20d97a1d7f604d541aca1",
+      "size_bytes": 537924,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_hazard_hard_impassable.tif": {
+      "array_key": "hazard_hard_impassable",
+      "sha256": "2ef335c31ab70e61569177ad84c474fd313c25170a556bc7d6d153967f730694",
+      "size_bytes": 11656,
+      "dtype": "uint8",
+      "nodata": 255.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_uncertainty_sigma_z.tif": {
+      "array_key": "uncertainty_sigma_z",
+      "sha256": "feb04a08de21e0476ab12b38b628c377797783e644e52a9912564a4d4cab5d83",
+      "size_bytes": 7804,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_science_opportunity.tif": {
+      "array_key": "science_opportunity",
+      "sha256": "d9124a47d1607df7a8389c81474ac22674386c5b362a10bcafd42d1a1d0e377f",
+      "size_bytes": 738561,
+      "dtype": "float32",
+      "nodata": 0.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_boulder_hazard_score.tif": {
+      "array_key": "boulder_hazard_score",
+      "sha256": "c69afb774cf75fc46d66e262a7bc83f79b295bd01bcdd26bf1bd0f23b8da2f4e",
+      "size_bytes": 742312,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_sand_hazard_score.tif": {
+      "array_key": "sand_hazard_score",
+      "sha256": "db4dc8933827455e7421ba0015c2b1589b8e5d8b1c9031e3a5b02b708a476d7d",
+      "size_bytes": 751335,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_crater_hazard_score.tif": {
+      "array_key": "crater_hazard_score",
+      "sha256": "f8ea2ea3fd6d08574757b60d328f76f00f2a93dfb579cbdb09d408947594d714",
+      "size_bytes": 758584,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_source_id.tif": {
+      "array_key": "source_id",
+      "sha256": "85bd5fc1f04636bdb004b284ca9ae7b739d9528fa2d5f598d00cb08a8e436d5d",
+      "size_bytes": 2831,
+      "dtype": "uint8",
+      "nodata": 255.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_hirise_hazard_obstacles.tif": {
+      "array_key": "hirise_hazard_obstacles",
+      "sha256": "18aaf49051fe96a1a8104e9a8e691bff21a9be9d6aefe712b975e4352f20f694",
+      "size_bytes": 212975,
+      "dtype": "uint8",
+      "nodata": 255.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_hazard_data_confidence.tif": {
+      "array_key": "hazard_data_confidence",
+      "sha256": "f2f22f9405f3fd7c3912926b08cc82c4db83ac871bbfdf2f09f0e68770d2ae73",
+      "size_bytes": 7841,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_hazard_detection_confidence.tif": {
+      "array_key": "hazard_detection_confidence",
+      "sha256": "633182acaf031178d456001f9d5afce32243541be4b506eb177b5b096e02acb6",
+      "size_bytes": 10322,
+      "dtype": "float32",
+      "nodata": -9999.0,
+      "shape": [
+        586,
+        362
+      ]
+    },
+    "jezero_western_delta_20m_hazard_resolution_uncertainty.tif": {
+      "array_key": "hazard_resolution_uncertainty",
+      "sha256": "61b39d6ad57b0d27332fee530600b2faf3044d58b0c3939fca1b11e9730ea1ad",
+      "size_bytes": 3294,
+      "dtype": "uint8",
+      "nodata": 255.0,
+      "shape": [
+        586,
+        362
+      ]
+    }
+  },
+  "archive_sha256": "72931e64281b9901478554809b92fed897a827d3ddc875e08ee79e2b875f1f9f",
+  "archive_size_bytes": 5682294
+}

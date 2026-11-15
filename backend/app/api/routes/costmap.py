@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -18,7 +17,6 @@ from pydantic import BaseModel, Field
 from app.costmap.evaluator import compute_unified_costmap
 from app.costmap.pipeline import CostmapEngine
 from app.costmap.profiles import DEFAULT_PROFILES, CostmapWeights, MissionProfileType
-from app.geospatial.crs import MarsCoordinateSystem
 
 router = APIRouter(prefix="/costmap", tags=["cost-map"])
 
@@ -85,49 +83,31 @@ def inspect_location_cost(
     profile: str = Query("BALANCED", description="Mission profile to apply"),
 ) -> dict[str, Any]:
     """Inspect all soft cost factors, hard restrictions, and final cost at a coordinate."""
-    elev_path = PROCESSED_DIR / "jezero_western_delta_20m_elevation.tif"
-    slope_path = PROCESSED_DIR / "jezero_western_delta_20m_slope_deg.tif"
-    tri_path = PROCESSED_DIR / "jezero_western_delta_20m_tri_roughness_m.tif"
-    hazard_path = PROCESSED_DIR / "jezero_western_delta_20m_hazard_overall_score.tif"
-    impassable_path = PROCESSED_DIR / "jezero_western_delta_20m_hazard_hard_impassable.tif"
-    sigma_path = PROCESSED_DIR / "jezero_western_delta_20m_uncertainty_sigma_z.tif"
-    science_path = PROCESSED_DIR / "jezero_western_delta_20m_science_opportunity.tif"
+    from app.terrain.provider import TerrainDataProvider
 
-    if not elev_path.exists():
-        raise HTTPException(status_code=404, detail="Processed rasters not found")
-
-    mars_sys = MarsCoordinateSystem()
-    x, y = mars_sys.to_projected(lon, lat)
-
-    with rasterio.open(elev_path) as e_src:
-        in_bounds = (
-            e_src.bounds.left <= x <= e_src.bounds.right
-            and e_src.bounds.bottom <= y <= e_src.bounds.top
+    provider = TerrainDataProvider.get_instance(processed_dir=PROCESSED_DIR)
+    sample = provider.sample_point(lat=lat, lon=lon)
+    if sample["status"] != "AVAILABLE":
+        reasons_list = sample.get(
+            "reasons", ["Location is outside the Jezero Western Delta study footprint."]
         )
-        if not in_bounds:
-            return {
-                "coordinate": {"lat": lat, "lon": lon},
-                "status": "OUT_OF_BOUNDS",
-                "is_blocked": True,
-                "reason_code": "OUT_OF_STUDY_AREA",
-                "explanation": "Location is outside the Jezero Western Delta study footprint.",
-            }
+        return {
+            "coordinate": {"lat": lat, "lon": lon},
+            "status": sample.get("status", "DATA_UNAVAILABLE"),
+            "is_blocked": True,
+            "reason_code": sample.get("hard_restriction_code") or "DATA_UNAVAILABLE",
+            "explanation": " ".join(reasons_list),
+            "epistemic_class": sample.get("epistemic_class", "UNKNOWN"),
+        }
 
-        py_row, px_col = e_src.index(x, y)
-        elev_val = float(e_src.read(1)[py_row, px_col])
-
-    with rasterio.open(slope_path) as s_src:
-        slope_val = float(s_src.read(1)[py_row, px_col])
-    with rasterio.open(tri_path) as t_src:
-        tri_val = float(t_src.read(1)[py_row, px_col])
-    with rasterio.open(hazard_path) as h_src:
-        haz_val = float(h_src.read(1)[py_row, px_col])
-    with rasterio.open(impassable_path) as imp_src:
-        imp_val = bool(imp_src.read(1)[py_row, px_col] > 0)
-    with rasterio.open(sigma_path) as sig_src:
-        sigma_val = float(sig_src.read(1)[py_row, px_col])
-    with rasterio.open(science_path) as sci_src:
-        sci_val = float(sci_src.read(1)[py_row, px_col])
+    elev_val = float(sample["elevation_m"])
+    slope_val = float(sample["slope_deg"])
+    tri_val = float(sample["tri_roughness_m"])
+    haz_val = float(sample["hazard_score"])
+    imp_val = bool(sample["hard_constraint_triggered"])
+    unc = sample["uncertainty"]
+    sigma_val = float(unc["sigma_z_m"]) if unc.get("sigma_z_m") is not None else -9999.0
+    sci_val = float(sample["science_opportunity"])
 
     # Select weights
     prof_key = profile.upper()
