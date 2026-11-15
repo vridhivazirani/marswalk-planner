@@ -150,7 +150,12 @@ class HazardInspectionService:
         x, y = self.mars_sys.to_projected(lon, lat)
         provider = TerrainDataProvider.get_instance(processed_dir=self.processed_dir)
 
-        if not elev_path.exists() and self.grid_name == "jezero_western_delta_20m" and provider.is_available:
+        use_provider = (
+            not elev_path.exists()
+            and self.grid_name == "jezero_western_delta_20m"
+            and provider.is_available
+        )
+        if use_provider:
             in_bounds = (
                 provider.bounds.left <= x <= provider.bounds.right
                 and provider.bounds.bottom <= y <= provider.bounds.top

@@ -1,7 +1,6 @@
 """Vercel entrypoint for Marswalk FastAPI backend service."""
 
 import json
-import os
 import sys
 import traceback
 from pathlib import Path
@@ -11,21 +10,6 @@ from typing import Any
 backend_dir = str(Path(__file__).resolve().parent)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
-
-# Provide lightweight stubs for heavy C-geospatial binaries in serverless cloud environments
-if os.environ.get("VERCEL") or not sys.platform.startswith("darwin"):
-    from unittest.mock import MagicMock
-
-    for mod_name in [
-        "rasterio",
-        "rasterio.windows",
-        "rasterio.transform",
-        "rasterio.enums",
-        "rasterio.crs",
-        "rasterio.errors",
-        "pyproj",
-    ]:
-        sys.modules.setdefault(mod_name, MagicMock())
 
 _real_app: Any = None
 _init_error: tuple[str, str] | None = None

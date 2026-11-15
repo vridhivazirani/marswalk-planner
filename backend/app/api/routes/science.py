@@ -82,7 +82,8 @@ def inspect_location_science(
 
         with rasterio.open(opp_path) as src:
             in_bounds = (
-                src.bounds.left <= x <= src.bounds.right and src.bounds.bottom <= y <= src.bounds.top
+                src.bounds.left <= x <= src.bounds.right
+                and src.bounds.bottom <= y <= src.bounds.top
             )
             if not in_bounds:
                 return {

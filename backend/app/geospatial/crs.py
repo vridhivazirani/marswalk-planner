@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Any
 
 from pyproj import CRS, Transformer
 
@@ -44,23 +45,43 @@ class MarsCoordinateSystem:
     """Handles coordinate reference systems and projections for Mars analysis."""
 
     def __init__(self) -> None:
-        self.geo_crs = CRS.from_user_input(MARS_GEOGRAPHIC_CRS_URN)
-        self.eqc_crs = CRS.from_user_input(MARS_EQUIRECTANGULAR_CRS_URN)
-
-        # Pre-instantiate forward and inverse transformers
-        self._geo_to_eqc = Transformer.from_crs(self.geo_crs, self.eqc_crs, always_xy=True)
-        self._eqc_to_geo = Transformer.from_crs(self.eqc_crs, self.geo_crs, always_xy=True)
+        self.geo_crs: CRS | None = None
+        self.eqc_crs: CRS | None = None
+        self._geo_to_eqc: Any = None
+        self._eqc_to_geo: Any = None
+        try:
+            self.geo_crs = CRS.from_user_input(MARS_GEOGRAPHIC_CRS_URN)
+            self.eqc_crs = CRS.from_user_input(MARS_EQUIRECTANGULAR_CRS_URN)
+            self._geo_to_eqc = Transformer.from_crs(self.geo_crs, self.eqc_crs, always_xy=True)
+            self._eqc_to_geo = Transformer.from_crs(self.eqc_crs, self.geo_crs, always_xy=True)
+        except Exception:
+            self._geo_to_eqc = None
+            self._eqc_to_geo = None
 
     def to_projected(self, lon: float, lat: float) -> tuple[float, float]:
         """Convert geographic lon/lat (degrees east, planetocentric) to projected metres (x, y)."""
-        # Ensure longitude is normalized to [-180, 180)
         norm_lon = ((lon + 180.0) % 360.0) - 180.0
-        x, y = self._geo_to_eqc.transform(norm_lon, lat)
+        if self._geo_to_eqc is not None:
+            try:
+                x, y = self._geo_to_eqc.transform(norm_lon, lat)
+                return float(x), float(y)
+            except Exception:
+                pass
+        x = MARS_RADIUS_M * math.radians(norm_lon)
+        y = MARS_RADIUS_M * math.radians(lat)
         return float(x), float(y)
 
     def to_geographic(self, x: float, y: float) -> tuple[float, float]:
         """Convert projected metres (x, y) to geographic lon/lat (degrees east, planetocentric)."""
-        lon, lat = self._eqc_to_geo.transform(x, y)
+        if self._eqc_to_geo is not None:
+            try:
+                lon, lat = self._eqc_to_geo.transform(x, y)
+                norm_lon = ((lon + 180.0) % 360.0) - 180.0
+                return float(norm_lon), float(lat)
+            except Exception:
+                pass
+        lon = math.degrees(x / MARS_RADIUS_M)
+        lat = math.degrees(y / MARS_RADIUS_M)
         norm_lon = ((lon + 180.0) % 360.0) - 180.0
         return float(norm_lon), float(lat)
 
