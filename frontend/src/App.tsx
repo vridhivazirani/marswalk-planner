@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react'
-import type { DigitalTwinLayersResponse } from './api/twin'
-import { fetchDigitalTwinLayers } from './api/twin'
+import { useCallback, useEffect, useState } from 'react'
 import { fetchHealth } from './api/health'
 
 import { DisclaimerBanner } from './components/DisclaimerBanner'
@@ -30,26 +28,31 @@ function App() {
   const { mission, runtime, persistence, actions } = useMission()
 
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null)
-  const [_layersMeta, setLayersMeta] = useState<DigitalTwinLayersResponse | null>(null)
-  const [_loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Check health and load digital twin metadata on mount
-  useEffect(() => {
+  const checkHealth = useCallback(() => {
     fetchHealth()
-      .then(() => setIsBackendHealthy(true))
-      .catch(() => setIsBackendHealthy(false))
-
-    fetchDigitalTwinLayers()
-      .then((data) => {
-        setLayersMeta(data)
-        setLoading(false)
+      .then(() => {
+        setIsBackendHealthy(true)
+        setError(null)
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : String(err))
-        setLoading(false)
+        setIsBackendHealthy(false)
+        setError(err instanceof Error ? err.message : 'Backend unreachable')
       })
   }, [])
+
+  // Check health on mount and periodically every 10 seconds for automatic recovery
+  useEffect(() => {
+    checkHealth()
+    const timer = setInterval(checkHealth, 10000)
+    const handleFocus = () => checkHealth()
+    window.addEventListener('focus', handleFocus)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [checkHealth])
 
   const activePage = mission.app.activePage
   const activeRegionId = mission.geographic.regionId
@@ -98,8 +101,27 @@ function App() {
 
           {error && (
             <div className="page-container">
-              <div className="card status-error">
-                Backend API connection unavailable: {error}. Confirm backend is running at http://127.0.0.1:8000.
+              <div
+                className="card status-error"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span>
+                  Backend API connection unavailable: {error}. Confirm backend is running at http://127.0.0.1:8000.
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={checkHealth}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  Retry Connection
+                </button>
               </div>
             </div>
           )}
