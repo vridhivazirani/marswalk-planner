@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import tempfile
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -52,8 +53,22 @@ from app.terrain.regional_jezero import (
 
 router = APIRouter(prefix="/atlas", tags=["planetary-atlas"])
 
-TILE_CACHE_DIR = Path(__file__).resolve().parents[4] / "data" / "cache" / "tiles"
-TILE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+def _get_tile_cache_dir() -> Path:
+    # Check if local repo data/cache directory is writable
+    try:
+        resolved = Path(__file__).resolve()
+        if len(resolved.parents) >= 5:
+            local_dir = resolved.parents[4] / "data" / "cache" / "tiles"
+            local_dir.mkdir(parents=True, exist_ok=True)
+            return local_dir
+    except OSError:
+        pass
+    # Fallback to temp directory on serverless / read-only cloud filesystems
+    tmp_dir = Path(tempfile.gettempdir()) / "marswalk_tile_cache"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    return tmp_dir
+
+TILE_CACHE_DIR = _get_tile_cache_dir()
 
 GLOBAL_BASEMAPS = [
     {
