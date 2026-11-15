@@ -319,15 +319,25 @@ export function GlobalMarsGlobe3D({
 
     // Construct Mars Sphere Mesh (64x64 segments)
     const sphereGeometry = new THREE.SphereGeometry(GLOBE_RADIUS, 64, 64)
-    const textureLoader = new THREE.TextureLoader()
-    const texture = textureLoader.load(getGlobalTextureUrl('shaded_relief'))
-    texture.colorSpace = THREE.SRGBColorSpace
-
     const sphereMaterial = new THREE.MeshStandardMaterial({
-      map: texture,
+      color: 0x9b4e33, // Martian iron-oxide rust baseline tone
       roughness: 0.88,
       metalness: 0.05,
     })
+    const textureLoader = new THREE.TextureLoader()
+    const texture = textureLoader.load(
+      getGlobalTextureUrl('shaded_relief'),
+      () => {
+        sphereMaterial.color.set(0xffffff)
+        sphereMaterial.needsUpdate = true
+      },
+      undefined,
+      (err) => {
+        console.warn('Initial texture loading notice:', err)
+      }
+    )
+    texture.colorSpace = THREE.SRGBColorSpace
+    sphereMaterial.map = texture
 
     const globeMesh = new THREE.Mesh(sphereGeometry, sphereMaterial)
     globeMesh.name = 'MarsSphere'
@@ -489,6 +499,7 @@ export function GlobalMarsGlobe3D({
             mat.map.dispose()
           }
           mat.map = texture
+          mat.color.set(0xffffff)
           mat.needsUpdate = true
         }
       },

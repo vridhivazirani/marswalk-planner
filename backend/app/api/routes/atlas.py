@@ -351,7 +351,11 @@ def get_global_texture(texture_type: str) -> Response:
     """Return authentic MOLA-derived equirectangular texture (shaded relief, color, or blend)."""
     try:
         data = get_global_mola_texture_bytes(texture_type)
-        return Response(content=data, media_type="image/png")
+        return Response(
+            content=data,
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=604800, immutable"},
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate texture: {e}") from e
 
