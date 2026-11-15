@@ -76,8 +76,33 @@ async def app(scope: dict[str, Any], receive: Any, send: Any) -> None:
             )
             await send({"type": "http.response.body", "body": payload})
             return
+
     if real is not None:
-        await real(scope, receive, send)
+        try:
+            await real(scope, receive, send)
+        except Exception as e:
+            req_err = (str(e), traceback.format_exc())
+            payload = json.dumps(
+                {
+                    "status": "error",
+                    "message": "Marswalk backend runtime request error on Vercel",
+                    "exception": req_err[0],
+                    "traceback": req_err[1].splitlines(),
+                }
+            ).encode("utf-8")
+            if scope.get("type") == "http":
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 500,
+                        "headers": [
+                            (b"content-type", b"application/json"),
+                            (b"content-length", str(len(payload)).encode("utf-8")),
+                            (b"access-control-allow-origin", b"*"),
+                        ],
+                    }
+                )
+                await send({"type": "http.response.body", "body": payload})
 
 
 __all__ = ["app"]
