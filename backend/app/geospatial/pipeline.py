@@ -24,9 +24,15 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
-from rasterio.enums import Resampling
-from rasterio.warp import reproject
+
+try:
+    import rasterio
+    from rasterio.enums import Resampling
+    from rasterio.warp import reproject
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
+    Resampling = None  # type: ignore[assignment]
+    reproject = None  # type: ignore[assignment]
 
 from app.geospatial.crs import MarsCoordinateSystem
 from app.geospatial.grid import GridSpec, get_western_delta_grid_20m

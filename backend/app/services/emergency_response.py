@@ -15,7 +15,11 @@ import math
 from typing import Any
 
 import numpy as np
-import rasterio
+
+try:
+    import rasterio
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
 
 from app.core.epistemic import EpistemicClass
 from app.mission.assumptions import MissionPlanningAssumptions

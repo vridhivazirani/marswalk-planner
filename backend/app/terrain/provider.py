@@ -22,7 +22,13 @@ from typing import Any
 
 import numpy as np
 from affine import Affine
-from rasterio.coords import BoundingBox
+
+try:
+    from rasterio.coords import BoundingBox
+except (ImportError, Exception):
+    from collections import namedtuple
+
+    BoundingBox = namedtuple("BoundingBox", ["left", "bottom", "right", "top"])  # type: ignore[misc]
 
 from app.core.data_paths import PROCESSED_DIR, get_data_dir
 from app.core.epistemic import EpistemicClass

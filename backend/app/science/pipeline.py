@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
+
+try:
+    import rasterio
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
 from pyproj import Transformer
 
 from app.geospatial.crs import MARS_EQUIRECTANGULAR_CRS_URN, MARS_GEOGRAPHIC_CRS_URN

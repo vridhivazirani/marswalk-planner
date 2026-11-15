@@ -15,7 +15,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-import rasterio
+try:
+    import rasterio
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
 
 
 @dataclass(frozen=True)

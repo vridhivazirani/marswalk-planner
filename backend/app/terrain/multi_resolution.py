@@ -13,8 +13,13 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
-from rasterio.windows import from_bounds
+
+try:
+    import rasterio
+    from rasterio.windows import from_bounds
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
+    from_bounds = None  # type: ignore[assignment]
 
 from app.geospatial.crs import MarsCoordinateSystem
 from app.terrain.classifier import TERRAIN_CLASS_DETAILS

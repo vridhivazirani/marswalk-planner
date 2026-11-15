@@ -17,8 +17,12 @@ import math
 from dataclasses import dataclass
 from typing import Literal
 
-import rasterio
-from rasterio.transform import Affine
+from affine import Affine
+
+try:
+    import rasterio
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
 
 from app.geospatial.crs import MARS_EQUIRECTANGULAR_CRS_URN
 

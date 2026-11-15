@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import rasterio
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 
@@ -77,6 +76,8 @@ def inspect_location_science(
     elev_path = PROCESSED_DIR / "jezero_western_delta_20m_elevation.tif"
 
     if opp_path.exists() and elev_path.exists():
+        import rasterio
+
         mars_sys = MarsCoordinateSystem()
         x, y = mars_sys.to_projected(lon, lat)
 

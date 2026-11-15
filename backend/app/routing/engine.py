@@ -12,7 +12,11 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
+
+try:
+    import rasterio
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
 
 from app.costmap.evaluator import compute_unified_costmap
 from app.costmap.profiles import DEFAULT_PROFILES, CostmapWeights, MissionProfileType

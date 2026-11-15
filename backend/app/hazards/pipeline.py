@@ -17,7 +17,11 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
+
+try:
+    import rasterio
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
 
 from app.hazards.config import HazardProfile
 from app.hazards.evaluator import HazardBundle, compute_hazard_bundle

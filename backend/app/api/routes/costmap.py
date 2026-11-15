@@ -15,7 +15,6 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.costmap.evaluator import compute_unified_costmap
-from app.costmap.pipeline import CostmapEngine
 from app.costmap.profiles import DEFAULT_PROFILES, CostmapWeights, MissionProfileType
 
 router = APIRouter(prefix="/costmap", tags=["cost-map"])
@@ -44,6 +43,8 @@ def get_mission_profiles() -> dict[str, Any]:
 @router.post("/evaluate", summary="Evaluate cost map with interactive custom weights")
 def evaluate_custom_costmap(req: CustomWeightsRequest) -> dict[str, Any]:
     """Dynamically evaluate cost map statistics with user-configured weights."""
+    from app.costmap.pipeline import CostmapEngine
+
     weights = CostmapWeights(
         w_terrain=req.w_terrain,
         w_hazard=req.w_hazard,

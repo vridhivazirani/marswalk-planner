@@ -6,7 +6,6 @@ import json
 from typing import Any
 
 import numpy as np
-import rasterio
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
@@ -20,6 +19,8 @@ def get_layers() -> dict[str, Any]:
     """Return available 2D and 3D layers, bounding extents, and Mars coordinates."""
     elev_tif = PROCESSED_DIR / "jezero_western_delta_20m_elevation.tif"
     if elev_tif.exists():
+        import rasterio
+
         with rasterio.open(elev_tif) as src:
             width = src.width
             height = src.height
@@ -312,6 +313,8 @@ def get_elevation_grid(step: int = 4) -> dict[str, Any]:
     """Return 2D elevation float array downsampled by `step` for 3D mesh creation."""
     elev_tif = PROCESSED_DIR / "jezero_western_delta_20m_elevation.tif"
     if elev_tif.exists():
+        import rasterio
+
         with rasterio.open(elev_tif) as src:
             data = src.read(1)[::step, ::step]
             nodata = float(src.nodata) if src.nodata is not None else -9999.0

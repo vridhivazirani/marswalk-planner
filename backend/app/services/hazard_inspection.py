@@ -12,8 +12,13 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
-from rasterio.windows import Window
+
+try:
+    import rasterio
+    from rasterio.windows import Window
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
+    Window = None  # type: ignore[assignment]
 
 from app.geospatial.crs import MarsCoordinateSystem
 from app.hazards.config import HazardProfile
