@@ -20,12 +20,13 @@ except (ImportError, Exception):
     rasterio = None  # type: ignore[assignment]
     Window = None  # type: ignore[assignment]
 
+from app.core.data_paths import PROCESSED_DIR
 from app.geospatial.crs import MarsCoordinateSystem
 from app.hazards.config import HazardProfile
 from app.hazards.evaluator import compute_hazard_bundle
 from app.hazards.uncertainty import STANDARD_NODATA_FLOAT, build_cell_uncertainty_profile
 
-DEFAULT_PROCESSED_DIR = Path(__file__).resolve().parents[3] / "data" / "processed"
+DEFAULT_PROCESSED_DIR = PROCESSED_DIR
 
 
 class HazardRastersNotFoundError(FileNotFoundError):

@@ -42,9 +42,10 @@ class RouteOptimizationEngine:
     """Computes constraint-satisfying, multi-criteria optimal traversal routes on Mars."""
 
     def __init__(self, processed_dir: Path | None = None) -> None:
-        base = Path(__file__).resolve().parents[3]
-        self.processed_dir = processed_dir or (base / "data" / "processed")
-        self.catalog_dir = self.processed_dir.parent / "catalog"
+        from app.core.data_paths import CATALOG_DIR, PROCESSED_DIR
+
+        self.processed_dir = processed_dir or PROCESSED_DIR
+        self.catalog_dir = self.processed_dir.parent / "catalog" if processed_dir else CATALOG_DIR
         self._science_targets_cache: list[dict[str, Any]] | None = None
         self.mars_sys = MarsCoordinateSystem()
 
@@ -208,9 +209,10 @@ class RouteOptimizationEngine:
 
         targets_path = self.catalog_dir / "jezero_western_delta_20m_science_targets.json"
         if not targets_path.exists():
-            base = Path(__file__).resolve().parents[3]
+            from app.core.data_paths import CATALOG_DIR
+
             targets_path = (
-                base / "data" / "catalog" / "jezero_western_delta_20m_science_targets.json"
+                CATALOG_DIR / "jezero_western_delta_20m_science_targets.json"
             )
 
         cached: list[dict[str, Any]] = []

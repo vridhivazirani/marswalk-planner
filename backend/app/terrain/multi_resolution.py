@@ -42,7 +42,9 @@ class MultiResolutionTerrainInspector:
 
     def __init__(self, data_root: Path | None = None) -> None:
         if data_root is None:
-            self.data_root = Path(__file__).resolve().parents[3] / "data"
+            from app.core.data_paths import get_data_dir
+
+            self.data_root = get_data_dir()
         else:
             self.data_root = Path(data_root)
 
