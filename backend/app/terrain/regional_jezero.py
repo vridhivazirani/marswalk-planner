@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import json
 import math
-from pathlib import Path
 from typing import Any
 
 from pyproj import Geod
@@ -25,14 +24,12 @@ from pyproj import Geod
 from app.catalog.regional_catalog import (
     REGIONAL_LAYERS,
 )
+from app.core.data_paths import get_data_dir
 from app.terrain.mola_global import sample_multiscale_elevation
 
 # Discovery of data root
-PROJECT_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
-if not PROJECT_DATA_ROOT.exists():
-    PROJECT_DATA_ROOT = Path("data")
-
-RAW_PERSEVERANCE_DIR = PROJECT_DATA_ROOT / "raw/perseverance"
+PROJECT_DATA_ROOT = get_data_dir()
+RAW_PERSEVERANCE_DIR = get_data_dir("raw/perseverance")
 
 # Mars Great-Circle Geodesic calculator (IAU 2015 Mars Sphere)
 _MARS_GEOD = Geod(a=3396190.0, b=3396190.0)

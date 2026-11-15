@@ -1,0 +1,113 @@
+{
+  "grid_name": "jezero_western_delta_20m",
+  "processed_utc": "2026-11-15T15:12:27.398469+00:00",
+  "active_profile": "custom",
+  "weights_applied": {
+    "w_terrain": 0.4,
+    "w_hazard": 0.3,
+    "w_uncertainty": 0.1,
+    "w_science": 0.2
+  },
+  "statistics": {
+    "total_cells": 212132,
+    "blocked_cells": 61055,
+    "blocked_percentage": 28.78,
+    "unknown_cells": 0,
+    "unknown_percentage": 0.0,
+    "weights_applied": {
+      "w_terrain": 0.4,
+      "w_hazard": 0.3,
+      "w_uncertainty": 0.1,
+      "w_science": 0.2
+    },
+    "mean_passable_cost": 3.506,
+    "min_passable_cost": 2.639,
+    "max_passable_cost": 7.474,
+    "p50_passable_cost": 3.335,
+    "p90_passable_cost": 4.225
+  },
+  "preconfigured_profiles": {
+    "SAFETY_FIRST": {
+      "profile_type": "SAFETY_FIRST",
+      "title": "Safety First",
+      "description": "Prioritizes low environmental hazard, low sensor uncertainty, and gentle terrain. Science exploration is secondary to human safety.",
+      "weights": {
+        "w_terrain": 0.3,
+        "w_hazard": 0.5,
+        "w_uncertainty": 0.15,
+        "w_science": 0.05
+      }
+    },
+    "SCIENCE_FIRST": {
+      "profile_type": "SCIENCE_FIRST",
+      "title": "Science First",
+      "description": "Prioritizes scientific return by seeking high-value mineralogy and outcrops, while strictly obeying hard traversability limits.",
+      "weights": {
+        "w_terrain": 0.15,
+        "w_hazard": 0.2,
+        "w_uncertainty": 0.1,
+        "w_science": 0.55
+      }
+    },
+    "BALANCED": {
+      "profile_type": "BALANCED",
+      "title": "Balanced",
+      "description": "Balanced operational trade-off between traversal energy expenditure, environmental risk, and scientific yield.",
+      "weights": {
+        "w_terrain": 0.3,
+        "w_hazard": 0.3,
+        "w_uncertainty": 0.15,
+        "w_science": 0.25
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "c_terrain",
+      "name": "Normalized Terrain Difficulty",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "DERIVED"
+    },
+    {
+      "id": "c_hazard",
+      "name": "Normalized Environmental Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "c_uncertainty",
+      "name": "Normalized Topographic Uncertainty (Nominal Tier)",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "HEURISTIC",
+      "notes": "Normalized from unverified provisional nominal precision tiers (0.20m HiRISE / 2.00m CTX); missing/sentinel cells mapped to 1.0."
+    },
+    {
+      "id": "c_science_opportunity",
+      "name": "Science Opportunity (Discount)",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "INTERPRETED"
+    },
+    {
+      "id": "combined_cost",
+      "name": "Unified Routing Cost Multiplier",
+      "range": [
+        1.0,
+        10.0
+      ],
+      "blocked_value": "inf",
+      "epistemic": "HEURISTIC"
+    }
+  ]
+}

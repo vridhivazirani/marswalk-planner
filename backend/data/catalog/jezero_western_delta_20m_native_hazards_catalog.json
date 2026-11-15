@@ -1,0 +1,40 @@
+{
+  "pipeline": "NativeResolutionHazardPipeline",
+  "version": "2.1.0 (Distinct Native Products & Single Ownership)",
+  "source_product": "HiRISE_DTM_Delta_Jezero_DL_1m.tif",
+  "source_resolution_m": 1.0,
+  "target_resolution_m": 20.0,
+  "aggregation_scale": 20,
+  "created_products": [
+    "jezero_western_delta_20m_hirise_hazard_obstacles.tif",
+    "jezero_western_delta_20m_hirise_boulder_score.tif",
+    "jezero_western_delta_20m_hirise_slope_deg.tif",
+    "jezero_western_delta_20m_hirise_surface_roughness_m.tif",
+    "jezero_western_delta_20m_hirise_roughness_m.tif"
+  ],
+  "consumed_products": [
+    "jezero_western_delta_20m_hirise_coverage.tif"
+  ],
+  "methods": {
+    "boulder_detection": "Morphological White Top-Hat (2m-4m filter) on native 1m DTM",
+    "slope_calculation": "Horn 1981 at 1.0m resolution",
+    "obstacle_aggregation": "Any-hit logical OR across 20x20 cell window",
+    "boulder_aggregation": "Conservative maximum",
+    "slope_aggregation": "95th percentile conservative pooling",
+    "nodata_policy": "Explicit unknown propagation (impassable by default)"
+  },
+  "governance_compliance": "AGENTS.md Section 3 (Rule 5)",
+  "epistemic_class": "DERIVED",
+  "property_epistemic_classes": {
+    "hirise_slope_deg": "DERIVED",
+    "hirise_surface_roughness_m": "DERIVED",
+    "hirise_boulder_score": "HEURISTIC",
+    "hirise_hazard_obstacles": "HEURISTIC"
+  },
+  "processed_utc": "2026-11-15T15:12:19.455682+00:00",
+  "target_grid": "jezero_western_delta_20m",
+  "dimensions": {
+    "height": 586,
+    "width": 362
+  }
+}

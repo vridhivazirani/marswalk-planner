@@ -1,0 +1,200 @@
+{
+  "grid_name": "jezero_western_delta_20m",
+  "pipeline_version": "2.1.0 (M0.3.2 Scientific Validity Corrected)",
+  "processed_utc": "2026-11-15T15:12:20.135077+00:00",
+  "profile": {
+    "max_slope_deg": 25.0,
+    "max_tri_m": 8.0,
+    "forbid_unknown": true,
+    "forbid_resolution_uncertainty": true,
+    "slope_safe_deg": 8.0,
+    "slope_critical_deg": 25.0,
+    "tri_safe_m": 0.5,
+    "tri_critical_m": 6.0,
+    "w_slope": 0.35,
+    "w_roughness": 0.2,
+    "w_boulder": 0.15,
+    "w_sand": 0.15,
+    "w_crater": 0.1,
+    "w_uncertainty": 0.05
+  },
+  "nodata_conventions": {
+    "float32_continuous_layers": -9999.0,
+    "uint8_binary_masks": 255
+  },
+  "fusion_policy": {
+    "case_a": "HiRISE observed (source_id=2): Native 1m hazard detections apply",
+    "case_b": "CTX observed (source_id=1): Lower-res coverage with unresolved high-res hazard uncertainty",
+    "case_c": "No coverage (source_id=0): Impassable by default (NO_DATA_UNKNOWN)",
+    "case_d": "Conflicting information: Conservative obstacle preservation"
+  },
+  "statistics": {
+    "total_cells": 212132,
+    "hard_impassable_cells": 61055,
+    "impassable_percentage": 28.781607678238082,
+    "hirise_observed_cells": 162993,
+    "ctx_observed_cells": 49139,
+    "unresolved_uncertainty_cells": 49139,
+    "unknown_cells": 0,
+    "native_obstacle_cells": 61054,
+    "mean_overall_hazard": 0.15623530745506287,
+    "max_overall_hazard": 1.0,
+    "min_overall_hazard": 0.08369841426610947
+  },
+  "layers": [
+    {
+      "id": "h_slope",
+      "name": "Slope Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "DERIVED"
+    },
+    {
+      "id": "h_roughness",
+      "name": "Roughness Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "DERIVED"
+    },
+    {
+      "id": "h_boulder",
+      "name": "Boulder Candidate Heuristic (20m CTX Ortho + TRI)",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "h_sand",
+      "name": "Loose Sand Heuristic (20m CTX Ortho)",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "h_crater",
+      "name": "Crater Depression Heuristic",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "overall_hazard",
+      "name": "Composite Hazard",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "hard_impassable",
+      "name": "Hard Impassable Mask",
+      "type": "bool",
+      "nodata": 255,
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "data_confidence",
+      "name": "Data Source Reliability Index (Uncalibrated Ordinal)",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "nodata": -9999.0,
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "detection_confidence",
+      "name": "Evidence Reliability Index (Uncalibrated Ordinal)",
+      "range": [
+        0.0,
+        1.0
+      ],
+      "nodata": -9999.0,
+      "epistemic": "HEURISTIC"
+    },
+    {
+      "id": "spatial_uncertainty",
+      "name": "Provisional Nominal Vertical Precision Tier (Unverified Proxy)",
+      "units": "meters",
+      "nodata": -9999.0,
+      "epistemic": "HEURISTIC",
+      "status": "PROVISIONAL_UNVERIFIED_NOMINAL_TIER"
+    },
+    {
+      "id": "resolution_uncertainty",
+      "name": "Resolution Uncertainty Mask",
+      "type": "bool",
+      "nodata": 255,
+      "epistemic": "DERIVED"
+    }
+  ],
+  "provenance": {
+    "upstream_source_products": [
+      "10.5066/P9REJ9JN",
+      "10.5066/P906QQT8",
+      "10.5066/P9GV1ND3"
+    ],
+    "upstream_source_files": [
+      "HiRISE_DTM_Delta_Jezero_DL_1m.tif",
+      "JEZ_ctx_B_soc_008_DTM_20m.tif",
+      "JEZ_ctx_B_soc_008_orthoMosaic_6m.tif"
+    ],
+    "upstream_source_details": [
+      {
+        "role": "primary_dtm",
+        "product_doi": "10.5066/P9REJ9JN",
+        "filename": "HiRISE_DTM_Delta_Jezero_DL_1m.tif",
+        "native_resolution_m": 1.0,
+        "resampling_method": "Resampling.bilinear",
+        "raw_nodata": -32768.0,
+        "epistemic_class": "OBSERVED"
+      },
+      {
+        "role": "regional_dtm",
+        "product_doi": "10.5066/P906QQT8",
+        "filename": "JEZ_ctx_B_soc_008_DTM_20m.tif",
+        "native_resolution_m": 20.0,
+        "resampling_method": "Resampling.bilinear",
+        "raw_nodata": -3.4028226550889045e+38,
+        "epistemic_class": "OBSERVED"
+      },
+      {
+        "role": "optical_imagery_for_cv_hazards",
+        "product_doi": "10.5066/P9GV1ND3",
+        "filename": "JEZ_ctx_B_soc_008_orthoMosaic_6m.tif",
+        "native_resolution_m": 6.0,
+        "target_resolution_m": 20.0,
+        "resampling_method": "Resampling.cubic",
+        "raw_nodata": 0,
+        "epistemic_class": "OBSERVED"
+      }
+    ],
+    "cv_optical_imagery_input": {
+      "processed_raster": "jezero_western_delta_20m_ortho_imagery.tif",
+      "source_file": "JEZ_ctx_B_soc_008_orthoMosaic_6m.tif",
+      "product_doi": "10.5066/P9GV1ND3",
+      "native_resolution_m": 6.0,
+      "processing_resolution_m": 20.0,
+      "note": "All 20m CV boulder, sand, and crater heuristic scores consume 20m-resampled CTX orthomosaic imagery, not 0.25m HiRISE ORI."
+    },
+    "native_hirise_hazards_source": "HiRISE_DTM_Delta_Jezero_DL_1m.tif",
+    "native_hirise_resolution_m": 1.0,
+    "geographic_crs": "IAU_2015:49900",
+    "projected_crs": "ESRI:103885",
+    "software_versions": {
+      "rasterio": "1.5.2",
+      "gdal": "3.12.2"
+    }
+  }
+}

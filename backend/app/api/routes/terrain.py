@@ -5,13 +5,13 @@ and classification.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from app.core.data_paths import CATALOG_DIR, PROCESSED_DIR
 from app.terrain.classifier import TERRAIN_CLASS_DETAILS, TERRAIN_CLASS_NAMES
 from app.terrain.cv_detector import (
     detect_boulders_with_shadows,
@@ -21,9 +21,6 @@ from app.terrain.cv_detector import (
 from app.terrain.multi_resolution import MultiResolutionTerrainInspector
 
 router = APIRouter(prefix="/terrain", tags=["terrain-intelligence"])
-
-PROCESSED_DIR = Path(__file__).resolve().parents[4] / "data" / "processed"
-CATALOG_DIR = Path(__file__).resolve().parents[4] / "data" / "catalog"
 
 _inspector = MultiResolutionTerrainInspector()
 

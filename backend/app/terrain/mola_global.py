@@ -20,10 +20,10 @@ try:
 except ImportError:
     Image = None  # type: ignore[assignment]
 
+from app.core.data_paths import get_data_dir
+
 # Robust project data root discovery
-PROJECT_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
-if not PROJECT_DATA_ROOT.exists():
-    PROJECT_DATA_ROOT = Path("data")
+PROJECT_DATA_ROOT = get_data_dir()
 
 # Path to authentic MOLA 4 ppd binary grid
 MOLA_GRID_PATH = PROJECT_DATA_ROOT / "raw/mola/megt90n000cb.img"
@@ -50,7 +50,8 @@ def get_mola_grid() -> np.ndarray:
         # Global crustal dichotomy: southern highlands (+1500m) vs northern lowlands (-3500m)
         lats = np.linspace(90, -90, 720)[:, None]
         lons = np.linspace(-180, 180, 1440)[None, :]
-        grid = -1000.0 - 2500.0 * np.tanh((lats - 10.0) / 20.0)
+        grid = np.zeros((720, 1440), dtype=np.float32)
+        grid += -1000.0 - 2500.0 * np.tanh((lats - 10.0) / 20.0)
 
         # Olympus Mons (+21,000m) at 18.65°N, -133.8°E
         d_oly = np.hypot(lats - 18.65, (lons - (-133.8)) * np.cos(18.65 * np.pi / 180.0))

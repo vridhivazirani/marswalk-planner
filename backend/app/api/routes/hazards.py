@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from app.core.data_paths import PROCESSED_DIR
 from app.hazards.config import HazardProfile
 from app.services.hazard_inspection import (
     AuthoritativeHazardInputMissingError,
@@ -17,8 +17,6 @@ from app.services.hazard_inspection import (
 )
 
 router = APIRouter(prefix="/hazards", tags=["hazard-intelligence"])
-
-PROCESSED_DIR = Path(__file__).resolve().parents[4] / "data" / "processed"
 
 
 class HazardProfileDTO(BaseModel):

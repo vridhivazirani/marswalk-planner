@@ -7,21 +7,18 @@ and coordinate inspection endpoints with full epistemic provenance.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import rasterio
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 
+from app.core.data_paths import CATALOG_DIR, PROCESSED_DIR
 from app.geospatial.crs import MarsCoordinateSystem
 from app.science.config import ScienceProfile
 from app.science.objectives import get_all_objectives, get_objective_by_id
 
 router = APIRouter(prefix="/science", tags=["scientific-opportunity"])
-
-PROCESSED_DIR = Path(__file__).resolve().parents[4] / "data" / "processed"
-CATALOG_DIR = Path(__file__).resolve().parents[4] / "data" / "catalog"
 
 
 @router.get("/profile", summary="Get current scientific opportunity configuration profile")
