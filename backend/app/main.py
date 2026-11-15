@@ -41,6 +41,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(api_router, prefix=settings.api_prefix)
+    # Also mount with "/v1" for cloud proxies or serverless platforms that strip the "/api" prefix
+    if settings.api_prefix != "/v1":
+        app.include_router(api_router, prefix="/v1")
     return app
 
 

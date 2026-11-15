@@ -26,7 +26,10 @@ for mod_name in [
         sys.modules[mod_name] = MagicMock()
 
 try:
+    from app.api.router import api_router
     from app.main import app
+    # Mount api_router at /v1 if not already present, ensuring both /api/v1 and /v1 match on Vercel
+    app.include_router(api_router, prefix="/v1")
 except Exception as e:
     err_str = str(e)
     err_tb = traceback.format_exc()
