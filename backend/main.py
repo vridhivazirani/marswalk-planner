@@ -11,24 +11,6 @@ backend_dir = str(Path(__file__).resolve().parent)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-# Handle environments (such as AWS Lambda on Amazon Linux 2023) where system libexpat.so.1
-# is missing from the minimal runtime image, causing C-rasterio binary import failure.
-try:
-    import rasterio  # noqa: F401
-except (ImportError, Exception):
-    from unittest.mock import MagicMock
-
-    for mod_name in [
-        "rasterio",
-        "rasterio.windows",
-        "rasterio.transform",
-        "rasterio.enums",
-        "rasterio.crs",
-        "rasterio.errors",
-        "rasterio.coords",
-    ]:
-        sys.modules.setdefault(mod_name, MagicMock())
-
 _real_app: Any = None
 _init_error: tuple[str, str] | None = None
 

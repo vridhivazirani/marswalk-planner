@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
+
+try:
+    import rasterio
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
 
 from app.costmap.evaluator import CostmapBundle, compute_unified_costmap
 from app.costmap.grid import RasterGridSpec, validate_grid_compatibility

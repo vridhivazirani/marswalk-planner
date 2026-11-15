@@ -22,8 +22,13 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
-from rasterio.windows import Window
+
+try:
+    import rasterio
+    from rasterio.windows import Window
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
+    Window = None  # type: ignore[assignment]
 from scipy import ndimage
 
 from app.geospatial.grid import get_western_delta_grid_20m

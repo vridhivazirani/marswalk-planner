@@ -22,8 +22,12 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import rasterio
-import rasterio.transform
+
+try:
+    import rasterio
+    import rasterio.transform
+except (ImportError, Exception):
+    rasterio = None  # type: ignore[assignment]
 
 from app.terrain.classifier import TERRAIN_CLASS_DETAILS, TERRAIN_CLASS_NAMES, classify_terrain
 from app.terrain.derivatives import (

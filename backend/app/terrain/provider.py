@@ -18,21 +18,21 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 from affine import Affine
 
-try:
-    from rasterio.coords import BoundingBox
-except (ImportError, Exception):
-    from collections import namedtuple
-
-    BoundingBox = namedtuple("BoundingBox", ["left", "bottom", "right", "top"])  # type: ignore[misc]
-
 from app.core.data_paths import PROCESSED_DIR, get_data_dir
 from app.core.epistemic import EpistemicClass
 from app.geospatial.crs import MarsCoordinateSystem
+
+
+class BoundingBox(NamedTuple):
+    left: float
+    bottom: float
+    right: float
+    top: float
 
 
 class TerrainDataProvider:
