@@ -41,7 +41,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
   const sections: NavSection[] = NAV_SECTION_ORDER.map((sectionTitle) => ({
     title: sectionTitle,
     items: EXPERIENCE_ROUTES.filter(
-      (route) => route.section === sectionTitle && route.id !== 'digital-twin',
+      (route) => route.section === sectionTitle,
     ).map((route) => {
       let badge = route.staticBadge
       if (route.id === 'route-planner') {

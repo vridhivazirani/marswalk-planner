@@ -140,6 +140,7 @@ export function GlobalMarsGlobe3D({
   const jezeroHighlightGroupRef = useRef<THREE.Group | null>(null)
   const selectionHighlightGroupRef = useRef<THREE.Group | null>(null)
   const atmosphereMeshRef = useRef<THREE.Mesh | null>(null)
+  const loadedTextureRef = useRef<string>('shaded_relief')
 
   // Remote data state
   const [_basemaps, setBasemaps] = useState<GlobalBasemap[]>([])
@@ -488,6 +489,8 @@ export function GlobalMarsGlobe3D({
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!globeMeshRef.current) return
+    if (loadedTextureRef.current === activeTextureType) return
+    loadedTextureRef.current = activeTextureType
     const loader = new THREE.TextureLoader()
     loader.load(
       getGlobalTextureUrl(activeTextureType),
@@ -685,6 +688,13 @@ export function GlobalMarsGlobe3D({
   useEffect(() => {
     if (selectedFeature) {
       flyToCoordinates(selectedFeature.lat, selectedFeature.lon)
+      queueMicrotask(() => setSamplingLoading(true))
+      sampleGlobalElevation(selectedFeature.lat, normalizeEastLon(selectedFeature.lon))
+        .then((sample) => {
+          setElevationSample(sample)
+          setSamplingLoading(false)
+        })
+        .catch(() => setSamplingLoading(false))
     }
   }, [selectedFeature, flyToCoordinates])
 
@@ -1044,7 +1054,10 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
         {/* --- LEFT PANEL: SEARCH & LAYER CONTROLS --- */}
         <div
           style={{
-            width: '320px',
+            width: '270px',
+            minWidth: '250px',
+            maxWidth: '280px',
+            flexShrink: 0,
             background: '#0d0d11',
             borderRight: '1px solid #27272a',
             display: 'flex',
@@ -1219,6 +1232,14 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
                       setSelectedEntity({ type: 'feature', data: featureData })
                       onSelectFeature?.(featureData)
                       flyToCoordinates(dest.lat, dest.lon)
+                      onSelectCoordinates?.({
+                        lat: Number(dest.lat.toFixed(4)),
+                        lon: normalizeEastLon(Number(normalizeEastLon(dest.lon).toFixed(4))),
+                      })
+                      const regId = getRegionIdForEntity(dest.name)
+                      if (regId) {
+                        onEnterRegion?.(regId)
+                      }
                     }}
                     style={{
                       background: isSelected ? '#ffffff' : '#18181b',
@@ -1369,6 +1390,14 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
                       setSelectedEntity({ type: 'landing', data: site })
                       onSelectFeature?.(site)
                       flyToCoordinates(site.lat, site.lon)
+                      onSelectCoordinates?.({
+                        lat: Number(site.lat.toFixed(4)),
+                        lon: normalizeEastLon(Number(normalizeEastLon(site.lon).toFixed(4))),
+                      })
+                      const regId = getRegionIdForEntity(site.craft_name) || getRegionIdForEntity(site.target_region)
+                      if (regId) {
+                        onEnterRegion?.(regId)
+                      }
                     }}
                     style={{
                       padding: '0.35rem 0.5rem',
@@ -1415,7 +1444,8 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
           onPointerMove={handlePointerMove}
           onClick={handleGlobeClick}
           style={{
-            flex: 1,
+            flex: '1 1 500px',
+            minWidth: '360px',
             height: '100%',
             position: 'relative',
             cursor: 'grab',
@@ -1547,14 +1577,21 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
         {selectedEntity && (
           <div
             style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
               width: '320px',
-              background: '#0d0d11',
+              maxWidth: '85vw',
+              background: 'rgba(13, 13, 17, 0.95)',
+              backdropFilter: 'blur(8px)',
               borderLeft: '1px solid #27272a',
               display: 'flex',
               flexDirection: 'column',
-              zIndex: 10,
+              zIndex: 15,
               overflowY: 'auto',
               padding: '1rem',
+              boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.6)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>

@@ -17,61 +17,77 @@ router = APIRouter(prefix="/twin", tags=["digital-twin"])
 @router.get("/layers", summary="Get metadata for all available Digital Twin layers")
 def get_layers() -> dict[str, Any]:
     """Return available 2D and 3D layers, bounding extents, and Mars coordinates."""
-    elev_tif = PROCESSED_DIR / "jezero_western_delta_20m_elevation.tif"
-    if elev_tif.exists():
-        import rasterio
+    from app.terrain.provider import TerrainDataProvider
 
-        with rasterio.open(elev_tif) as src:
-            width = src.width
-            height = src.height
-            bounds = src.bounds
-            res_m = float(src.res[0])
-            raster_crs = src.crs
-
-            # Defensive validation: verify raster CRS is valid Mars coordinate system
-            if raster_crs is None or "103885" not in raster_crs.to_string():
-                raise HTTPException(
-                    status_code=500, detail="Invalid raster CRS metadata: expected ESRI:103885"
-                )
-
-            # Read elevation range dynamically
-            elev_band = src.read(1)
-            nodata = src.nodata
-
-        valid_elev = elev_band[(elev_band != nodata) & ~np.isnan(elev_band)]
+    provider = TerrainDataProvider.get_instance()
+    if provider.is_available and provider._elevation is not None:
+        width = provider.width
+        height = provider.height
+        res_m = 20.0
+        elev_band = provider._elevation
+        valid_elev = elev_band[(elev_band != -9999.0) & ~np.isnan(elev_band)]
         min_elev = float(np.min(valid_elev)) if valid_elev.size > 0 else -2598.94
         max_elev = float(np.max(valid_elev)) if valid_elev.size > 0 else -2240.47
-
-        # Dynamically transform raster bounds to geographic planetocentric lat/lon
-        from app.geospatial.crs import MarsCoordinateSystem
-
-        mars_crs = MarsCoordinateSystem()
-
-        xs = np.linspace(bounds.left, bounds.right, num=15)
-        ys = np.linspace(bounds.bottom, bounds.top, num=15)
-        edge_coords = []
-        for x in xs:
-            edge_coords.append(mars_crs.to_geographic(x, bounds.bottom))
-            edge_coords.append(mars_crs.to_geographic(x, bounds.top))
-        for y in ys:
-            edge_coords.append(mars_crs.to_geographic(bounds.left, y))
-            edge_coords.append(mars_crs.to_geographic(bounds.right, y))
-
-        lon_min = round(float(min(p[0] for p in edge_coords)), 5)
-        lon_max = round(float(max(p[0] for p in edge_coords)), 5)
-        lat_min = round(float(min(p[1] for p in edge_coords)), 5)
-        lat_max = round(float(max(p[1] for p in edge_coords)), 5)
+        lat_min = provider.geo_bounds["min_lat"]
+        lat_max = provider.geo_bounds["max_lat"]
+        lon_min = provider.geo_bounds["min_lon"]
+        lon_max = provider.geo_bounds["max_lon"]
     else:
-        # Authentic Jezero Western Delta canonical footprint on serverless environments
-        width = 627
-        height = 652
-        res_m = 20.0
-        min_elev = -2598.94
-        max_elev = -2240.47
-        lon_min = 77.16047
-        lon_max = 77.69898
-        lat_min = 18.21103
-        lat_max = 18.72119
+        elev_tif = PROCESSED_DIR / "jezero_western_delta_20m_elevation.tif"
+        if elev_tif.exists():
+            import rasterio
+
+            with rasterio.open(elev_tif) as src:
+                width = src.width
+                height = src.height
+                bounds = src.bounds
+                res_m = float(src.res[0])
+                raster_crs = src.crs
+
+                # Defensive validation: verify raster CRS is valid Mars coordinate system
+                if raster_crs is None or "103885" not in raster_crs.to_string():
+                    raise HTTPException(
+                        status_code=500, detail="Invalid raster CRS metadata: expected ESRI:103885"
+                    )
+
+                # Read elevation range dynamically
+                elev_band = src.read(1)
+                nodata = src.nodata
+
+            valid_elev = elev_band[(elev_band != nodata) & ~np.isnan(elev_band)]
+            min_elev = float(np.min(valid_elev)) if valid_elev.size > 0 else -2598.94
+            max_elev = float(np.max(valid_elev)) if valid_elev.size > 0 else -2240.47
+
+            # Dynamically transform raster bounds to geographic planetocentric lat/lon
+            from app.geospatial.crs import MarsCoordinateSystem
+
+            mars_crs = MarsCoordinateSystem()
+
+            xs = np.linspace(bounds.left, bounds.right, num=15)
+            ys = np.linspace(bounds.bottom, bounds.top, num=15)
+            edge_coords = []
+            for x in xs:
+                edge_coords.append(mars_crs.to_geographic(x, bounds.bottom))
+                edge_coords.append(mars_crs.to_geographic(x, bounds.top))
+            for y in ys:
+                edge_coords.append(mars_crs.to_geographic(bounds.left, y))
+                edge_coords.append(mars_crs.to_geographic(bounds.right, y))
+
+            lon_min = round(float(min(p[0] for p in edge_coords)), 5)
+            lon_max = round(float(max(p[0] for p in edge_coords)), 5)
+            lat_min = round(float(min(p[1] for p in edge_coords)), 5)
+            lat_max = round(float(max(p[1] for p in edge_coords)), 5)
+        else:
+            # Authentic Jezero Western Delta canonical footprint on serverless environments
+            width = 362
+            height = 586
+            res_m = 20.0
+            min_elev = -2598.94
+            max_elev = -2240.47
+            lon_min = 77.34370
+            lon_max = 77.46584
+            lat_min = 18.39180
+            lat_max = 18.58953
 
     return {
         "study_area": {
@@ -311,6 +327,27 @@ def get_elevation_contours(interval: int = 50) -> dict[str, Any]:
 @router.get("/elevation/grid", summary="Get 3D elevation matrix for terrain mesh")
 def get_elevation_grid(step: int = 4) -> dict[str, Any]:
     """Return 2D elevation float array downsampled by `step` for 3D mesh creation."""
+    from app.terrain.provider import TerrainDataProvider
+
+    provider = TerrainDataProvider.get_instance()
+    if provider.is_available and provider._elevation is not None:
+        data = provider._elevation[::step, ::step]
+        nodata = -9999.0
+        valid = data[data != nodata]
+        fill_min = float(valid.min()) if valid.size > 0 else -2600.0
+        clean_data = np.where((data == nodata) | np.isnan(data), fill_min, data)
+
+        return {
+            "rows": clean_data.shape[0],
+            "cols": clean_data.shape[1],
+            "step": step,
+            "grid_resolution_m": 20.0 * step,
+            "elev_min_m": float(valid.min()) if valid.size > 0 else fill_min,
+            "elev_max_m": float(valid.max()) if valid.size > 0 else fill_min,
+            "elev_mean_m": float(valid.mean()) if valid.size > 0 else fill_min,
+            "elevations": clean_data.tolist(),
+        }
+
     elev_tif = PROCESSED_DIR / "jezero_western_delta_20m_elevation.tif"
     if elev_tif.exists():
         import rasterio
@@ -333,19 +370,7 @@ def get_elevation_grid(step: int = 4) -> dict[str, Any]:
             "elev_mean_m": float(valid.mean()) if valid.size > 0 else fill_min,
             "elevations": clean_data.tolist(),
         }
-    else:
-        rows = max(1, 652 // step)
-        cols = max(1, 627 // step)
-        y = np.linspace(0, 1, rows)[:, None]
-        x = np.linspace(0, 1, cols)[None, :]
-        elev = -2240.0 - 360.0 * np.sqrt(x**2 + y**2) / 1.414
-        return {
-            "rows": rows,
-            "cols": cols,
-            "step": step,
-            "grid_resolution_m": 20.0 * step,
-            "elev_min_m": -2600.0,
-            "elev_max_m": -2240.0,
-            "elev_mean_m": -2420.0,
-            "elevations": elev.tolist(),
-        }
+
+    raise HTTPException(
+        status_code=503, detail="Authentic elevation grid is currently unavailable."
+    )

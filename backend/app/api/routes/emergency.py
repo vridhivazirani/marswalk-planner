@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.routing.emergency import (
     HazardSeverity,
@@ -56,6 +56,16 @@ class EmergencySimulationRequest(BaseModel):
     crew_progress_pct: float = Field(
         0.40, ge=0.0, le=1.0, description="Crew distance progress along route (0.0 to 1.0)"
     )
+
+    @field_validator("crew_progress_pct", mode="before")
+    @classmethod
+    def normalize_pct(cls, v: Any) -> float:
+        if v is None:
+            return 0.40
+        val = float(v)
+        if val > 1.0:
+            val = val / 100.0
+        return max(0.0, min(1.0, val))
     custom_crew_lat: float | None = Field(None, description="Explicit crew current latitude")
     custom_crew_lon: float | None = Field(None, description="Explicit crew current longitude")
     scenario_id: str | None = Field(

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchHealth } from './api/health'
+import { fetchDigitalTwinLayers, type DigitalTwinLayersResponse } from './api/twin'
 
 import { DisclaimerBanner } from './components/DisclaimerBanner'
 import { NavigationSidebar } from './components/layout/NavigationSidebar'
@@ -12,6 +13,7 @@ import { getPageTitle, getRegionBadgeLabel } from './navigation/routes.ts'
 // 14 Operational Mission Control Pages
 import { MissionOverviewPage } from './pages/MissionOverviewPage'
 import { MapExplorerPage } from './pages/MapExplorerPage'
+import { DigitalTwinPage } from './pages/DigitalTwinPage'
 import { NASADataHubPage } from './pages/NASADataHubPage'
 import { TerrainIntelligencePage } from './pages/TerrainIntelligencePage'
 import { HazardAssessmentPage } from './pages/HazardAssessmentPage'
@@ -28,7 +30,14 @@ function App() {
   const { mission, runtime, persistence, actions } = useMission()
 
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null)
+  const [layersMeta, setLayersMeta] = useState<DigitalTwinLayersResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchDigitalTwinLayers()
+      .then(setLayersMeta)
+      .catch((err) => console.warn('Digital Twin layers metadata warning:', err))
+  }, [])
 
   const checkHealth = useCallback(() => {
     fetchHealth()
@@ -139,45 +148,19 @@ function App() {
           )}
 
           {activePage === 'digital-twin' && (
-            <div className="page-container">
-              <div
-                className="card"
-                style={{
-                  padding: '1.75rem',
-                  borderLeft: '4px solid #f59e0b',
-                  background: 'var(--bg-panel)',
-                  maxWidth: '780px',
-                  margin: '1.5rem auto',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.6rem' }}>
-                  <span style={{ fontSize: '1.3rem' }}>🛰️</span>
-                  <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.2rem' }}>
-                    Jezero Digital Twin Isolated
-                  </h2>
-                </div>
-                <p style={{ margin: '0 0 1.2rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.55 }}>
-                  The local high-resolution Jezero Digital Twin experience has been isolated for submission stability.
-                  Martian planetary cartography, Jezero regional geology, CRISM mineralogy, and Perseverance rover telemetry remain fully accessible in <strong>Mars Explorer</strong>. Human sortie route planning and multi-objective evaluations remain fully operational in <strong>EVA Planner</strong>.
-                </p>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => actions.setActivePage('map-explorer')}
-                  >
-                    Open Mars Explorer →
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => actions.setActivePage('route-planner')}
-                  >
-                    Open EVA Planner →
-                  </button>
-                </div>
-              </div>
-            </div>
+            <DigitalTwinPage
+              layersMeta={layersMeta}
+              activeLayers={activeLayers}
+              routes={runtime.routes}
+              emergencyPlan={runtime.emergencyPlan}
+              onLayerToggle={actions.toggleLayer}
+              onSelectCoords={actions.inspectCoordinates}
+              onSelectTarget={actions.selectTargetFeature}
+              selectedHazard={runtime.selectedHazard}
+              selectedCost={runtime.selectedCost}
+              selectedTarget={runtime.selectedTargetFeature}
+              isInspecting={runtime.isInspecting}
+            />
           )}
 
           {activePage === 'map-explorer' && (
