@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from PIL import Image
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None  # type: ignore[assignment]
 
 # Robust project data root discovery
 PROJECT_DATA_ROOT = Path(__file__).resolve().parents[3] / "data"

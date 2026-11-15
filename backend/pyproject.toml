@@ -23,6 +23,7 @@ dependencies = [
     "scipy>=1.14",
     "pyproj>=3.7",
     "rasterio>=1.4",
+    "pillow>=10.0",
 ]
 
 [project.optional-dependencies]
