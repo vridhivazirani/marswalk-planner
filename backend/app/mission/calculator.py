@@ -79,6 +79,7 @@ class EVAMissionCalculator:
         science_stops_count: int = 2,
         is_round_trip: bool = True,
         custom_assumptions: MissionPlanningAssumptions | None = None,
+        environmental_modifiers: dict[str, float] | None = None,
     ) -> MissionPlanSummary:
         """Evaluate timeline, consumables expenditure, and flight feasibility for a route."""
         cfg = custom_assumptions or self.assumptions
@@ -90,12 +91,38 @@ class EVAMissionCalculator:
         if not waypoints:
             raise ValueError("Route plan contains no waypoints.")
 
+        # Environmental coupling factors
+        speed_factor = 1.0
+        metabolic_factor = 1.0
+        thermal_penalty_w = 0.0
+
+        if environmental_modifiers:
+            temp_c = environmental_modifiers.get(
+                "air_temperature_c", environmental_modifiers.get("temperature_c")
+            )
+            tau = environmental_modifiers.get(
+                "dust_optical_depth_tau", environmental_modifiers.get("dust_tau")
+            )
+            wind = environmental_modifiers.get("wind_speed_mps")
+            suitability = environmental_modifiers.get("suitability_score")
+
+            if tau is not None and tau > 0.6:
+                speed_factor = max(0.65, 1.0 - (tau - 0.6) * 0.25)
+            if wind is not None and wind > 10.0:
+                metabolic_factor += min(0.30, (wind - 10.0) * 0.015)
+            if suitability is not None and suitability < 0.8:
+                metabolic_factor += max(0.0, (0.8 - suitability) * 0.25)
+            if temp_c is not None and temp_c < -50.0:
+                thermal_penalty_w = max(0.0, (-50.0 - temp_c) * 1.5)
+
         # 1. Outbound traversal simulation
         outbound_time_sec, outbound_met_wh, max_slope_deg, avg_slope_deg = self._simulate_traversal(
             waypoints=waypoints,
             crew=crew_cfg,
             time_cfg=time_cfg,
             is_return=False,
+            speed_factor=speed_factor,
+            metabolic_factor=metabolic_factor,
         )
 
         # 2. Return traversal simulation (reverse waypoints with inverted slopes)
@@ -105,6 +132,8 @@ class EVAMissionCalculator:
                 crew=crew_cfg,
                 time_cfg=time_cfg,
                 is_return=True,
+                speed_factor=speed_factor,
+                metabolic_factor=metabolic_factor,
             )
             max_slope_deg = max(max_slope_deg, ret_max_slope)
             avg_slope_deg = (avg_slope_deg + ret_avg_slope) / 2.0
@@ -172,7 +201,8 @@ class EVAMissionCalculator:
         o2_margin_pct = (o2_remaining_g / o2_capacity_g) * 100.0
 
         # Battery energy consumed (Watt-hours per suit life support system)
-        battery_energy_consumed_wh = equip_cfg.base_life_support_power_w * total_eva_hours
+        effective_life_support_w = equip_cfg.base_life_support_power_w + thermal_penalty_w
+        battery_energy_consumed_wh = effective_life_support_w * total_eva_hours
         battery_capacity_wh = equip_cfg.total_battery_capacity_wh
         battery_remaining_wh = battery_capacity_wh - battery_energy_consumed_wh
         battery_margin_pct = (battery_remaining_wh / battery_capacity_wh) * 100.0
@@ -198,6 +228,45 @@ class EVAMissionCalculator:
             max_slope_deg=max_slope_deg,
             equip_cfg=equip_cfg,
         )
+
+        # 9. Environmental stress warnings if modifiers were applied
+        if environmental_modifiers:
+            suitability = environmental_modifiers.get("suitability_score")
+            temp_c = environmental_modifiers.get(
+                "air_temperature_c", environmental_modifiers.get("temperature_c")
+            )
+            tau = environmental_modifiers.get(
+                "dust_optical_depth_tau", environmental_modifiers.get("dust_tau")
+            )
+            if suitability is not None and suitability < 0.6:
+                warnings.append(
+                    MissionFeasibilityWarning(
+                        severity=WarningSeverity.WARNING,
+                        code="ENVIRONMENTAL_STRESS_ELEVATED",
+                        message=(
+                            f"Elevated environmental stress ({suitability * 100:.0f}%). "
+                            f"Speed {speed_factor:.2f}x, metabolic factor {metabolic_factor:.2f}x."
+                        ),
+                        remediation="Wait for calmer atmospheric conditions or curtail duration.",
+                    )
+                )
+            else:
+                t_str = f"{temp_c:.1f}°C" if temp_c is not None else "N/A"
+                tau_str = f"{tau:.2f}" if tau is not None else "N/A"
+                warnings.append(
+                    MissionFeasibilityWarning(
+                        severity=WarningSeverity.ADVISORY,
+                        code="ENVIRONMENTAL_COUPLING_ACTIVE",
+                        message=(
+                            f"Atmospheric environmental coupling active (SIMULATED + HEURISTIC). "
+                            f"Temp: {t_str}, Dust tau: {tau_str}."
+                        ),
+                        remediation=(
+                            "Atmospheric parameters incorporated into thermal life support "
+                            "and traversal speed."
+                        ),
+                    )
+                )
 
         # Mission is feasible if no CRITICAL warnings are present
         is_feasible = not any(w.severity == WarningSeverity.CRITICAL for w in warnings)
@@ -227,6 +296,8 @@ class EVAMissionCalculator:
             consumables=consumables,
             warnings=warnings,
             is_feasible=is_feasible,
+            environmental_modifiers_applied=bool(environmental_modifiers),
+            environmental_factors=environmental_modifiers,
             assumptions_used=cfg.to_dict(),
         )
 
@@ -236,6 +307,8 @@ class EVAMissionCalculator:
         crew: CrewAssumptions,
         time_cfg: OperationalTimelineAssumptions,
         is_return: bool,
+        speed_factor: float = 1.0,
+        metabolic_factor: float = 1.0,
     ) -> tuple[float, float, float, float]:
         """Simulate traversal time (seconds) and metabolic energy expenditure (Watt-hours)."""
         wps = list(reversed(waypoints)) if is_return else waypoints
@@ -245,7 +318,7 @@ class EVAMissionCalculator:
         total_met_joules = 0.0
         slopes: list[float] = []
 
-        v0 = time_cfg.nominal_walking_speed_mps / fatigue_mult
+        v0 = (time_cfg.nominal_walking_speed_mps / fatigue_mult) * max(0.2, speed_factor)
 
         for i in range(1, len(wps)):
             p1 = wps[i - 1]
@@ -289,7 +362,7 @@ class EVAMissionCalculator:
                 )
 
             total_time_sec += step_time_sec
-            total_met_joules += p_met * step_time_sec
+            total_met_joules += (p_met * max(0.5, metabolic_factor)) * step_time_sec
 
         total_met_wh = total_met_joules / 3600.0
         max_slope = max(slopes) if slopes else 0.0

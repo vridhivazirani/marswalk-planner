@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -88,3 +89,63 @@ def test_twin_elevation_grid_endpoint():
     assert -2400.0 <= grid["elev_max_m"] <= -2100.0
     assert len(grid["elevations"]) == grid["rows"]
     assert len(grid["elevations"][0]) == grid["cols"]
+
+
+def test_twin_dynamic_bounds_and_crs_validation(monkeypatch, tmp_path):
+    """Verify study area bounds dynamically update from raster metadata."""
+    import rasterio
+    from rasterio.transform import Affine
+
+    # Create a temporary synthetic GeoTIFF with changed extent
+    synth_tif = tmp_path / "jezero_western_delta_20m_elevation.tif"
+    # Shape 100x100, left=4580000, top=1100000, res=20m
+    data = np.full((100, 100), -2350.0, dtype=np.float32)
+    transform = Affine(20.0, 0.0, 4580000.0, 0.0, -20.0, 1100000.0)
+
+    with rasterio.open(
+        synth_tif,
+        "w",
+        driver="GTiff",
+        height=100,
+        width=100,
+        count=1,
+        dtype="float32",
+        crs="ESRI:103885",
+        transform=transform,
+        nodata=-9999.0,
+    ) as dst:
+        dst.write(data, 1)
+
+    import app.api.routes.twin as twin_mod
+    monkeypatch.setattr(twin_mod, "PROCESSED_DIR", tmp_path)
+
+    response = client.get("/api/v1/twin/layers")
+    assert response.status_code == 200
+    res_data = response.json()
+    sa = res_data["study_area"]
+
+    # Verify bounds match changed extent
+    assert sa["grid_dimensions"]["width"] == 100
+    assert sa["grid_dimensions"]["height"] == 100
+    assert sa["resolution_m"] == 20.0
+    assert sa["elevation_range_m"]["min"] == -2350.0
+
+    # Test invalid CRS metadata rejection
+    bad_tif = tmp_path / "jezero_western_delta_20m_elevation.tif"
+    with rasterio.open(
+        bad_tif,
+        "w",
+        driver="GTiff",
+        height=10,
+        width=10,
+        count=1,
+        dtype="float32",
+        crs="EPSG:4326",  # Earth WGS84 - invalid for Mars!
+        transform=transform,
+        nodata=-9999.0,
+    ) as dst:
+        dst.write(data[:10, :10], 1)
+
+    bad_resp = client.get("/api/v1/twin/layers")
+    assert bad_resp.status_code == 500
+    assert "Invalid raster CRS metadata" in bad_resp.json()["detail"]

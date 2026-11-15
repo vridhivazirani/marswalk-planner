@@ -17,10 +17,15 @@ from scipy import ndimage
 
 def compute_slope_aspect_horn(
     dem: np.ndarray,
-    res_m: float,
+    res_m: float | None = None,
     nodata: float = -9999.0,
+    dx_m: float | None = None,
+    dy_m: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Calculate slope (degrees) and aspect (degrees east of north) using Horn's (1981) formula.
+
+    Supports isotropic pixel size (`res_m`) or anisotropic horizontal/vertical spacing
+    (`dx_m`, `dy_m`).
 
     Slope:
       dz/dx = ((c + 2f + i) - (a + 2d + g)) / (8 * dx)
@@ -28,6 +33,17 @@ def compute_slope_aspect_horn(
       slope_rad = arctan(sqrt((dz/dx)^2 + (dz/dy)^2))
       slope_deg = degrees(slope_rad)
     """
+    if dx_m is None and dy_m is None:
+        if res_m is None:
+            raise ValueError("Either 'res_m' or both 'dx_m' and 'dy_m' must be specified.")
+        dx_m = float(res_m)
+        dy_m = float(res_m)
+    elif dx_m is None or dy_m is None:
+        raise ValueError("Both 'dx_m' and 'dy_m' must be specified when using anisotropic spacing.")
+
+    if dx_m <= 0.0 or dy_m <= 0.0:
+        raise ValueError(f"Pixel spacing must be strictly positive: dx_m={dx_m}, dy_m={dy_m}")
+
     valid_mask = (dem != nodata) & ~np.isnan(dem)
     if not np.any(valid_mask):
         empty = np.full_like(dem, nodata, dtype=np.float32)
@@ -47,7 +63,7 @@ def compute_slope_aspect_horn(
     # Replicate edges for valid padding
     padded = np.pad(dem_clean, pad_width=1, mode="edge")
 
-    # Correlation kernels for 8*dx weighting (Horn 1981):
+    # Correlation kernels for 8*dx and 8*dy weighting (Horn 1981):
     # a b c
     # d e f
     # g h i
@@ -56,7 +72,7 @@ def compute_slope_aspect_horn(
     # -2  0  2
     # -1  0  1
     kx = np.array([[-1.0, 0.0, 1.0], [-2.0, 0.0, 2.0], [-1.0, 0.0, 1.0]], dtype=np.float32) / (
-        8.0 * res_m
+        8.0 * dx_m
     )
 
     # dz/dy kernel (North minus South, where row 0 is North and row 2 is South):
@@ -64,7 +80,7 @@ def compute_slope_aspect_horn(
     #  0  0  0
     # -1 -2 -1
     ky = np.array([[1.0, 2.0, 1.0], [0.0, 0.0, 0.0], [-1.0, -2.0, -1.0]], dtype=np.float32) / (
-        8.0 * res_m
+        8.0 * dy_m
     )
 
     # Use correlate (direct spatial kernel application without 180° flip)

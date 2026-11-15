@@ -4,6 +4,8 @@ import type {
   AtlasMapEntry,
   ProductTypeCode,
   ValidationStatusCode,
+  PlanetaryFeature,
+  MarsLandingSite,
 } from '../api/atlas'
 import { fetchAtlasCatalogue, fetchMapDetails } from '../api/atlas'
 import { GlobalMarsMap } from '../components/GlobalMarsMap'
@@ -13,6 +15,8 @@ import { GlobalMarsGlobe3D } from '../components/GlobalMarsGlobe3D'
 export interface MapExplorerPageProps {
   initialTab?: ExplorerTab
   activeLayers?: Record<string, boolean>
+  selectedRegionId?: string
+  onSelectRegion?: (regionId: string) => void
   onToggleLayer?: (layerId: string) => void
   onSelectCoords?: (coords: { lat: number; lon: number }) => void
   onNavigateToPage?: (
@@ -71,6 +75,8 @@ const PRODUCT_TYPE_META: Record<
 export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
   initialTab,
   activeLayers = {},
+  selectedRegionId = 'reg-jezero',
+  onSelectRegion,
   onToggleLayer,
   onSelectCoords,
   onNavigateToPage,
@@ -114,6 +120,7 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
   const [selectedProductType, setSelectedProductType] = useState<string>('ALL')
   const [selectedValidation, setSelectedValidation] = useState<string>('ALL')
   const [viewMode, setViewMode] = useState<ViewMode>('GRID')
+  const [selectedFeature, setSelectedFeature] = useState<PlanetaryFeature | MarsLandingSite | null>(null)
 
   // Pagination & Sorting State
   const [page, setPage] = useState<number>(1)
@@ -124,7 +131,10 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
   // Detailed Dossier Modal / Drawer
   const [activeDossier, setActiveDossier] = useState<AtlasMapEntry | null>(null)
   const [loadingDossier, setLoadingDossier] = useState<boolean>(false)
-  const [selectedRegionId, setSelectedRegionId] = useState<string>('reg-jezero')
+
+  const handleSelectRegion = (regionId: string) => {
+    onSelectRegion?.(regionId)
+  }
 
   // Local layer toggle fallback
   const [localLayers, setLocalLayers] = useState<Record<string, boolean>>({
@@ -349,6 +359,45 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           >
             Active: <strong style={{ color: '#ffffff' }}>{activeCount}</strong> Layers
           </span>
+          {selectedRegionId === 'reg-jezero' ? (
+            <button
+              type="button"
+              onClick={() => onNavigateToPage?.('route-planner')}
+              style={{
+                background: '#ffffff',
+                color: '#090909',
+                border: '1px solid #ffffff',
+                padding: '0.22rem 0.6rem',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                borderRadius: '2px',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-mono, monospace)',
+              }}
+              title="Open the EVA Route Optimization Planner for Jezero Crater"
+            >
+              PLAN JEZERO EVA ROUTE →
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setExplorerTab('REGIONAL_MAP')}
+              style={{
+                background: '#1f1709',
+                color: '#fbbf24',
+                border: '1px solid #78350f',
+                padding: '0.22rem 0.55rem',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                borderRadius: '2px',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-mono, monospace)',
+              }}
+              title="Selected region has orbital/regional context only (no local high-res Digital Twin)"
+            >
+              ORBITAL CONTEXT ONLY • VIEW CAPABILITIES
+            </button>
+          )}
         </div>
       </div>
 
@@ -512,8 +561,10 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           <GlobalMarsMap
             displayMode="natural"
             initialBasemapId="viking_mdim21"
+            selectedFeature={selectedFeature}
+            onSelectFeature={setSelectedFeature}
             onEnterJezero={() => {
-              setSelectedRegionId('reg-jezero')
+              handleSelectRegion('reg-jezero')
               setExplorerTab('REGIONAL_MAP')
             }}
             onSelectCoordinates={onSelectCoords}
@@ -529,8 +580,10 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
           <GlobalMarsMap
             displayMode="monochrome"
             initialBasemapId="mola_shaded_relief"
+            selectedFeature={selectedFeature}
+            onSelectFeature={setSelectedFeature}
             onEnterJezero={() => {
-              setSelectedRegionId('reg-jezero')
+              handleSelectRegion('reg-jezero')
               setExplorerTab('REGIONAL_MAP')
             }}
             onSelectCoordinates={onSelectCoords}
@@ -544,12 +597,14 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
       {explorerTab === 'GLOBAL_GLOBE' && (
         <div style={{ height: 'calc(100vh - 165px)', minHeight: '680px', marginBottom: '0.5rem' }}>
           <GlobalMarsGlobe3D
+            selectedFeature={selectedFeature}
+            onSelectFeature={setSelectedFeature}
             onEnterJezero={() => {
-              setSelectedRegionId('reg-jezero')
+              handleSelectRegion('reg-jezero')
               setExplorerTab('REGIONAL_MAP')
             }}
             onEnterRegion={(regionId) => {
-              setSelectedRegionId(regionId)
+              handleSelectRegion(regionId)
               setExplorerTab('REGIONAL_MAP')
             }}
             onSelectCoordinates={onSelectCoords}
@@ -563,8 +618,10 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
       {explorerTab === 'GLOBAL_MAP' && (
         <div style={{ height: 'calc(100vh - 165px)', minHeight: '680px', marginBottom: '0.5rem' }}>
           <GlobalMarsMap
+            selectedFeature={selectedFeature}
+            onSelectFeature={setSelectedFeature}
             onEnterJezero={() => {
-              setSelectedRegionId('reg-jezero')
+              handleSelectRegion('reg-jezero')
               setExplorerTab('REGIONAL_MAP')
             }}
             onSelectCoordinates={onSelectCoords}
@@ -578,10 +635,11 @@ export const MapExplorerPage: React.FC<MapExplorerPageProps> = ({
       {explorerTab === 'REGIONAL_MAP' && (
         <div style={{ height: 'calc(100vh - 165px)', minHeight: '680px', marginBottom: '0.5rem' }}>
           <RegionalMarsMap
-            initialRegionId={selectedRegionId}
+            selectedRegionId={selectedRegionId}
+            onSelectRegion={handleSelectRegion}
             onBackToGlobal={() => setExplorerTab('GLOBAL_GLOBE')}
             onEnterLocalTwin={() => {
-              if (onNavigateToPage) onNavigateToPage('digital-twin')
+              if (onNavigateToPage) onNavigateToPage('route-planner')
             }}
           />
         </div>

@@ -13,9 +13,11 @@ strict integer-multiple coordinate snapping.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Literal
 
+import rasterio
 from rasterio.transform import Affine
 
 from app.geospatial.crs import MARS_EQUIRECTANGULAR_CRS_URN
@@ -103,3 +105,75 @@ def get_western_delta_grid_20m() -> GridSpec:
         width=w_20m,
         height=h_20m,
     )
+
+
+class IncompatibleRasterError(ValueError):
+    """Raised when two rasters fail geodetic or spatial grid alignment validation."""
+
+
+def validate_raster_alignment(
+    src_a: rasterio.DatasetReader,
+    src_b: rasterio.DatasetReader,
+    check_dimensions: bool = True,
+    tolerance_m: float = 1e-3,
+) -> bool:
+    """Validate spatial and geodetic alignment between two rasters.
+
+    Verifies:
+      1. CRS equivalence.
+      2. Grid origin (left, top).
+      3. Pixel resolution (res_x, res_y).
+      4. Raster shape (width, height) if check_dimensions is True.
+      5. Bounding box spatial overlap.
+
+    Raises IncompatibleRasterError if rasters cannot be safely aligned or combined.
+    """
+    # 1. CRS Check
+    if src_a.crs != src_b.crs:
+        raise IncompatibleRasterError(
+            f"CRS mismatch: '{src_a.crs}' != '{src_b.crs}'"
+        )
+
+    # 2. Origin Check (Left, Top)
+    t_a = src_a.transform
+    t_b = src_b.transform
+    origin_matches = (
+        math.isclose(t_a.c, t_b.c, abs_tol=tolerance_m)
+        and math.isclose(t_a.f, t_b.f, abs_tol=tolerance_m)
+    )
+    if not origin_matches:
+        raise IncompatibleRasterError(
+            f"Grid origin mismatch: ({t_a.c:.3f}, {t_a.f:.3f}) != ({t_b.c:.3f}, {t_b.f:.3f})"
+        )
+
+    # 3. Pixel Size Check
+    pixel_matches = (
+        math.isclose(t_a.a, t_b.a, abs_tol=tolerance_m)
+        and math.isclose(abs(t_a.e), abs(t_b.e), abs_tol=tolerance_m)
+    )
+    if not pixel_matches:
+        raise IncompatibleRasterError(
+            f"Pixel resolution mismatch: ({t_a.a:.3f}, {abs(t_a.e):.3f}) != "
+            f"({t_b.a:.3f}, {abs(t_b.e):.3f})"
+        )
+
+    # 4. Dimensions Check
+    if check_dimensions:
+        if src_a.width != src_b.width or src_a.height != src_b.height:
+            raise IncompatibleRasterError(
+                f"Raster dimensions mismatch: ({src_a.width}x{src_a.height}) != "
+                f"({src_b.width}x{src_b.height})"
+            )
+
+    # 5. Extent Overlap Check
+    b_a = src_a.bounds
+    b_b = src_b.bounds
+    overlap_left = max(b_a.left, b_b.left)
+    overlap_right = min(b_a.right, b_b.right)
+    overlap_bottom = max(b_a.bottom, b_b.bottom)
+    overlap_top = min(b_a.top, b_b.top)
+
+    if overlap_left >= overlap_right or overlap_bottom >= overlap_top:
+        raise IncompatibleRasterError("Rasters do not have positive spatial overlap.")
+
+    return True

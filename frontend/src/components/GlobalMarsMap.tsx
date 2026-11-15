@@ -17,6 +17,7 @@ import {
   type GlobalGeologicUnitDTO,
   type LayerCoverageDTO,
 } from '../api/atlas'
+import { normalizeEastLon } from '../mission/missionModel'
 
 export interface GlobalMarsMapProps {
   onEnterJezero?: () => void
@@ -24,6 +25,8 @@ export interface GlobalMarsMapProps {
   initialBasemapId?: string
   displayMode?: 'natural' | 'monochrome' | 'atlas' | 'default'
   compact?: boolean
+  selectedFeature?: PlanetaryFeature | MarsLandingSite | null
+  onSelectFeature?: (feature: PlanetaryFeature | MarsLandingSite | null) => void
 }
 
 export function GlobalMarsMap({
@@ -32,6 +35,8 @@ export function GlobalMarsMap({
   initialBasemapId,
   displayMode = 'default',
   compact = false,
+  selectedFeature,
+  onSelectFeature,
 }: GlobalMarsMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
@@ -41,6 +46,7 @@ export function GlobalMarsMap({
   const geologyLayerGroupRef = useRef<L.LayerGroup | null>(null)
   const jezeroPolygonRef = useRef<L.Rectangle | null>(null)
   const clickMarkerRef = useRef<L.CircleMarker | null>(null)
+  const selectedHighlightMarkerRef = useRef<L.CircleMarker | null>(null)
 
   // Remote data state
   const [basemaps, setBasemaps] = useState<GlobalBasemap[]>([])
@@ -70,7 +76,12 @@ export function GlobalMarsMap({
   const [elevationSample, setElevationSample] = useState<GlobalElevationSample | null>(null)
   const [coverageData, setCoverageData] = useState<LayerCoverageDTO | null>(null)
   const [samplingLoading, setSamplingLoading] = useState<boolean>(false)
-  const [selectedEntity, setSelectedEntity] = useState<PlanetaryFeature | MarsLandingSite | GlobalGeologicUnitDTO | null>(null)
+  const [selectedEntity, setSelectedEntity] = useState<PlanetaryFeature | MarsLandingSite | GlobalGeologicUnitDTO | null>(selectedFeature ?? null)
+  const [prevSelectedFeature, setPrevSelectedFeature] = useState<PlanetaryFeature | MarsLandingSite | null | undefined>(selectedFeature)
+  if (selectedFeature !== prevSelectedFeature) {
+    setPrevSelectedFeature(selectedFeature)
+    setSelectedEntity(selectedFeature ?? null)
+  }
 
   // Search & Navigation input state
   const [searchQuery, setSearchQuery] = useState<string>('')
@@ -161,6 +172,42 @@ export function GlobalMarsMap({
     }
   }, [])
 
+  // Fly map and sample elevation when selectedFeature prop changes
+  useEffect(() => {
+    if (selectedFeature) {
+      const map = mapInstanceRef.current
+      if (map) {
+        map.flyTo([selectedFeature.lat, selectedFeature.lon], Math.max(map.getZoom(), 5), { duration: 1.2 })
+      }
+      queueMicrotask(() => {
+        handleSampleAtCoords(selectedFeature.lat, selectedFeature.lon)
+      })
+    }
+  }, [selectedFeature, handleSampleAtCoords])
+
+  // Render prominent target reticle for selected feature on 2D map
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+
+    if (selectedHighlightMarkerRef.current) {
+      map.removeLayer(selectedHighlightMarkerRef.current)
+      selectedHighlightMarkerRef.current = null
+    }
+
+    if (!selectedEntity || !('lat' in selectedEntity) || !('lon' in selectedEntity)) return
+
+    const highlightMarker = L.circleMarker([selectedEntity.lat, selectedEntity.lon], {
+      radius: 14,
+      color: '#ffffff',
+      weight: 2.5,
+      fillColor: '#38bdf8',
+      fillOpacity: 0.35,
+    }).addTo(map)
+
+    selectedHighlightMarkerRef.current = highlightMarker
+  }, [selectedEntity])
+
   // Initialize Global Leaflet Map in Mars Plate Carrée CRS (EPSG:4326)
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return
@@ -193,9 +240,7 @@ export function GlobalMarsMap({
     map.on('mousemove', (e: L.LeafletMouseEvent) => {
       if (mouseRafId !== null) return
       mouseRafId = requestAnimationFrame(() => {
-        let lon = e.latlng.lng % 360
-        if (lon > 180) lon -= 360
-        if (lon < -180) lon += 360
+        const lon = normalizeEastLon(e.latlng.lng)
         setCursorCoords({ lat: e.latlng.lat, lon })
         mouseRafId = null
       })
@@ -211,9 +256,7 @@ export function GlobalMarsMap({
 
     // Click handler for elevation sampling & pin
     map.on('click', (e: L.LeafletMouseEvent) => {
-      let lon = e.latlng.lng % 360
-      if (lon > 180) lon -= 360
-      if (lon < -180) lon += 360
+      const lon = normalizeEastLon(e.latlng.lng)
 
       // Update click marker
       if (clickMarkerRef.current) {
@@ -366,6 +409,7 @@ export function GlobalMarsMap({
       const marker = L.marker([feat.lat, feat.lon], { icon: customIcon })
       marker.on('click', () => {
         setSelectedEntity(feat)
+        onSelectFeature?.(feat)
         handleSampleAtCoords(feat.lat, feat.lon)
       })
 
@@ -388,7 +432,7 @@ export function GlobalMarsMap({
 
       group.addLayer(marker)
     })
-  }, [features, showFeatures, handleSampleAtCoords, currentZoom])
+  }, [features, showFeatures, handleSampleAtCoords, currentZoom, onSelectFeature])
 
   // Render Historical Landing Sites overlay with scale-aware culling
   useEffect(() => {
@@ -421,6 +465,7 @@ export function GlobalMarsMap({
       const marker = L.marker([site.lat, site.lon], { icon: customIcon })
       marker.on('click', () => {
         setSelectedEntity(site)
+        onSelectFeature?.(site)
         handleSampleAtCoords(site.lat, site.lon)
       })
 
@@ -440,7 +485,7 @@ export function GlobalMarsMap({
 
       group.addLayer(marker)
     })
-  }, [landingSites, showLandingSites, handleSampleAtCoords, currentZoom])
+  }, [landingSites, showLandingSites, handleSampleAtCoords, currentZoom, onSelectFeature])
 
   // Render USGS SIM-3292 Global Geology Regions
   useEffect(() => {
@@ -571,6 +616,7 @@ export function GlobalMarsMap({
     if (!map) return
     map.flyTo([item.lat, item.lon], 7, { duration: 1.5 })
     setSelectedEntity(item)
+    onSelectFeature?.(item)
     handleSampleAtCoords(item.lat, item.lon)
     setSearchQuery('name' in item ? item.name : item.craft_name)
     setSearchResults([])
@@ -933,7 +979,10 @@ export function GlobalMarsMap({
                   : selectedEntity.name}
               </span>
               <button
-                onClick={() => setSelectedEntity(null)}
+                onClick={() => {
+                  setSelectedEntity(null)
+                  onSelectFeature?.(null)
+                }}
                 className="text-[#737373] hover:text-white text-sm leading-none px-1"
               >
                 ✕

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -31,8 +31,13 @@ class RouteRequest(BaseModel):
 
     start: LatLonPoint
     destination: LatLonPoint
+    waypoints: list[LatLonPoint] = Field(
+        default_factory=list, description="Optional intermediate sortie waypoints"
+    )
     profile: str = Field("BALANCED", description="SAFETY_FIRST, SCIENCE_FIRST, or BALANCED")
-    algorithm: str = Field("astar", description="'astar' or 'dijkstra'")
+    algorithm: Literal["astar", "dijkstra"] = Field(
+        "astar", description="'astar' or 'dijkstra'"
+    )
     simplify: bool = Field(True, description="Enable obstacle-safe route simplification")
 
 
@@ -41,7 +46,12 @@ class RouteSuiteRequest(BaseModel):
 
     start: LatLonPoint
     destination: LatLonPoint
-    algorithm: str = Field("astar", description="'astar' or 'dijkstra'")
+    waypoints: list[LatLonPoint] = Field(
+        default_factory=list, description="Optional intermediate sortie waypoints"
+    )
+    algorithm: Literal["astar", "dijkstra"] = Field(
+        "astar", description="'astar' or 'dijkstra'"
+    )
     simplify: bool = Field(True, description="Enable obstacle-safe route simplification")
 
 
@@ -58,8 +68,13 @@ class RouteCompareRequest(BaseModel):
 
     start: LatLonPoint
     destination: LatLonPoint
+    waypoints: list[LatLonPoint] = Field(
+        default_factory=list, description="Optional intermediate sortie waypoints"
+    )
     preferences: PreferencesInput | None = Field(default=None)
-    algorithm: str = Field("astar", description="'astar' or 'dijkstra'")
+    algorithm: Literal["astar", "dijkstra"] = Field(
+        "astar", description="'astar' or 'dijkstra'"
+    )
     simplify: bool = Field(True, description="Enable obstacle-safe route simplification")
 
 
@@ -68,17 +83,33 @@ def plan_route(req: RouteRequest) -> dict[str, Any]:
     """Calculate single optimal route adhering to hard constraints and chosen profile."""
     engine = RouteOptimizationEngine()
     try:
-        plan = engine.compute_route(
-            start_lat=req.start.lat,
-            start_lon=req.start.lon,
-            dest_lat=req.destination.lat,
-            dest_lon=req.destination.lon,
-            profile_name=req.profile,
-            algorithm=req.algorithm,
-            simplify=req.simplify,
-        )
+        if req.waypoints:
+            stops = [(req.start.lat, req.start.lon)]
+            stops.extend((wp.lat, wp.lon) for wp in req.waypoints)
+            stops.append((req.destination.lat, req.destination.lon))
+            plan = engine.compute_multi_stop_route(
+                stops=stops,
+                profile_name=req.profile,
+                algorithm=req.algorithm,
+                simplify=req.simplify,
+            )
+        else:
+            plan = engine.compute_route(
+                start_lat=req.start.lat,
+                start_lon=req.start.lon,
+                dest_lat=req.destination.lat,
+                dest_lon=req.destination.lon,
+                profile_name=req.profile,
+                algorithm=req.algorithm,
+                simplify=req.simplify,
+            )
         return plan.to_geojson_feature()
-    except (BlockedStartError, BlockedDestinationError, OutOfBoundsCoordinateError) as e:
+    except (
+        BlockedStartError,
+        BlockedDestinationError,
+        OutOfBoundsCoordinateError,
+        ValueError,
+    ) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except UnreachableDestinationError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
@@ -89,6 +120,7 @@ def plan_route_suite(req: RouteSuiteRequest) -> dict[str, Any]:
     """Calculate all 3 routes (Safety-First, Science-First, Balanced) for trade-off analysis."""
     engine = RouteOptimizationEngine()
     try:
+        wp_coords = [(wp.lat, wp.lon) for wp in req.waypoints] if req.waypoints else None
         suite = engine.compute_suite(
             start_lat=req.start.lat,
             start_lon=req.start.lon,
@@ -96,6 +128,7 @@ def plan_route_suite(req: RouteSuiteRequest) -> dict[str, Any]:
             dest_lon=req.destination.lon,
             algorithm=req.algorithm,
             simplify=req.simplify,
+            waypoints=wp_coords,
         )
         return {
             "type": "FeatureCollection",
@@ -103,7 +136,12 @@ def plan_route_suite(req: RouteSuiteRequest) -> dict[str, Any]:
             "features": [plan.to_geojson_feature() for plan in suite.values()],
             "comparison": {name: plan.metrics.to_dict() for name, plan in suite.items()},
         }
-    except (BlockedStartError, BlockedDestinationError, OutOfBoundsCoordinateError) as e:
+    except (
+        BlockedStartError,
+        BlockedDestinationError,
+        OutOfBoundsCoordinateError,
+        ValueError,
+    ) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except UnreachableDestinationError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
@@ -128,6 +166,7 @@ def compare_routes_endpoint(req: RouteCompareRequest) -> dict[str, Any]:
                 efficiency_importance=req.preferences.efficiency_importance,
             )
 
+        wp_coords = [(wp.lat, wp.lon) for wp in req.waypoints] if req.waypoints else None
         comparison, suite = service.compare_routes(
             start_lat=req.start.lat,
             start_lon=req.start.lon,
@@ -136,6 +175,7 @@ def compare_routes_endpoint(req: RouteCompareRequest) -> dict[str, Any]:
             preferences=prefs,
             algorithm=req.algorithm,
             simplify=req.simplify,
+            waypoints=wp_coords,
         )
 
         return {

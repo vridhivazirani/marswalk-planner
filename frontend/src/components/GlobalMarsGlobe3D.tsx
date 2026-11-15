@@ -12,6 +12,7 @@ import {
   type MarsLandingSite,
   type GlobalElevationSample,
 } from '../api/atlas'
+import { normalizeEastLon } from '../mission/missionModel'
 
 // -----------------------------------------------------------------------------
 // GEODETIC CONSTANTS & COORDINATE TRANSFORMATIONS (IAU 2015 MARS SPHERE)
@@ -68,6 +69,8 @@ interface GlobalMarsGlobe3DProps {
   onEnterJezero?: () => void
   onEnterRegion?: (regionId: string) => void
   onSelectCoordinates?: (coords: { lat: number; lon: number }) => void
+  selectedFeature?: PlanetaryFeature | MarsLandingSite | null
+  onSelectFeature?: (feature: PlanetaryFeature | MarsLandingSite | null) => void
 }
 
 function getRegionIdForEntity(name: string): string | null {
@@ -87,10 +90,44 @@ function getRegionIdForEntity(name: string): string | null {
   return null
 }
 
+function disposeHierarchy(obj: THREE.Object3D) {
+  obj.traverse((child) => {
+    if (child instanceof THREE.Mesh || child instanceof THREE.Line || child instanceof THREE.LineLoop) {
+      if (child.geometry) {
+        child.geometry.dispose()
+      }
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m) => {
+            if ('map' in m && m.map && m.map instanceof THREE.Texture) m.map.dispose()
+            m.dispose()
+          })
+        } else {
+          if ('map' in child.material && child.material.map && child.material.map instanceof THREE.Texture) {
+            child.material.map.dispose()
+          }
+          child.material.dispose()
+        }
+      }
+    }
+  })
+}
+
+function clearGroupWithDisposal(group: THREE.Group | null) {
+  if (!group) return
+  while (group.children.length > 0) {
+    const child = group.children[0]
+    disposeHierarchy(child)
+    group.remove(child)
+  }
+}
+
 export function GlobalMarsGlobe3D({
   onEnterJezero,
   onEnterRegion,
   onSelectCoordinates,
+  selectedFeature,
+  onSelectFeature,
 }: GlobalMarsGlobe3DProps) {
   const mountRef = useRef<HTMLDivElement | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -101,6 +138,7 @@ export function GlobalMarsGlobe3D({
   const markersGroupRef = useRef<THREE.Group | null>(null)
   const graticuleGroupRef = useRef<THREE.Group | null>(null)
   const jezeroHighlightGroupRef = useRef<THREE.Group | null>(null)
+  const selectionHighlightGroupRef = useRef<THREE.Group | null>(null)
   const atmosphereMeshRef = useRef<THREE.Mesh | null>(null)
 
   // Remote data state
@@ -126,7 +164,29 @@ export function GlobalMarsGlobe3D({
   const [searchResults, setSearchResults] = useState<Array<PlanetaryFeature | MarsLandingSite>>([])
   const [selectedEntity, setSelectedEntity] = useState<
     { type: 'feature'; data: PlanetaryFeature } | { type: 'landing'; data: MarsLandingSite } | null
-  >(null)
+  >(() => {
+    if (!selectedFeature) return null
+    return 'feature_type' in selectedFeature
+      ? { type: 'feature', data: selectedFeature as PlanetaryFeature }
+      : { type: 'landing', data: selectedFeature as MarsLandingSite }
+  })
+  const [prevSelectedFeature, setPrevSelectedFeature] = useState<
+    PlanetaryFeature | MarsLandingSite | null | undefined
+  >(selectedFeature)
+  if (selectedFeature !== prevSelectedFeature) {
+    setPrevSelectedFeature(selectedFeature)
+    if (selectedFeature) {
+      if ('feature_type' in selectedFeature) {
+        setSelectedEntity({ type: 'feature', data: selectedFeature as PlanetaryFeature })
+      } else {
+        setSelectedEntity({ type: 'landing', data: selectedFeature as MarsLandingSite })
+      }
+    } else {
+      setSelectedEntity(null)
+    }
+  }
+
+  const [webGlError, setWebGlError] = useState<string | null>(null)
 
   // Real-time Pointer Telemetry & Elevation Sampling
   const [pointerCoords, setPointerCoords] = useState<{ lat: number; lon: number } | null>(null)
@@ -214,14 +274,23 @@ export function GlobalMarsGlobe3D({
     camera.lookAt(0, 0, 0)
     cameraRef.current = camera
 
-    // WebGL Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
-    renderer.setSize(width, height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.05
-    mountRef.current.appendChild(renderer.domElement)
-    rendererRef.current = renderer
+    // WebGL Renderer with graceful fallback when WebGL context cannot be created
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
+      renderer.setSize(width, height)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.toneMapping = THREE.ACESFilmicToneMapping
+      renderer.toneMappingExposure = 1.05
+      mountRef.current.appendChild(renderer.domElement)
+      rendererRef.current = renderer
+    } catch (e) {
+      console.warn('WebGL is unavailable or disabled in this browser environment:', e)
+      queueMicrotask(() => {
+        setWebGlError('WebGL hardware acceleration is unavailable in this environment.')
+      })
+      return
+    }
 
     // OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement)
@@ -290,6 +359,10 @@ export function GlobalMarsGlobe3D({
     scene.add(jezeroHighlightGroup)
     jezeroHighlightGroupRef.current = jezeroHighlightGroup
 
+    const selectionHighlightGroup = new THREE.Group()
+    scene.add(selectionHighlightGroup)
+    selectionHighlightGroupRef.current = selectionHighlightGroup
+
     // -------------------------------------------------------------------------
     // RENDER LOOP
     // -------------------------------------------------------------------------
@@ -350,10 +423,49 @@ export function GlobalMarsGlobe3D({
     }
     window.addEventListener('resize', handleResize)
 
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined' && container) {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize()
+      })
+      resizeObserver.observe(container)
+    }
+
+    // WebGL Context Loss and Restoration handlers
+    const canvas = renderer.domElement
+    const handleContextLost = (event: Event) => {
+      event.preventDefault()
+      console.warn('WebGL context lost. Mars globe rendering suspended.')
+      cancelAnimationFrame(animId)
+    }
+    const handleContextRestored = () => {
+      console.info('WebGL context restored. Resuming Mars globe rendering.')
+      animId = requestAnimationFrame(animate)
+    }
+    canvas.addEventListener('webglcontextlost', handleContextLost)
+    canvas.addEventListener('webglcontextrestored', handleContextRestored)
+
     return () => {
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', handleResize)
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
+      canvas.removeEventListener('webglcontextlost', handleContextLost)
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored)
+
       controls.dispose()
+      clearGroupWithDisposal(markersGroup)
+      clearGroupWithDisposal(graticuleGroup)
+      clearGroupWithDisposal(jezeroHighlightGroup)
+      clearGroupWithDisposal(selectionHighlightGroup)
+      disposeHierarchy(scene)
+      sphereGeometry.dispose()
+      sphereMaterial.dispose()
+      texture.dispose()
+      atmosphereGeometry.dispose()
+      atmosphereMaterial.dispose()
+
       renderer.dispose()
       if (container && renderer.domElement) {
         container.removeChild(renderer.domElement)
@@ -373,6 +485,9 @@ export function GlobalMarsGlobe3D({
         texture.colorSpace = THREE.SRGBColorSpace
         if (globeMeshRef.current) {
           const mat = globeMeshRef.current.material as THREE.MeshStandardMaterial
+          if (mat.map && mat.map instanceof THREE.Texture) {
+            mat.map.dispose()
+          }
           mat.map = texture
           mat.needsUpdate = true
         }
@@ -399,9 +514,7 @@ export function GlobalMarsGlobe3D({
   useEffect(() => {
     const group = graticuleGroupRef.current
     if (!group) return
-    while (group.children.length > 0) {
-      group.remove(group.children[0])
-    }
+    clearGroupWithDisposal(group)
 
     if (!showGraticule) return
 
@@ -451,9 +564,7 @@ export function GlobalMarsGlobe3D({
   useEffect(() => {
     const group = jezeroHighlightGroupRef.current
     if (!group) return
-    while (group.children.length > 0) {
-      group.remove(group.children[0])
-    }
+    clearGroupWithDisposal(group)
 
     if (!showJezeroHighlight) return
 
@@ -503,9 +614,7 @@ export function GlobalMarsGlobe3D({
   useEffect(() => {
     const group = markersGroupRef.current
     if (!group) return
-    while (group.children.length > 0) {
-      group.remove(group.children[0])
-    }
+    clearGroupWithDisposal(group)
 
     const markerRadius = GLOBE_RADIUS * 1.008
 
@@ -561,6 +670,49 @@ export function GlobalMarsGlobe3D({
     isFlyingRef.current = true
   }, [])
 
+  // Fly 3D globe camera when selectedFeature prop changes
+  useEffect(() => {
+    if (selectedFeature) {
+      flyToCoordinates(selectedFeature.lat, selectedFeature.lon)
+    }
+  }, [selectedFeature, flyToCoordinates])
+
+  // Render prominent target reticle around selected feature on the 3D globe
+  useEffect(() => {
+    const group = selectionHighlightGroupRef.current
+    if (!group) return
+    clearGroupWithDisposal(group)
+
+    if (!selectedEntity) return
+
+    const r = GLOBE_RADIUS * 1.018
+    const pos = latLonToVector3(selectedEntity.data.lat, selectedEntity.data.lon, r)
+
+    // Outer glowing reticle ring
+    const ringGeom = new THREE.RingGeometry(1.6, 2.6, 32)
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.95,
+    })
+    const ringMesh = new THREE.Mesh(ringGeom, ringMat)
+    ringMesh.position.copy(pos)
+    ringMesh.lookAt(0, 0, 0)
+    group.add(ringMesh)
+
+    // Inner bright reticle dot
+    const dotGeom = new THREE.RingGeometry(0.0, 0.7, 16)
+    const dotMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      side: THREE.DoubleSide,
+    })
+    const dotMesh = new THREE.Mesh(dotGeom, dotMat)
+    dotMesh.position.copy(pos)
+    dotMesh.lookAt(0, 0, 0)
+    group.add(dotMesh)
+  }, [selectedEntity])
+
   // ---------------------------------------------------------------------------
   // 9. POINTER RAYCASTING (HOVER & REAL-TIME COORDINATES)
   // ---------------------------------------------------------------------------
@@ -613,20 +765,19 @@ export function GlobalMarsGlobe3D({
 
       setHoverInfo(null)
 
-      // 2. Test Sphere Surface Intersection
+      // 2. Test Sphere Surface Intersection (cursor coordinate readout only; selection occurs on click)
       const sphereIntersects = raycasterRef.current.intersectObject(globeMeshRef.current, false)
       if (sphereIntersects.length > 0) {
         const point = sphereIntersects[0].point
         const { lat, lon } = vector3ToLatLon(point)
-        const coords = { lat: Number(lat.toFixed(4)), lon: Number(lon.toFixed(4)) }
-        setPointerCoords(coords)
-
-        if (onSelectCoordinates) {
-          onSelectCoordinates(coords)
+        const coords = {
+          lat: Number(lat.toFixed(4)),
+          lon: normalizeEastLon(Number(normalizeEastLon(lon).toFixed(4))),
         }
+        setPointerCoords(coords)
       }
     },
-    [onSelectCoordinates]
+    []
   )
 
   // ---------------------------------------------------------------------------
@@ -652,25 +803,40 @@ export function GlobalMarsGlobe3D({
           if (hit.type === 'feature') {
             const f = hit.data as PlanetaryFeature
             setSelectedEntity({ type: 'feature', data: f })
+            onSelectFeature?.(f)
             flyToCoordinates(f.lat, f.lon)
+            onSelectCoordinates?.({
+              lat: Number(f.lat.toFixed(4)),
+              lon: normalizeEastLon(Number(normalizeEastLon(f.lon).toFixed(4))),
+            })
             return
           }
           if (hit.type === 'landing') {
             const s = hit.data as MarsLandingSite
             setSelectedEntity({ type: 'landing', data: s })
+            onSelectFeature?.(s)
             flyToCoordinates(s.lat, s.lon)
+            onSelectCoordinates?.({
+              lat: Number(s.lat.toFixed(4)),
+              lon: normalizeEastLon(Number(normalizeEastLon(s.lon).toFixed(4))),
+            })
             return
           }
         }
       }
 
-      // Test clicking on globe surface to sample elevation
+      // Test clicking on globe surface to sample elevation and deliberately select coordinates
       const sphereIntersects = raycasterRef.current.intersectObject(globeMeshRef.current, false)
       if (sphereIntersects.length > 0) {
         const point = sphereIntersects[0].point
         const { lat, lon } = vector3ToLatLon(point)
+        const normalizedLon = normalizeEastLon(lon)
+        onSelectCoordinates?.({
+          lat: Number(lat.toFixed(4)),
+          lon: normalizeEastLon(Number(normalizedLon.toFixed(4))),
+        })
         setSamplingLoading(true)
-        sampleGlobalElevation(lat, lon)
+        sampleGlobalElevation(lat, normalizedLon)
           .then((sample) => {
             setElevationSample(sample)
             setSamplingLoading(false)
@@ -678,7 +844,7 @@ export function GlobalMarsGlobe3D({
           .catch(() => setSamplingLoading(false))
       }
     },
-    [flyToCoordinates]
+    [flyToCoordinates, onSelectCoordinates, onSelectFeature]
   )
 
 // -----------------------------------------------------------------------------
@@ -740,6 +906,7 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
     } else {
       setSelectedEntity({ type: 'landing', data: item })
     }
+    onSelectFeature?.(item)
     flyToCoordinates(item.lat, item.lon)
     setSearchResults([])
     setSearchQuery('')
@@ -748,6 +915,7 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
   const handleResetCamera = () => {
     flyToCoordinates(20.0, 70.0, GLOBE_RADIUS * 2.8)
     setSelectedEntity(null)
+    onSelectFeature?.(null)
   }
 
   return (
@@ -992,7 +1160,7 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem' }}>
               {[
-                { name: 'Jezero Crater', lat: 18.44, lon: 77.45, highlight: true },
+                { name: 'Jezero Crater', lat: 18.44, lon: 77.45 },
                 { name: 'Olympus Mons', lat: 18.65, lon: -133.80 },
                 { name: 'Valles Marineris', lat: -13.80, lon: -59.20 },
                 { name: 'Gale Crater', lat: -5.37, lon: 137.44 },
@@ -1002,31 +1170,67 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
                 { name: 'Arcadia Planitia', lat: 47.20, lon: -171.30 },
                 { name: 'North Polar Cap', lat: 88.00, lon: 0.00 },
                 { name: 'South Polar Cap', lat: -85.00, lon: 0.00 },
-              ].map((dest) => (
-                <button
-                  key={dest.name}
-                  onClick={() => {
-                    const match = features.find((f) => f.name.toLowerCase().includes(dest.name.toLowerCase().slice(0, 5)))
-                    if (match) {
-                      setSelectedEntity({ type: 'feature', data: match })
-                    }
-                    flyToCoordinates(dest.lat, dest.lon)
-                  }}
-                  style={{
-                    background: dest.highlight ? '#164e63' : '#18181b',
-                    color: dest.highlight ? '#22d3ee' : '#d4d4d8',
-                    border: `1px solid ${dest.highlight ? '#22d3ee' : '#27272a'}`,
-                    padding: '0.3rem 0.4rem',
-                    fontSize: '0.68rem',
-                    borderRadius: '2px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontWeight: dest.highlight ? 700 : 500,
-                  }}
-                >
-                  {dest.name}
-                </button>
-              ))}
+              ].map((dest) => {
+                const currentSelectedName =
+                  selectedEntity?.data && ('name' in selectedEntity.data ? selectedEntity.data.name : selectedEntity.data.craft_name)
+                    ? ('name' in selectedEntity.data ? selectedEntity.data.name : selectedEntity.data.craft_name)
+                    : selectedFeature
+                      ? ('name' in selectedFeature ? selectedFeature.name : selectedFeature.craft_name)
+                      : ''
+
+                const isSelected = Boolean(
+                  currentSelectedName && (
+                    currentSelectedName.toLowerCase() === dest.name.toLowerCase() ||
+                    currentSelectedName.toLowerCase().includes(dest.name.toLowerCase().slice(0, 5)) ||
+                    dest.name.toLowerCase().includes(currentSelectedName.toLowerCase().slice(0, 5))
+                  )
+                )
+
+                return (
+                  <button
+                    key={dest.name}
+                    data-testid={`dest-${dest.name.toLowerCase().replace(/\s+/g, '-')}`}
+                    onClick={() => {
+                      const match = features.find((f) =>
+                        f.name.toLowerCase().includes(dest.name.toLowerCase().slice(0, 5))
+                      )
+                      const featureData: PlanetaryFeature = match || {
+                        id: `dest-${dest.name.toLowerCase().replace(/\s+/g, '-')}`,
+                        name: dest.name,
+                        feature_type: 'Major Geographical Landmark',
+                        lat: dest.lat,
+                        lon: dest.lon,
+                        diameter_km: 0,
+                        elevation_areoid_m: null,
+                        description: `Major Martian geographical destination: ${dest.name}`,
+                        epistemic_class: 'OBSERVED',
+                      }
+                      setSelectedEntity({ type: 'feature', data: featureData })
+                      onSelectFeature?.(featureData)
+                      flyToCoordinates(dest.lat, dest.lon)
+                    }}
+                    style={{
+                      background: isSelected ? '#ffffff' : '#18181b',
+                      color: isSelected ? '#09090b' : '#d4d4d8',
+                      border: isSelected ? '1px solid #ffffff' : '1px solid #27272a',
+                      boxShadow: isSelected ? '0 0 10px rgba(255, 255, 255, 0.5)' : 'none',
+                      padding: '0.35rem 0.5rem',
+                      fontSize: '0.68rem',
+                      borderRadius: '2px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontWeight: isSelected ? 700 : 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span>{dest.name}</span>
+                    {isSelected && <span style={{ fontSize: '0.65rem', color: '#09090b' }}>●</span>}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -1141,39 +1345,55 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
               VERIFIED SURFACE MISSIONS
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              {landingSites.map((site) => (
-                <div
-                  key={site.id}
-                  onClick={() => {
-                    setSelectedEntity({ type: 'landing', data: site })
-                    flyToCoordinates(site.lat, site.lon)
-                  }}
-                  style={{
-                    padding: '0.35rem 0.5rem',
-                    background: '#18181b',
-                    border: '1px solid #27272a',
-                    borderRadius: '2px',
-                    cursor: 'pointer',
-                    fontSize: '0.68rem',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#ffffff', fontWeight: 600 }}>{site.mission}</span>
-                    <span
-                      style={{
-                        fontSize: '0.6rem',
-                        color: site.status.includes('Active') ? '#4ade80' : '#71717a',
-                      }}
-                    >
-                      {site.status.includes('Active') ? '● ACTIVE' : 'INACTIVE'}
-                    </span>
+              {landingSites.map((site) => {
+                const isSiteSelected = Boolean(
+                  (selectedEntity?.data && 'id' in selectedEntity.data && selectedEntity.data.id === site.id) ||
+                  (selectedFeature && 'id' in selectedFeature && selectedFeature.id === site.id)
+                )
+
+                return (
+                  <div
+                    key={site.id}
+                    onClick={() => {
+                      setSelectedEntity({ type: 'landing', data: site })
+                      onSelectFeature?.(site)
+                      flyToCoordinates(site.lat, site.lon)
+                    }}
+                    style={{
+                      padding: '0.35rem 0.5rem',
+                      background: isSiteSelected ? '#ffffff' : '#18181b',
+                      color: isSiteSelected ? '#09090b' : '#d4d4d8',
+                      border: isSiteSelected ? '1px solid #ffffff' : '1px solid #27272a',
+                      boxShadow: isSiteSelected ? '0 0 10px rgba(255, 255, 255, 0.5)' : 'none',
+                      borderRadius: '2px',
+                      cursor: 'pointer',
+                      fontSize: '0.68rem',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: isSiteSelected ? '#09090b' : '#ffffff', fontWeight: 600 }}>{site.mission}</span>
+                      <span
+                        style={{
+                          fontSize: '0.6rem',
+                          color: isSiteSelected
+                            ? '#09090b'
+                            : site.status.includes('Active')
+                              ? '#4ade80'
+                              : '#71717a',
+                          fontWeight: isSiteSelected ? 700 : 500,
+                        }}
+                      >
+                        {site.status.includes('Active') ? '● ACTIVE' : 'INACTIVE'}
+                      </span>
+                    </div>
+                    <div style={{ color: isSiteSelected ? '#27272a' : '#a1a1aa', fontSize: '0.62rem' }}>
+                      {site.target_region} • {site.lat > 0 ? `${site.lat}°N` : `${Math.abs(site.lat)}°S`},{' '}
+                      {site.lon > 0 ? `${site.lon}°E` : `${Math.abs(site.lon)}°W`}
+                    </div>
                   </div>
-                  <div style={{ color: '#a1a1aa', fontSize: '0.62rem' }}>
-                    {site.target_region} • {site.lat > 0 ? `${site.lat}°N` : `${Math.abs(site.lat)}°S`},{' '}
-                    {site.lon > 0 ? `${site.lon}°E` : `${Math.abs(site.lon)}°W`}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
@@ -1190,6 +1410,31 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
             cursor: 'grab',
           }}
         >
+          {webGlError && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#09090b',
+                color: '#a1a1aa',
+                padding: '2rem',
+                textAlign: 'center',
+                zIndex: 10,
+              }}
+            >
+              <div style={{ fontSize: '1.8rem', marginBottom: '0.75rem' }}>🪐</div>
+              <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                WebGL Context Unavailable
+              </div>
+              <div style={{ fontSize: '0.75rem', maxWidth: '380px', lineHeight: 1.4, marginBottom: '1rem' }}>
+                Hardware WebGL acceleration is disabled or unsupported in this browser environment. The navigation controls, search, and destination dossiers remain fully active.
+              </div>
+            </div>
+          )}
           {loading && (
             <div
               style={{
@@ -1306,7 +1551,10 @@ function parseCoordinates(input: string): { lat: number; lon: number } | null {
                 {selectedEntity.type === 'feature' ? 'PLANETARY FEATURE DOSSIER' : 'SURFACE MISSION DOSSIER'}
               </span>
               <button
-                onClick={() => setSelectedEntity(null)}
+                onClick={() => {
+                  setSelectedEntity(null)
+                  onSelectFeature?.(null)
+                }}
                 style={{
                   background: 'none',
                   border: 'none',

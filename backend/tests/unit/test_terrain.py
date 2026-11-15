@@ -132,3 +132,62 @@ def test_nodata_boundary_handling():
     # NoData column itself must preserve the NoData sentinel
     assert np.all(slope[:, -1] == -9999.0)
     assert np.all(tri[:, -1] == -9999.0)
+
+
+def test_horn_slope_anisotropic_east_west():
+    """Verify Horn slope with anisotropic pixel spacing (dx != dy) on known East-West slope.
+
+    Analytical setup:
+      dx_m = 10.0, dy_m = 25.0
+      Plane rises 10m every 10m in x (+East): dz/dx = 1.0, dz/dy = 0.0
+      Expected slope: arctan(1.0) = 45.0 degrees.
+    """
+    dx_m, dy_m = 10.0, 25.0
+    x = np.arange(12, dtype=np.float32) * 10.0  # rises 10m per column (each column is 10m wide)
+    plane = np.tile(x, (12, 1))
+
+    slope, aspect = compute_slope_aspect_horn(plane, dx_m=dx_m, dy_m=dy_m)
+    interior_slope = slope[2:-2, 2:-2]
+    assert np.allclose(interior_slope, 45.0, atol=0.5)
+
+    interior_aspect = aspect[2:-2, 2:-2]
+    assert np.allclose(interior_aspect, 270.0, atol=1.0)
+
+
+def test_horn_slope_anisotropic_north_south():
+    """Verify Horn slope with anisotropic spacing on known North-South slope.
+
+    Analytical setup:
+      dx_m = 15.0, dy_m = 30.0
+      Plane rises 15m every 30m in y (+North, row 0 to row 11): dz/dy = 0.5, dz/dx = 0.0
+      Expected slope: arctan(0.5) ~ 26.565 degrees.
+    """
+    dx_m, dy_m = 15.0, 30.0
+    # Row 0 is North, row 11 is South. If elevation decreases towards South:
+    # row 0 has highest elev, row 11 lowest.
+    # dz/dy (North minus South) > 0.
+    r = np.arange(12, dtype=np.float32)[::-1] * 15.0  # 15m rise per row (dy = 30m)
+    plane = np.tile(r[:, np.newaxis], (1, 12))
+
+    slope, aspect = compute_slope_aspect_horn(plane, dx_m=dx_m, dy_m=dy_m)
+    expected_slope = float(np.degrees(np.arctan(15.0 / 30.0)))  # ~26.565°
+    interior_slope = slope[2:-2, 2:-2]
+    assert np.allclose(interior_slope, expected_slope, atol=0.5)
+
+
+def test_horn_slope_anisotropic_flat_and_validation():
+    """Verify flat anisotropic surface and input parameter validation."""
+    flat = np.full((10, 10), 50.0, dtype=np.float32)
+    slope, _ = compute_slope_aspect_horn(flat, dx_m=12.5, dy_m=25.0)
+    assert np.allclose(slope, 0.0, atol=1e-3)
+
+    # Missing parameters should raise ValueError
+    import pytest
+    with pytest.raises(ValueError, match="Either 'res_m' or both 'dx_m' and 'dy_m'"):
+        compute_slope_aspect_horn(flat)
+
+    with pytest.raises(ValueError, match="Both 'dx_m' and 'dy_m' must be specified"):
+        compute_slope_aspect_horn(flat, dx_m=10.0)
+
+    with pytest.raises(ValueError, match="strictly positive"):
+        compute_slope_aspect_horn(flat, dx_m=-5.0, dy_m=10.0)

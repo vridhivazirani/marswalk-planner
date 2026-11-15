@@ -29,16 +29,21 @@ import {
   type RegionSummaryDTO,
   type RegionMetadata,
 } from '../api/regions'
+import { getRegionCapabilityProfile } from '../mission/regionCapabilities.ts'
 
 interface RegionalMarsMapProps {
   onBackToGlobal?: () => void
   onEnterLocalTwin?: () => void
+  selectedRegionId?: string
+  onSelectRegion?: (regionId: string) => void
   initialRegionId?: string
 }
 
 export function RegionalMarsMap({
   onBackToGlobal,
   onEnterLocalTwin,
+  selectedRegionId: controlledRegionId,
+  onSelectRegion,
   initialRegionId = 'reg-jezero',
 }: RegionalMarsMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
@@ -59,9 +64,21 @@ export function RegionalMarsMap({
 
   // Data states
   const [regionsList, setRegionsList] = useState<RegionSummaryDTO[]>([])
-  const [selectedRegionId, setSelectedRegionId] = useState<string>(initialRegionId)
-  const [activeRegionDossier, setActiveRegionDossier] = useState<RegionMetadata | null>(null)
-  const [loadingRegionDossier, setLoadingRegionDossier] = useState<boolean>(false)
+  const [uncontrolledRegionId, setUncontrolledRegionId] = useState<string>(initialRegionId)
+  const selectedRegionId = controlledRegionId ?? uncontrolledRegionId
+  const [dossierRecord, setDossierRecord] = useState<{
+    regionId: string
+    data: RegionMetadata
+  } | null>(null)
+  const [dossierErrorRegionId, setDossierErrorRegionId] = useState<string | null>(null)
+  const activeRegionDossier =
+    selectedRegionId !== 'reg-jezero' && dossierRecord?.regionId === selectedRegionId
+      ? dossierRecord.data
+      : null
+  const loadingRegionDossier =
+    selectedRegionId !== 'reg-jezero' &&
+    dossierRecord?.regionId !== selectedRegionId &&
+    dossierErrorRegionId !== selectedRegionId
 
   const [_studyArea, setStudyArea] = useState<RegionalStudyArea | null>(null)
   const [categories, setCategories] = useState<RegionalLayerCategory[]>([])
@@ -190,16 +207,6 @@ export function RegionalMarsMap({
       .catch((err) => console.warn('Failed to load regions list:', err))
   }, [])
 
-  // Sync selectedRegionId when initialRegionId changes (React render phase state adjustment)
-  const [prevInitialId, setPrevInitialId] = useState(initialRegionId)
-  if (initialRegionId !== prevInitialId) {
-    setPrevInitialId(initialRegionId)
-    setSelectedRegionId(initialRegionId)
-    if (initialRegionId !== 'reg-jezero') {
-      setLoadingRegionDossier(true)
-    }
-  }
-
   // Load region dossier when selectedRegionId changes and is not Jezero
   useEffect(() => {
     if (selectedRegionId === 'reg-jezero') {
@@ -209,14 +216,14 @@ export function RegionalMarsMap({
     fetchRegionDossier(selectedRegionId)
       .then((dossier) => {
         if (!cancelled) {
-          setActiveRegionDossier(dossier)
-          setLoadingRegionDossier(false)
+          setDossierRecord({ regionId: selectedRegionId, data: dossier })
+          setDossierErrorRegionId(null)
         }
       })
       .catch((err) => {
         if (!cancelled) {
           console.warn('Failed to fetch region dossier:', err)
-          setLoadingRegionDossier(false)
+          setDossierErrorRegionId(selectedRegionId)
         }
       })
     return () => {
@@ -225,17 +232,16 @@ export function RegionalMarsMap({
   }, [selectedRegionId])
 
   const handleSelectRegion = (id: string) => {
-    setSelectedRegionId(id)
-    if (id === 'reg-jezero') {
-      setActiveRegionDossier(null)
-      setLoadingRegionDossier(false)
+    if (onSelectRegion) {
+      onSelectRegion(id)
     } else {
-      setLoadingRegionDossier(true)
+      setUncontrolledRegionId(id)
     }
   }
 
-  // Initialize Leaflet Map
+  // Initialize Leaflet Map whenever Jezero Regional Atlas canvas is active
   useEffect(() => {
+    if (selectedRegionId !== 'reg-jezero') return
     if (!mapContainerRef.current || mapInstanceRef.current) return
 
     // Center on Jezero Basin [18.4485, 77.4320] in Mars Plate Carrée CRS
@@ -297,12 +303,8 @@ export function RegionalMarsMap({
       interactive: false,
     }).addTo(map)
 
-    // CTX 6m Orthomosaic Image Overlay (placed at exact georeferenced ARD bounds)
-    const ctxOverlay = L.imageOverlay('/api/v1/twin/raster/ortho.png', localTwinBounds, {
-      opacity: 1.0,
-      interactive: false,
-    }).addTo(map)
-    ctxRasterLayerRef.current = ctxOverlay
+    // CTX 6m Orthomosaic Image Overlay disabled - honest handling of unavailable optical raster
+    ctxRasterLayerRef.current = null
 
     // CTX 20m DTM Hillshade/Elevation Overlay (placed at exact georeferenced ARD bounds)
     const dtmOverlay = L.imageOverlay('/api/v1/twin/raster/elevation.png', localTwinBounds, {
@@ -366,8 +368,17 @@ export function RegionalMarsMap({
       clearTimeout(resizeTimer)
       map.remove()
       mapInstanceRef.current = null
+      ctxRasterLayerRef.current = null
+      dtmRasterLayerRef.current = null
+      geologyGroupRef.current = null
+      crismGroupRef.current = null
+      roverTraverseGroupRef.current = null
+      roverWaypointsGroupRef.current = null
+      sampleCoresGroupRef.current = null
+      footprintsGroupRef.current = null
+      transectLineRef.current = null
     }
-  }, [])
+  }, [selectedRegionId])
 
   // Handle Transect Profile Point Collection
   const handleMapProfileClick = useCallback(
@@ -449,7 +460,7 @@ export function RegionalMarsMap({
       const visible = activeLayers.reg_ctx_20m_dtm ?? false
       dtmRasterLayerRef.current.setOpacity(visible ? (layerOpacity.reg_ctx_20m_dtm ?? 0.65) : 0)
     }
-  }, [activeLayers, layerOpacity])
+  }, [activeLayers, layerOpacity, selectedRegionId])
 
   // Render Geological Polygons (USGS SIM-3464)
   useEffect(() => {
@@ -485,7 +496,7 @@ export function RegionalMarsMap({
 
       polygon.addTo(group)
     })
-  }, [activeLayers.reg_usgs_geology, layerOpacity.reg_usgs_geology, geologyUnits])
+  }, [activeLayers.reg_usgs_geology, layerOpacity.reg_usgs_geology, geologyUnits, selectedRegionId])
 
   // Render CRISM Targeted Observation Footprints
   useEffect(() => {
@@ -524,7 +535,7 @@ export function RegionalMarsMap({
 
       rect.addTo(group)
     })
-  }, [activeLayers.reg_crism_observations, crismObs])
+  }, [activeLayers.reg_crism_observations, crismObs, selectedRegionId])
 
   // Render Perseverance Rover Traverse (filtered by solRange)
   useEffect(() => {
@@ -555,7 +566,7 @@ export function RegionalMarsMap({
     )
 
     geoJsonLayer.addTo(group)
-  }, [activeLayers.reg_m20_traverse, traverseData, solRange])
+  }, [activeLayers.reg_m20_traverse, traverseData, solRange, selectedRegionId])
 
   // Render Perseverance Rover Waypoints
   useEffect(() => {
@@ -587,7 +598,7 @@ export function RegionalMarsMap({
 
       marker.addTo(group)
     })
-  }, [activeLayers.reg_m20_waypoints, waypointsData, solRange])
+  }, [activeLayers.reg_m20_waypoints, waypointsData, solRange, selectedRegionId])
 
   // Render Perseverance Sample Cores & Three Forks Depot
   useEffect(() => {
@@ -623,7 +634,7 @@ export function RegionalMarsMap({
 
       marker.addTo(group)
     })
-  }, [activeLayers.reg_m20_samples, sampleCores])
+  }, [activeLayers.reg_m20_samples, sampleCores, selectedRegionId])
 
   // Render Coverage Footprints (e.g. HiRISE 1m DTM Boundary)
   useEffect(() => {
@@ -657,7 +668,7 @@ export function RegionalMarsMap({
     )
 
     rect.addTo(group)
-  }, [activeLayers.reg_hirise_footprint])
+  }, [activeLayers.reg_hirise_footprint, selectedRegionId])
 
   // Run Layer Comparison calculation
   const handleRunComparison = async () => {
@@ -775,10 +786,10 @@ export function RegionalMarsMap({
                   fontWeight: 600,
                   fontFamily: 'var(--font-mono)',
                 }}
-                title="Dive into 1m Local Digital Twin"
+                title="Plan EVA Sorties in Jezero Crater"
               >
-                <span>🔭</span>
-                <span>LOCAL DIGITAL TWIN (1m) →</span>
+                <span>🧭</span>
+                <span>PLAN EVA ROUTE (JEZERO) →</span>
               </button>
             </>
           )}
@@ -928,25 +939,6 @@ export function RegionalMarsMap({
                       <span>🪐</span>
                       <span>FLY TO ON 3D MARS GLOBE</span>
                     </button>
-                    <button
-                      onClick={() => setSelectedRegionId('reg-jezero')}
-                      style={{
-                        background: '#22d3ee',
-                        color: '#000000',
-                        border: 'none',
-                        padding: '0.45rem 0.9rem',
-                        fontSize: '0.74rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        borderRadius: '2px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                      }}
-                    >
-                      <span>🛰️</span>
-                      <span>OPEN JEZERO DIGITAL TWIN (16 LAYERS)</span>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -1011,6 +1003,108 @@ export function RegionalMarsMap({
                   </div>
                 </div>
               </div>
+
+              {/* Verified Region Capability & Digital Twin Eligibility Matrix */}
+              {(() => {
+                const regionCaps = getRegionCapabilityProfile(selectedRegionId, activeRegionDossier)
+                return (
+                  <div
+                    style={{
+                      background: '#111114',
+                      border: '1px solid #3f3f46',
+                      borderLeft: '3px solid #d97706',
+                      padding: '1rem 1.25rem',
+                      borderRadius: '4px',
+                      marginBottom: '1.5rem',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '0.6rem',
+                        marginBottom: '0.65rem',
+                      }}
+                    >
+                      <div>
+                        <span
+                          style={{
+                            fontSize: '0.66rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.06em',
+                            color: '#fbbf24',
+                            background: '#271e09',
+                            border: '1px solid #78350f',
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '2px',
+                            marginRight: '0.5rem',
+                          }}
+                        >
+                          {regionCaps.capabilityBadge}
+                        </span>
+                        <strong style={{ fontSize: '0.84rem', color: '#ffffff' }}>
+                          Region Capabilities & Local Digital Twin Availability
+                        </strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSelectRegion('reg-jezero')
+                          onEnterLocalTwin?.()
+                        }}
+                        style={{
+                          background: '#18181b',
+                          color: '#ffffff',
+                          border: '1px solid #52525b',
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          borderRadius: '2px',
+                          cursor: 'pointer',
+                        }}
+                        title="Explicitly switch active mission region to Jezero Crater"
+                      >
+                        Switch Mission to Jezero Crater →
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                        gap: '0.5rem',
+                        fontSize: '0.72rem',
+                        marginBottom: '0.7rem',
+                      }}
+                    >
+                      <div style={{ background: '#18181b', padding: '0.45rem 0.6rem', border: '1px solid #27272a' }}>
+                        <span style={{ color: '#a1a1aa' }}>Global & Regional Context: </span>
+                        <strong style={{ color: '#e5e5e5' }}>SUPPORTED</strong>
+                      </div>
+                      <div style={{ background: '#18181b', padding: '0.45rem 0.6rem', border: '1px solid #27272a' }}>
+                        <span style={{ color: '#a1a1aa' }}>1m / 20m Digital Twin: </span>
+                        <strong style={{ color: '#f87171' }}>UNAVAILABLE FOR REGION</strong>
+                      </div>
+                      <div style={{ background: '#18181b', padding: '0.45rem 0.6rem', border: '1px solid #27272a' }}>
+                        <span style={{ color: '#a1a1aa' }}>Hazard / EVA Routing: </span>
+                        <strong style={{ color: '#f87171' }}>DISABLED (JEZERO ONLY)</strong>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '0.73rem', color: '#d4d4d8', marginBottom: '0.4rem' }}>
+                      <strong>Primary Coverage: </strong>
+                      {regionCaps.primaryResolutionSummary}
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.71rem', color: '#a1a1aa' }}>
+                      {regionCaps.limitations.map((lim, i) => (
+                        <li key={i}>{lim}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )
+              })()}
 
               {/* Two Column Detailed Breakdown */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
@@ -1116,37 +1210,19 @@ export function RegionalMarsMap({
           <div className="flex-1 overflow-y-auto p-3 space-y-3 font-mono text-xs">
             {/* Base Imagery Layer Card */}
             {(selectedCategory === 'all' || selectedCategory === 'base-imagery') && (
-              <div className="bg-[#181818] border border-neutral-800 p-2.5 rounded-none space-y-2">
+              <div className="bg-[#181818] border border-neutral-800 p-2.5 rounded-none space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-white flex items-center space-x-1.5">
+                  <span className="font-semibold text-neutral-300 flex items-center space-x-1.5">
                     <span>📷</span>
-                    <span>CTX 6m Orthomosaic</span>
+                    <span>High-Res Optical Imagery</span>
                   </span>
-                  <input
-                    type="checkbox"
-                    checked={activeLayers.reg_ctx_mosaic ?? true}
-                    onChange={() => toggleLayer('reg_ctx_mosaic')}
-                    className="accent-white cursor-pointer"
-                  />
+                  <span className="text-[10px] text-amber-400 font-mono px-1.5 py-0.5 bg-amber-950/40 border border-amber-800/40 rounded-none">
+                    UNAVAILABLE
+                  </span>
                 </div>
-                <div className="text-[10px] text-neutral-400">
-                  USGS TRN Project • 6m Native Surface Reflectance
+                <div className="text-[10px] text-neutral-400 leading-tight">
+                  High-resolution optical imagery is currently unavailable in this view. Regional context is provided by USGS SIM-3464 geological units, CRISM mineralogy, and MOLA topography.
                 </div>
-                {activeLayers.reg_ctx_mosaic && (
-                  <div className="flex items-center space-x-2 pt-1 text-[10px] text-neutral-400">
-                    <span>Opacity</span>
-                    <input
-                      type="range"
-                      min={0.1}
-                      max={1.0}
-                      step={0.05}
-                      value={layerOpacity.reg_ctx_mosaic ?? 1.0}
-                      onChange={(e) => updateOpacity('reg_ctx_mosaic', parseFloat(e.target.value))}
-                      className="w-full accent-white"
-                    />
-                    <span>{Math.round((layerOpacity.reg_ctx_mosaic ?? 1.0) * 100)}%</span>
-                  </div>
-                )}
               </div>
             )}
 

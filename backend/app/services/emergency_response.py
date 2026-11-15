@@ -310,6 +310,8 @@ class EmergencyResponseService:
         wps = original_route.waypoints
         if custom_crew_lat is not None and custom_crew_lon is not None:
             crew_lat, crew_lon = custom_crew_lat, custom_crew_lon
+            # Validate crew position within Jezero study footprint
+            self.routing_engine.latlon_to_grid(crew_lat, crew_lon)
         else:
             prog = max(0.0, min(1.0, crew_progress_pct))
             target_idx = int(round(prog * (len(wps) - 1)))

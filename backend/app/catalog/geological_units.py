@@ -137,7 +137,7 @@ class CRIMSpectralIndex:
     target_mineral: str
     absorption_feature: str
     geological_significance: str
-    epistemic_class: str = EpistemicClass.OBSERVED.value
+    epistemic_class: str = EpistemicClass.INTERPRETED.value
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -247,7 +247,7 @@ class CRISMTargetedScene:
     target_description: str
     primary_minerals_detected: list[str]
     pds_archive_id: str
-    epistemic_class: str = EpistemicClass.OBSERVED.value
+    epistemic_class: str = EpistemicClass.INTERPRETED.value
 
     def to_dict(self) -> dict[str, Any]:
         return {

@@ -23,6 +23,7 @@ from typing import Any
 
 import numpy as np
 import rasterio
+import rasterio.transform
 
 from app.terrain.classifier import TERRAIN_CLASS_DETAILS, TERRAIN_CLASS_NAMES, classify_terrain
 from app.terrain.derivatives import (
@@ -174,16 +175,19 @@ class TerrainIntelligenceEngine:
         sand_score, _ = detect_sand_dune_candidates(imagery, slope, tri, valid_mask)
         crater_score, _ = detect_crater_depression_candidates(lev, slope, valid_mask)
 
+        boulder_out = np.where(valid_mask, boulder_score, STANDARD_NODATA).astype(np.float32)
         boulder_path = self.processed_dir / f"{grid_name}_boulder_hazard_score.tif"
-        self._write_tif(boulder_path, boulder_score, meta, "float32", 0.0)
+        self._write_tif(boulder_path, boulder_out, meta, "float32", STANDARD_NODATA)
         created_files["boulder_score"] = boulder_path
 
+        sand_out = np.where(valid_mask, sand_score, STANDARD_NODATA).astype(np.float32)
         sand_path = self.processed_dir / f"{grid_name}_sand_hazard_score.tif"
-        self._write_tif(sand_path, sand_score, meta, "float32", 0.0)
+        self._write_tif(sand_path, sand_out, meta, "float32", STANDARD_NODATA)
         created_files["sand_score"] = sand_path
 
+        crater_out = np.where(valid_mask, crater_score, STANDARD_NODATA).astype(np.float32)
         crater_path = self.processed_dir / f"{grid_name}_crater_hazard_score.tif"
-        self._write_tif(crater_path, crater_score, meta, "float32", 0.0)
+        self._write_tif(crater_path, crater_out, meta, "float32", STANDARD_NODATA)
         created_files["crater_score"] = crater_path
 
         # -------------------------------------------------------------
@@ -198,8 +202,9 @@ class TerrainIntelligenceEngine:
         self._write_tif(class_path, classes, meta, "uint8", 0)
         created_files["classes"] = class_path
 
+        conf_out = np.where(valid_mask, confidence, STANDARD_NODATA).astype(np.float32)
         conf_path = self.processed_dir / f"{grid_name}_terrain_confidence.tif"
-        self._write_tif(conf_path, confidence, meta, "float32", 0.0)
+        self._write_tif(conf_path, conf_out, meta, "float32", STANDARD_NODATA)
         created_files["confidence"] = conf_path
 
         # -------------------------------------------------------------
@@ -221,6 +226,23 @@ class TerrainIntelligenceEngine:
         metadata = {
             "grid_name": grid_name,
             "processed_utc": datetime.now(UTC).isoformat(),
+            "cv_optical_imagery_input": {
+                "processed_file": ortho_path.name,
+                "raw_source_product": "JEZ_ctx_B_soc_008_orthoMosaic_6m.tif",
+                "source_doi": "10.5066/P9GV1ND3",
+                "native_resolution_m": 6.0,
+                "analysis_grid_resolution_m": res_m,
+                "consumed_by": [
+                    "detect_boulder_candidates_advanced",
+                    "detect_sand_dune_candidates",
+                    "detect_crater_depression_candidates",
+                ],
+                "epistemic_class": "HEURISTIC",
+                "notes": (
+                    "20 m grid optical feature detectors consume CTX orthomosaic "
+                    "warped to 20 m, not native 0.25 m HiRISE imagery."
+                ),
+            },
             "layers": [
                 TerrainLayerMetadata(
                     "slope",
@@ -334,7 +356,14 @@ class TerrainIntelligenceEngine:
         rgb[2, valid_mask] = b[valid_mask]
 
         with rasterio.open(
-            out_path, "w", driver="PNG", width=w, height=h, count=3, dtype="uint8"
+            out_path,
+            "w",
+            driver="PNG",
+            width=w,
+            height=h,
+            count=3,
+            dtype="uint8",
+            transform=rasterio.transform.from_origin(0, h, 1, 1),
         ) as dst:
             dst.write(rgb)
 
@@ -369,6 +398,13 @@ class TerrainIntelligenceEngine:
             rgb[2, mask] = cb
 
         with rasterio.open(
-            out_path, "w", driver="PNG", width=w, height=h, count=3, dtype="uint8"
+            out_path,
+            "w",
+            driver="PNG",
+            width=w,
+            height=h,
+            count=3,
+            dtype="uint8",
+            transform=rasterio.transform.from_origin(0, h, 1, 1),
         ) as dst:
             dst.write(rgb)

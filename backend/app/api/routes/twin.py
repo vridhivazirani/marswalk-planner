@@ -28,35 +28,69 @@ def get_layers() -> dict[str, Any]:
     with rasterio.open(elev_tif) as src:
         width = src.width
         height = src.height
+        bounds = src.bounds
+        res_m = float(src.res[0])
+        raster_crs = src.crs
 
-    # Study area boundaries in planetocentric east-positive lat/lon:
-    lat_min, lat_max = 18.39180, 18.58953
-    lon_min, lon_max = 77.34370, 77.46584
+        # Defensive validation: verify raster CRS is valid Mars coordinate system
+        if raster_crs is None or "103885" not in raster_crs.to_string():
+            raise HTTPException(
+                status_code=500, detail="Invalid raster CRS metadata: expected ESRI:103885"
+            )
+
+        # Read elevation range dynamically
+        elev_band = src.read(1)
+        nodata = src.nodata
+
+    valid_elev = elev_band[(elev_band != nodata) & ~np.isnan(elev_band)]
+    min_elev = float(np.min(valid_elev)) if valid_elev.size > 0 else -2598.94
+    max_elev = float(np.max(valid_elev)) if valid_elev.size > 0 else -2240.47
+
+    # Dynamically transform raster bounds to geographic planetocentric lat/lon
+    # Densify along the four perimeter edges to guarantee geodesic accuracy
+    from app.geospatial.crs import MarsCoordinateSystem
+    mars_crs = MarsCoordinateSystem()
+
+    xs = np.linspace(bounds.left, bounds.right, num=15)
+    ys = np.linspace(bounds.bottom, bounds.top, num=15)
+    edge_coords = []
+    for x in xs:
+        edge_coords.append(mars_crs.to_geographic(x, bounds.bottom))
+        edge_coords.append(mars_crs.to_geographic(x, bounds.top))
+    for y in ys:
+        edge_coords.append(mars_crs.to_geographic(bounds.left, y))
+        edge_coords.append(mars_crs.to_geographic(bounds.right, y))
+
+    lon_min = round(float(min(p[0] for p in edge_coords)), 5)
+    lon_max = round(float(max(p[0] for p in edge_coords)), 5)
+    lat_min = round(float(min(p[1] for p in edge_coords)), 5)
+    lat_max = round(float(max(p[1] for p in edge_coords)), 5)
 
     return {
         "study_area": {
             "name": "Jezero Western Fan & Delta Margin",
             "crs_geographic": "IAU_2015:49900",
             "crs_projected": "ESRI:103885",
-            "center": [(lat_min + lat_max) / 2.0, (lon_min + lon_max) / 2.0],
+            "center": [round((lat_min + lat_max) / 2.0, 5), round((lon_min + lon_max) / 2.0, 5)],
             "bounds": [
                 [lat_min, lon_min],  # Southwest [lat, lon]
                 [lat_max, lon_max],  # Northeast [lat, lon]
             ],
             "grid_dimensions": {"width": width, "height": height},
-            "resolution_m": 20.0,
-            "elevation_range_m": {"min": -2598.94, "max": -2240.47},
+            "resolution_m": res_m,
+            "elevation_range_m": {"min": round(min_elev, 2), "max": round(max_elev, 2)},
         },
         "layers": [
             {
                 "id": "ortho_imagery",
-                "name": "CTX Orthorectified Surface Reflectance (6m aligned to 20m)",
+                "name": "High-Resolution Optical Imagery (Unavailable)",
                 "type": "raster",
-                "epistemic_class": "OBSERVED",
+                "epistemic_class": "UNKNOWN",
                 "url": "/api/v1/twin/raster/ortho.png",
                 "description": (
-                    "USGS TRN CTX controlled visible surface mosaic "
-                    "(6m native, resampled to 20m grid)."
+                    "High-resolution optical surface imagery is currently unavailable "
+                    "in this view. Terrain analysis is supported by authentic elevation models, "
+                    "contours, and rover telemetry."
                 ),
             },
             {
@@ -125,6 +159,50 @@ def get_layers() -> dict[str, Any]:
                 "description": "Data provenance: Cyan = HiRISE 1m DTM, Amber = CTX 20m DTM.",
             },
             {
+                "id": "data_confidence",
+                "name": "Data Reliability Index Overlay (M0.3 Uncalibrated)",
+                "type": "raster",
+                "epistemic_class": "HEURISTIC",
+                "url": "/api/v1/hazards/raster/data-confidence.png",
+                "description": (
+                    "Uncalibrated ordinal sensor reliability index [0-1]: Cyan = HiRISE 1m tier "
+                    "(0.95), Sky/Amber = CTX 20m tier (0.70), Dark Slate = Unmapped/NoData."
+                ),
+            },
+            {
+                "id": "detection_confidence",
+                "name": "Hazard Evidence Reliability Index (M0.3 Uncalibrated)",
+                "type": "raster",
+                "epistemic_class": "HEURISTIC",
+                "url": "/api/v1/hazards/raster/detection-confidence.png",
+                "description": (
+                    "Composite uncalibrated evidence reliability index [0-1] across DTM "
+                    "derivatives, CTX 20m optical CV imagery, and metre-scale resolution adequacy."
+                ),
+            },
+            {
+                "id": "spatial_uncertainty",
+                "name": "Nominal Vertical Precision Tier (M0.3 Provisional)",
+                "type": "raster",
+                "epistemic_class": "HEURISTIC",
+                "url": "/api/v1/hazards/raster/spatial-uncertainty.png",
+                "description": (
+                    "Provisional unverified nominal precision tier: 0.20 m nominal (HiRISE) vs "
+                    "2.00 m nominal (CTX regional); not calibrated ±1σ error bars. "
+                    "Magenta = NoData."
+                ),
+            },
+            {
+                "id": "resolution_uncertainty",
+                "name": "Resolution Uncertainty Mask (M0.3 CTX-Only)",
+                "type": "raster",
+                "epistemic_class": "DERIVED",
+                "url": "/api/v1/hazards/raster/resolution-uncertainty.png",
+                "description": (
+                    "Amber = Unresolved micro-scale hazards where only CTX 20m coverage exists."
+                ),
+            },
+            {
                 "id": "overall_hazard",
                 "name": "Overall Hazard Heatmap (Risk Engine)",
                 "type": "raster",
@@ -163,14 +241,18 @@ def get_layers() -> dict[str, Any]:
     }
 
 
-CACHE_HEADERS = {"Cache-Control": "public, max-age=86400, stale-while-revalidate=3600"}
+CACHE_HEADERS = {"Cache-Control": "no-cache, must-revalidate"}
 
 
 @router.get("/raster/{layer_name}.png", summary="Serve processed layer PNG overlays")
-def get_raster_layer(layer_name: str) -> FileResponse:
+def get_raster_layer(layer_name: str, v: str | None = None) -> FileResponse:
     """Stream optimized PNG image for 2D map overlay and 3D terrain texture draping."""
     file_map = {
-        "ortho": PROCESSED_DIR / "jezero_western_delta_20m_ortho_imagery.png",
+        "ortho": (
+            PROCESSED_DIR / "jezero_western_delta_6m_ortho_imagery.png"
+            if (PROCESSED_DIR / "jezero_western_delta_6m_ortho_imagery.png").exists()
+            else PROCESSED_DIR / "jezero_western_delta_20m_ortho_imagery.png"
+        ),
         "elevation": PROCESSED_DIR / "jezero_western_delta_20m_elev_colormap.png",
         "hillshade": PROCESSED_DIR / "jezero_western_delta_20m_hillshade.png",
         "multidirectional_hillshade": (

@@ -37,8 +37,39 @@ class GridGraph:
         hard_blocked_mask: np.ndarray,
         cell_size_m: float = 20.0,
     ) -> None:
+        if not math.isfinite(cell_size_m) or cell_size_m <= 0.0:
+            raise ValueError(f"Cell size must be finite and strictly positive: {cell_size_m}")
+
+        if cost_raster.ndim != 2 or hard_blocked_mask.ndim != 2:
+            raise ValueError(
+                f"Cost raster and hard-blocked mask must be 2D, got "
+                f"{cost_raster.ndim}D and {hard_blocked_mask.ndim}D."
+            )
+
         if cost_raster.shape != hard_blocked_mask.shape:
             raise ValueError("Cost raster and hard blocked mask shapes must match exactly.")
+
+        if cost_raster.size == 0:
+            raise ValueError("Cost raster cannot be empty.")
+
+        if np.any(np.isnan(cost_raster)):
+            raise ValueError("Cost raster contains unhandled NaN values.")
+
+        if np.any(np.isneginf(cost_raster)):
+            raise ValueError("Cost raster contains negative infinity.")
+
+        passable_cells = (~hard_blocked_mask) & (cost_raster < np.inf)
+        if not np.any(passable_cells):
+            raise ValueError(
+                "Cost raster contains no traversable cells (all cells are blocked or infinite)."
+            )
+
+        min_passable = float(np.min(cost_raster[passable_cells]))
+        if min_passable < 1.0:
+            raise ValueError(
+                f"Traversable cost values must be >= 1.0 to preserve A* heuristic admissibility, "
+                f"found {min_passable:.4f}."
+            )
 
         self.cost_raster = cost_raster
         self.hard_blocked_mask = hard_blocked_mask
@@ -66,8 +97,12 @@ class GridGraph:
         return 0 <= r < self.height and 0 <= c < self.width
 
     def is_passable(self, r: int, c: int) -> bool:
-        """Check if grid cell is inside bounds and not hard-blocked."""
-        return self.in_bounds(r, c) and not self.hard_blocked_mask[r, c]
+        """Check if grid cell is inside bounds, not hard-blocked, and finite."""
+        return (
+            self.in_bounds(r, c)
+            and not self.hard_blocked_mask[r, c]
+            and math.isfinite(float(self.cost_raster[r, c]))
+        )
 
     def get_neighbors(self, r: int, c: int) -> list[GridNeighbor]:
         """Return valid 8-directional traversable neighbors.

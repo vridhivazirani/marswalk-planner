@@ -117,6 +117,8 @@ class MissionPlanSummary:
     warnings: list[MissionFeasibilityWarning] = field(default_factory=list)
     is_feasible: bool = True
     epistemic_class: str = EpistemicClass.SIMULATED.value
+    environmental_modifiers_applied: bool = False
+    environmental_factors: dict[str, float] | None = None
     assumptions_used: dict[str, Any] = field(default_factory=dict)
     disclaimer: str = DISCLAIMER
 
@@ -134,6 +136,8 @@ class MissionPlanSummary:
             "warnings": [w.to_dict() for w in self.warnings],
             "is_feasible": self.is_feasible,
             "epistemic_class": self.epistemic_class,
+            "environmental_modifiers_applied": self.environmental_modifiers_applied,
+            "environmental_factors": self.environmental_factors,
             "assumptions_used": self.assumptions_used,
             "disclaimer": self.disclaimer,
         }

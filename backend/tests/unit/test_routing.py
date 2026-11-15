@@ -251,3 +251,163 @@ def test_routing_api_suite_endpoint():
     assert "SAFETY_FIRST" in data["comparison"]
     assert "SCIENCE_FIRST" in data["comparison"]
     assert "BALANCED" in data["comparison"]
+
+
+def test_routing_api_invalid_algorithm_returns_422():
+    """Verify that submitting an unsupported algorithm via the API returns HTTP 422."""
+    payload = {
+        "start": {"lat": 18.4446, "lon": 77.4509},
+        "destination": {"lat": 18.4550, "lon": 77.4050},
+        "profile": "BALANCED",
+        "algorithm": "quantum_annealing",  # Unsupported algorithm
+        "simplify": True,
+    }
+    response = client.post("/api/v1/routing/plan", json=payload)
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert any("algorithm" in err["loc"] for err in errors)
+
+
+def test_find_path_invalid_algorithm_raises_value_error():
+    """Direct invocation of find_path with an unsupported algorithm must raise ValueError."""
+    shape = (5, 5)
+    cost = np.ones(shape, dtype=np.float32)
+    blocked = np.zeros(shape, dtype=bool)
+    graph = GridGraph(cost, blocked, cell_size_m=20.0)
+
+    with pytest.raises(ValueError, match="Unsupported routing algorithm"):
+        find_path(graph, start=(0, 0), goal=(4, 4), algorithm="floyd_warshall")
+
+
+def test_grid_graph_defensive_cost_validation():
+    """GridGraph must reject invalid cost inputs: sub-unit, NaNs, -inf, non-positive cell size."""
+    shape = (5, 5)
+    valid_blocked = np.zeros(shape, dtype=bool)
+
+    # 1. Sub-unit cost (< 1.0) must be rejected to preserve A* admissibility
+    sub_unit_cost = np.ones(shape, dtype=np.float32)
+    sub_unit_cost[2, 2] = 0.5
+    with pytest.raises(ValueError, match="Traversable cost values must be >= 1.0"):
+        GridGraph(sub_unit_cost, valid_blocked, cell_size_m=20.0)
+
+    # 2. NaN values must be rejected
+    nan_cost = np.ones(shape, dtype=np.float32)
+    nan_cost[1, 1] = np.nan
+    with pytest.raises(ValueError, match="NaN values"):
+        GridGraph(nan_cost, valid_blocked, cell_size_m=20.0)
+
+    # 3. Negative infinity must be rejected
+    neginf_cost = np.ones(shape, dtype=np.float32)
+    neginf_cost[0, 0] = -np.inf
+    with pytest.raises(ValueError, match="negative infinity"):
+        GridGraph(neginf_cost, valid_blocked, cell_size_m=20.0)
+
+    # 4. Non-positive cell size must be rejected
+    valid_cost = np.ones(shape, dtype=np.float32)
+    with pytest.raises(ValueError, match="strictly positive"):
+        GridGraph(valid_cost, valid_blocked, cell_size_m=0.0)
+
+    with pytest.raises(ValueError, match="strictly positive"):
+        GridGraph(valid_cost, valid_blocked, cell_size_m=-20.0)
+
+    # 5. Graph with all cells blocked must be rejected
+    all_blocked = np.ones(shape, dtype=bool)
+    with pytest.raises(ValueError, match="no traversable cells"):
+        GridGraph(valid_cost, all_blocked, cell_size_m=20.0)
+
+    # 6. Positive infinity is allowed as an obstacle, but must not be passable
+    inf_cost = np.ones(shape, dtype=np.float32)
+    inf_cost[2, 3] = np.inf
+    inf_graph = GridGraph(inf_cost, valid_blocked, cell_size_m=20.0)
+    assert not inf_graph.is_passable(2, 3)
+
+
+def test_latlon_to_grid_rejects_non_finite_coordinates():
+    """Engine.latlon_to_grid must reject NaN, inf, or None coordinates with ValueError."""
+    engine = RouteOptimizationEngine()
+
+    with pytest.raises(ValueError, match="Coordinate values must be finite numbers"):
+        engine.latlon_to_grid(float("nan"), 77.40)
+
+    with pytest.raises(ValueError, match="Coordinate values must be finite numbers"):
+        engine.latlon_to_grid(18.45, float("inf"))
+
+    with pytest.raises(ValueError, match="Coordinate values must be finite numbers"):
+        engine.latlon_to_grid(float("-inf"), 77.40)
+
+
+def test_compute_multi_stop_route():
+    """Engine must compute multi-stop route and identify visited science targets."""
+    engine = RouteOptimizationEngine()
+
+    # Jezero Delta Scarp area coordinates
+    start_lat, start_lon = 18.4446, 77.4509  # Near Perseverance landing
+    wp_lat, wp_lon = 18.459456, 77.408313    # Kodiak Butte (SCI-01-KODIAK)
+    dest_lat, dest_lon = 18.4550, 77.4050   # Hawksbill Gap Delta Front
+
+    plan = engine.compute_multi_stop_route(
+        stops=[(start_lat, start_lon), (wp_lat, wp_lon), (dest_lat, dest_lon)],
+        profile_name="BALANCED",
+    )
+
+    assert plan is not None
+    assert len(plan.waypoints) > 5
+    assert plan.metrics.total_distance_m > 0.0
+    # Kodiak should be visited since we routed directly to it
+    assert "SCI-01-KODIAK" in plan.metrics.visited_target_ids
+    assert plan.metrics.scientific_targets_count >= 1
+
+    d = plan.metrics.to_dict()
+    assert "visited_target_ids" in d
+    assert "scientific_targets_count" in d
+    assert d["scientific_targets_count"] >= 1
+
+
+def test_api_multi_stop_routing_endpoints():
+    """REST API endpoints (/plan, /suite, /compare) must support intermediate waypoints."""
+    start = {"lat": 18.4446, "lon": 77.4509}
+    dest = {"lat": 18.4550, "lon": 77.4050}
+    wp = {"lat": 18.459456, "lon": 77.408313}
+
+    # 1. /plan with waypoints
+    resp_plan = client.post(
+        "/api/v1/routing/plan",
+        json={"start": start, "destination": dest, "waypoints": [wp], "profile": "BALANCED"},
+    )
+    assert resp_plan.status_code == 200
+    feat = resp_plan.json()
+    assert feat["type"] == "Feature"
+    assert "visited_target_ids" in feat["properties"]["metrics"]
+    assert "SCI-01-KODIAK" in feat["properties"]["metrics"]["visited_target_ids"]
+
+    # 2. /suite with waypoints
+    resp_suite = client.post(
+        "/api/v1/routing/suite",
+        json={"start": start, "destination": dest, "waypoints": [wp]},
+    )
+    assert resp_suite.status_code == 200
+    suite_data = resp_suite.json()
+    assert len(suite_data["features"]) == 3
+    for prof in ["SAFETY_FIRST", "SCIENCE_FIRST", "BALANCED"]:
+        assert "visited_target_ids" in suite_data["comparison"][prof]
+
+    # 3. /compare with waypoints
+    resp_compare = client.post(
+        "/api/v1/routing/compare",
+        json={
+            "start": start,
+            "destination": dest,
+            "waypoints": [wp],
+            "preferences": {
+                "safety_importance": 0.4,
+                "science_importance": 0.4,
+                "efficiency_importance": 0.2,
+            },
+        },
+    )
+    assert resp_compare.status_code == 200
+    comp_data = resp_compare.json()
+    assert len(comp_data["comparison"]["routes"]) == 3
+    for r in comp_data["comparison"]["routes"]:
+        assert "visited_target_ids" in r
+        assert "scientific_targets_count" in r

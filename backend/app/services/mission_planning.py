@@ -42,6 +42,7 @@ class MissionPlanningService:
         assumptions: MissionPlanningAssumptions | None = None,
         algorithm: str = "astar",
         simplify: bool = True,
+        environmental_modifiers: dict[str, float] | None = None,
     ) -> tuple[MissionPlanSummary, RoutePlan]:
         """Compute optimal route and evaluate EVA mission feasibility and consumables."""
         route_plan = self.routing_engine.compute_route(
@@ -59,6 +60,7 @@ class MissionPlanningService:
             science_stops_count=science_stops_count,
             is_round_trip=is_round_trip,
             custom_assumptions=assumptions,
+            environmental_modifiers=environmental_modifiers,
         )
 
         return mission_summary, route_plan
@@ -74,6 +76,7 @@ class MissionPlanningService:
         assumptions: MissionPlanningAssumptions | None = None,
         algorithm: str = "astar",
         simplify: bool = True,
+        environmental_modifiers: dict[str, float] | None = None,
     ) -> dict[str, dict[str, Any]]:
         """Compute all three route profiles and return side-by-side EVA mission plans."""
         suite = self.routing_engine.compute_suite(
@@ -92,6 +95,7 @@ class MissionPlanningService:
                 science_stops_count=science_stops_count,
                 is_round_trip=is_round_trip,
                 custom_assumptions=assumptions,
+                environmental_modifiers=environmental_modifiers,
             )
             result[profile_name] = {
                 "mission_summary": summary.to_dict(),
@@ -111,6 +115,7 @@ class MissionPlanningService:
         assumptions: MissionPlanningAssumptions | None = None,
         algorithm: str = "astar",
         simplify: bool = True,
+        environmental_modifiers: dict[str, float] | None = None,
     ) -> dict[str, Any]:
         """Compute sequential multi-destination traversal with legs, PNR, and RTB paths."""
         if not waypoint_coords:
@@ -153,6 +158,7 @@ class MissionPlanningService:
                 science_stops_count=num_stops,
                 is_round_trip=False,
                 custom_assumptions=cfg,
+                environmental_modifiers=environmental_modifiers,
             )
 
             leg_dist = route_plan.metrics.total_distance_m

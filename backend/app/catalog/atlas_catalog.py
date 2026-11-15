@@ -157,6 +157,7 @@ class AtlasMapEntry:
     layer_id: str | None = None
     default_enabled: bool = False
     tags: tuple[str, ...] = ()
+    supports_regions: tuple[str, ...] = ("reg-jezero",)
 
     # Backwards-compatibility property accessors
     @property
@@ -217,6 +218,7 @@ class AtlasMapEntry:
             "layer_id": self.layer_id,
             "default_enabled": self.default_enabled,
             "tags": list(self.tags),
+            "supports_regions": list(self.supports_regions),
         }
 
 
@@ -236,8 +238,13 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         source_organisation="NASA PDS Geosciences Node / GSFC",
         product_identifier="megt90n000cb.img",
         doi_or_url="https://pds-geosciences.wustl.edu/missions/mgs/mola.html",
-        original_spatial_resolution="128 pixels/degree (~463 m/pixel at equator)",
-        processing_resolution="Native Gridded Record (Unresampled)",
+        original_spatial_resolution=(
+            "4 pixels/degree (14.818 km/pixel local grid MEGT90N000CB.IMG; "
+            "PDS archive up to 128 px/deg ~463 m/pixel)"
+        ),
+        processing_resolution=(
+            "4 pixels/degree (720 x 1440 samples, 0.25° x 0.25° Native Gridded Record)"
+        ),
         spatial_coverage="Global Mars (-90° to +90° Lat, -180° to +180° Lon)",
         coverage_bounds=[[-90.0, -180.0], [90.0, 180.0]],
         crs="Planetocentric Plate Carrée (IAU_2015:49900 Mars Sphere)",
@@ -248,12 +255,14 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         processing_history=(
             "MGS orbital crossover range solution with zero areoid reference. "
             "Local grid: data/raw/mola/megt90n000cb.img "
-            "(SHA-256: 25f16fb7aaf857898dcf98bc4f841341a24f8b9f7e98453ca083bc45d897ca2c)."
+            "(4 px/deg, 14.818 km/pixel, 720 x 1440; "
+            "SHA-256: 25f16fb7aaf857898dcf98bc4f841341a24f8b9f7e98453ca083bc45d897ca2c)."
         ),
         licence_attribution="NASA Open Data Policy (Public Domain)",
         validation_status=ValidationStatus.VERIFIED_LOCAL,
         known_limitations=(
-            "Post spacing (~463m) is inadequate for EVA micro-hazard detection or local "
+            "Local C-grid post spacing (4 px/deg, 14.818 km/pixel; 128 px/deg regional tiles "
+            "not ingested locally) is inadequate for EVA micro-hazard detection or local "
             "rock avoidance."
         ),
         description=(
@@ -267,6 +276,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         layer_id="mola_global_elevation",
         default_enabled=False,
         tags=("mola", "global", "elevation", "areoid", "altimetry", "topography"),
+        supports_regions=("all",),
     ),
     AtlasMapEntry(
         id="atlas-global-02",
@@ -308,6 +318,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         layer_id="mola_shaded_relief",
         default_enabled=True,
         tags=("mola", "shaded-relief", "basemap", "global", "usgs"),
+        supports_regions=("all",),
     ),
     AtlasMapEntry(
         id="atlas-global-03",
@@ -347,6 +358,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         layer_id="themis_day_ir",
         default_enabled=False,
         tags=("themis", "infrared", "daytime", "odyssey", "thermal", "global"),
+        supports_regions=("all",),
     ),
     AtlasMapEntry(
         id="atlas-global-04",
@@ -386,6 +398,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         layer_id="themis_night_ir",
         default_enabled=False,
         tags=("themis", "night-ir", "thermal-inertia", "regolith", "global"),
+        supports_regions=("all",),
     ),
     AtlasMapEntry(
         id="atlas-global-06",
@@ -425,6 +438,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         layer_id="viking_mdim21",
         default_enabled=False,
         tags=("viking", "mdim", "color", "visual", "albedo", "global"),
+        supports_regions=("all",),
     ),
     AtlasMapEntry(
         id="atlas-global-05",
@@ -464,6 +478,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         layer_id=None,
         default_enabled=False,
         tags=("geology", "global", "stratigraphy", "tanaka", "usgs", "epochs"),
+        supports_regions=("all",),
     ),
     # -------------------------------------------------------------------------
     # 2. REGIONAL MARS MAPS (3 products)
@@ -696,7 +711,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         product_identifier="jezero_western_delta_20m_elevation.tif",
         doi_or_url="file:///data/processed/jezero_western_delta_20m_elevation.tif",
         original_spatial_resolution="20.0 m/pixel",
-        processing_resolution="20.0 m/pixel (Analysis Ready Grid: 742 x 1002 cells)",
+        processing_resolution="20.0 m/pixel (Analysis Ready Grid: 586 x 362 cells)",
         spatial_coverage="Marswalk Primary Research Area (20 km x 14.8 km)",
         coverage_bounds=[[18.3918, 77.3437], [18.58953, 77.46584]],
         crs="Equirectangular Mars Sphere (ESRI:103885)",
@@ -844,22 +859,25 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         epistemic_class=EpistemicClass.DERIVED.value,
         instrument_mission="Marswalk Terrain Intelligence Engine",
         source_organisation="Marswalk Research Architecture",
-        product_identifier="jezero_western_delta_20m_aspect_deg.tif",
-        doi_or_url="file:///data/processed/jezero_western_delta_20m_aspect_deg.tif",
+        product_identifier="marswalk_dynamic_aspect_gradient_20m",
+        doi_or_url="https://doi.org/10.1109/PROC.1981.11918",
         original_spatial_resolution="20.0 m/pixel",
-        processing_resolution="20.0 m/pixel (Float32 in Degrees: 0° - 360°)",
+        processing_resolution="20.0 m/pixel (Dynamic In-Engine Float32 in Degrees: 0° - 360°)",
         spatial_coverage="Jezero Western Delta Analysis Grid",
         coverage_bounds=[[18.3918, 77.3437], [18.58953, 77.46584]],
         crs="Equirectangular (ESRI:103885)",
         vertical_datum="NOT_APPLICABLE",
         processing_history=(
-            "Computed downhill steepest descent azimuth atan2(-dz/dx, -dz/dy) mod 360."
+            "Computed dynamically in-engine as downhill steepest descent azimuth "
+            "atan2(-dz/dx, -dz/dy) mod 360 from the 20m ARD elevation grid "
+            "(not persisted as a standalone GeoTIFF in data/processed/)."
         ),
         licence_attribution="Public Research Prototype (Open Source)",
         validation_status=ValidationStatus.CATALOGUED,
         known_limitations=(
             "Aspect values on flat basin floors (<0.5° slope) have high azimuthal "
-            "sensitivity to sensor noise."
+            "sensitivity to sensor noise. Dynamic in-engine derivative (no static GeoTIFF "
+            "stored in data/processed/)."
         ),
         description=(
             "Compass orientation of steepest descent governing solar illumination angles "
@@ -869,7 +887,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         processing_crs="ESRI:103885 (Dynamic In-Engine Gradient)",
         display_crs="IAU_2015:49900 (Equirectangular Display)",
         observation_date="Current Processing",
-        layer_id="terrain_aspect",
+        layer_id=None,
         default_enabled=False,
         tags=("aspect", "compass", "azimuth", "downhill", "solar_flux"),
     ),
@@ -1112,7 +1130,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         instrument_mission="Marswalk Geological Context Engine / Sun & Stack",
         source_organisation="USGS / Marswalk",
         product_identifier="jezero_geological_contacts.geojson",
-        doi_or_url="file:///docs/science_opportunity.md",
+        doi_or_url="https://doi.org/10.3133/sim3464",
         original_spatial_resolution="1:75,000 LineString Contacts",
         processing_resolution=("Vector LineString Contacts with Lithologic Transition Attributes"),
         spatial_coverage="Jezero Western Fan & Floor Margin",
@@ -1135,7 +1153,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         processing_crs="IAU_2015:49900",
         display_crs="IAU_2015:49900 (Equirectangular Display)",
         observation_date="Synthesized 2026",
-        layer_id="geologic_contacts",
+        layer_id=None,
         default_enabled=False,
         tags=("contacts", "stratigraphy", "boundaries", "sampling", "transitions"),
     ),
@@ -1337,6 +1355,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         layer_id="surface_albedo",
         default_enabled=False,
         tags=("albedo", "reflectivity", "tes", "solar_flux", "radiative_balance"),
+        supports_regions=("all",),
     ),
     AtlasMapEntry(
         id="atlas-surf-03",
@@ -1386,7 +1405,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         instrument_mission="Marswalk Planetary Environment Engine",
         source_organisation="Marswalk Research Architecture",
         product_identifier="marswalk_diurnal_thermal_1d",
-        doi_or_url="file:///docs/environmental_scenarios.md",
+        doi_or_url="http://www-mars.lmd.jussieu.fr/",
         original_spatial_resolution="Non-spatial 1D Diurnal Profile (15-minute timesteps)",
         processing_resolution="Thermophysical 1D Numerical Model (185 K to 268 K)",
         spatial_coverage="Jezero Western Delta Study Area",
@@ -1411,7 +1430,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         processing_crs="NOT_APPLICABLE",
         display_crs="NOT_APPLICABLE (Diurnal Chart)",
         observation_date="Simulated Model (L_s = 180°)",
-        layer_id="diurnal_temperature",
+        layer_id=None,
         default_enabled=False,
         tags=("thermal", "temperature", "diurnal", "simulation", "spacesuit", "heat_load"),
     ),
@@ -1668,7 +1687,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         instrument_mission="Marswalk Emergency Rerouting Engine",
         source_organisation="Marswalk Research Architecture",
         product_identifier="marswalk_emergency_corridors_v1",
-        doi_or_url="file:///docs/emergency_rerouting.md",
+        doi_or_url="https://github.com/vridhivazirani/marswalk-planner/tree/main/backend/app/routing",
         original_spatial_resolution="Vector Traversal Paths + Dynamic Obstacle Buffers",
         processing_resolution=("Dynamic Real-Time Graph Traversal (1-second reroute computation)"),
         spatial_coverage="Jezero Western Delta Study Area",
@@ -1690,7 +1709,7 @@ ATLAS_CATALOGUE: list[AtlasMapEntry] = [
         processing_crs="ESRI:103885 (Dynamic Graph Network)",
         display_crs="IAU_2015:49900 (Equirectangular Display)",
         observation_date="Dynamic Real-Time Execution",
-        layer_id="emergency_corridors",
+        layer_id=None,
         default_enabled=False,
         tags=("emergency", "return_to_base", "contingency", "reroute", "abort", "safety"),
     ),

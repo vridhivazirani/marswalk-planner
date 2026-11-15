@@ -92,9 +92,9 @@ def test_processed_rasters_alignment_and_nodata():
         # 2. CRS consistency
         assert e.crs == s.crs == u.crs
 
-        # 3. NoData integrity
+        # 3. NoData integrity (source_id keeps 0=Unmapped categorical, 255=structural NoData)
         assert e.nodata == STANDARD_NODATA_FLOAT
-        assert s.nodata == 0
+        assert s.nodata == 255
 
         # Read array data
         elev = e.read(1)

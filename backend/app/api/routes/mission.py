@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -68,8 +68,13 @@ class MissionPlanRequest(BaseModel):
     crew_assumptions: CrewAssumptionsInput | None = None
     equipment_assumptions: EquipmentAssumptionsInput | None = None
     timeline_assumptions: TimelineAssumptionsInput | None = None
-    algorithm: str = Field("astar", description="'astar' or 'dijkstra'")
+    algorithm: Literal["astar", "dijkstra"] = Field(
+        "astar", description="'astar' or 'dijkstra'"
+    )
     simplify: bool = Field(True, description="Enable obstacle-safe simplification")
+    environmental_modifiers: dict[str, float] | None = Field(
+        None, description="Optional environmental modifiers to couple with EVA consumption"
+    )
 
 
 class MissionCompareRequest(BaseModel):
@@ -82,8 +87,13 @@ class MissionCompareRequest(BaseModel):
     crew_assumptions: CrewAssumptionsInput | None = None
     equipment_assumptions: EquipmentAssumptionsInput | None = None
     timeline_assumptions: TimelineAssumptionsInput | None = None
-    algorithm: str = Field("astar", description="'astar' or 'dijkstra'")
+    algorithm: Literal["astar", "dijkstra"] = Field(
+        "astar", description="'astar' or 'dijkstra'"
+    )
     simplify: bool = Field(True, description="Enable obstacle-safe simplification")
+    environmental_modifiers: dict[str, float] | None = Field(
+        None, description="Optional environmental modifiers to couple with EVA consumption"
+    )
 
 
 class MultiDestinationMissionRequest(BaseModel):
@@ -97,8 +107,13 @@ class MultiDestinationMissionRequest(BaseModel):
     crew_assumptions: CrewAssumptionsInput | None = None
     equipment_assumptions: EquipmentAssumptionsInput | None = None
     timeline_assumptions: TimelineAssumptionsInput | None = None
-    algorithm: str = Field("astar", description="'astar' or 'dijkstra'")
+    algorithm: Literal["astar", "dijkstra"] = Field(
+        "astar", description="'astar' or 'dijkstra'"
+    )
     simplify: bool = Field(True, description="Enable obstacle-safe simplification")
+    environmental_modifiers: dict[str, float] | None = Field(
+        None, description="Optional environmental modifiers to couple with EVA consumption"
+    )
 
 
 def _build_assumptions(
@@ -169,6 +184,7 @@ def plan_mission_endpoint(req: MissionPlanRequest) -> dict[str, Any]:
             assumptions=assumptions,
             algorithm=req.algorithm,
             simplify=req.simplify,
+            environmental_modifiers=req.environmental_modifiers,
         )
         return {
             "mission": summary.to_dict(),
@@ -206,6 +222,7 @@ def compare_mission_profiles_endpoint(req: MissionCompareRequest) -> dict[str, A
             assumptions=assumptions,
             algorithm=req.algorithm,
             simplify=req.simplify,
+            environmental_modifiers=req.environmental_modifiers,
         )
         return {"profiles": comparison}
     except (
@@ -244,6 +261,7 @@ def plan_multi_destination_mission_endpoint(
             assumptions=assumptions,
             algorithm=req.algorithm,
             simplify=req.simplify,
+            environmental_modifiers=req.environmental_modifiers,
         )
     except (
         BlockedStartError,

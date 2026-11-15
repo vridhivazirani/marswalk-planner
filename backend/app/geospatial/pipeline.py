@@ -64,6 +64,8 @@ class PreprocessingProvenance:
     mean_value: float | None
     processed_utc: str
     software_versions: dict[str, str]
+    source_details: list[dict[str, Any]] | None = None
+    uncertainty_metadata: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -182,9 +184,13 @@ class PreprocessingPipeline:
         fused_elev_arr[ctx_mask] = ctx_out_arr[ctx_mask]
         fused_elev_arr[hirise_mask] = hirise_out_arr[hirise_mask]
 
-        # Uncertainty estimate sigma_z (metres)
-        # HiRISE relative vertical precision ~0.2m, CTX ~2.0m, NoData = 999.0m
-        sigma_z_arr = np.full((target_grid.height, target_grid.width), 999.0, dtype=np.float32)
+        # Provisional nominal vertical precision tier (metres, unverified proxy):
+        # HiRISE DTM nominal relative tier = 0.2m, CTX DTM nominal relative tier = 2.0m.
+        # Absolute accuracy vs areoid, resampling error (1m->20m), and local decorrelation are
+        # unquantified. Missing/NoData cells use STANDARD_NODATA_FLOAT (-9999.0), never 999.0.
+        sigma_z_arr = np.full(
+            (target_grid.height, target_grid.width), STANDARD_NODATA_FLOAT, dtype=np.float32
+        )
         sigma_z_arr[ctx_mask] = 2.0
         sigma_z_arr[hirise_mask] = 0.2
 
@@ -229,29 +235,50 @@ class PreprocessingPipeline:
         )
         created_files["elevation"] = elev_path
 
-        # Product B: Source ID Mask (Epistemic source tracking)
+        # Product B: Source ID Mask (0=Unmapped, 1=CTX, 2=HiRISE, 255=NoData)
         source_id_path = self.processed_dir / f"{target_grid.name}_source_id.tif"
         self._write_geotiff(
             source_id_path,
             source_id_arr,
             meta_base,
             dtype="uint8",
-            nodata=0,
+            nodata=255,
         )
         created_files["source_id"] = source_id_path
 
-        # Product C: Uncertainty Sigma_Z
+        # Product C: Provisional Nominal Vertical Precision Tier (NoData = -9999.0)
         sigma_path = self.processed_dir / f"{target_grid.name}_uncertainty_sigma_z.tif"
         self._write_geotiff(
             sigma_path,
             sigma_z_arr,
             meta_base,
             dtype="float32",
-            nodata=999.0,
+            nodata=STANDARD_NODATA_FLOAT,
         )
         created_files["uncertainty"] = sigma_path
 
-        # Product D: Aligned Imagery
+        # Product D: Sensor Specific Coverage Masks (0=False valid, 1=True valid, 255=NoData)
+        hirise_cov_path = self.processed_dir / f"{target_grid.name}_hirise_coverage.tif"
+        self._write_geotiff(
+            hirise_cov_path,
+            hirise_mask.astype(np.uint8),
+            meta_base,
+            dtype="uint8",
+            nodata=255,
+        )
+        created_files["hirise_coverage"] = hirise_cov_path
+
+        ctx_cov_path = self.processed_dir / f"{target_grid.name}_ctx_coverage.tif"
+        self._write_geotiff(
+            ctx_cov_path,
+            ctx_mask.astype(np.uint8),
+            meta_base,
+            dtype="uint8",
+            nodata=255,
+        )
+        created_files["ctx_coverage"] = ctx_cov_path
+
+        # Product E: Aligned Imagery
         if ctx_ortho_raw.exists():
             ortho_path = self.processed_dir / f"{target_grid.name}_ortho_imagery.tif"
             self._write_geotiff(
@@ -270,13 +297,51 @@ class PreprocessingPipeline:
         total_pixels = target_grid.width * target_grid.height
         valid_vals = fused_elev_arr[fused_elev_arr != STANDARD_NODATA_FLOAT]
 
+        source_products = ["10.5066/P9REJ9JN", "10.5066/P906QQT8"]
+        source_files = [hirise_raw.name, ctx_raw.name]
+        source_details: list[dict[str, Any]] = [
+            {
+                "role": "primary_dtm",
+                "product_doi": "10.5066/P9REJ9JN",
+                "filename": hirise_raw.name,
+                "native_resolution_m": 1.0,
+                "resampling_method": "Resampling.bilinear",
+                "raw_nodata": -32768.0,
+                "epistemic_class": "OBSERVED",
+            },
+            {
+                "role": "regional_dtm",
+                "product_doi": "10.5066/P906QQT8",
+                "filename": ctx_raw.name,
+                "native_resolution_m": 20.0,
+                "resampling_method": "Resampling.bilinear",
+                "raw_nodata": -3.4028226550889045e38,
+                "epistemic_class": "OBSERVED",
+            },
+        ]
+        if ctx_ortho_raw.exists():
+            source_products.append("10.5066/P9GV1ND3")
+            source_files.append(ctx_ortho_raw.name)
+            source_details.append(
+                {
+                    "role": "optical_imagery_for_cv_hazards",
+                    "product_doi": "10.5066/P9GV1ND3",
+                    "filename": ctx_ortho_raw.name,
+                    "native_resolution_m": 6.0,
+                    "target_resolution_m": target_grid.resolution_m,
+                    "resampling_method": "Resampling.cubic",
+                    "raw_nodata": 0,
+                    "epistemic_class": "OBSERVED",
+                }
+            )
+
         provenance = PreprocessingProvenance(
             layer_id=f"{target_grid.name}_elevation",
-            source_products=["10.5066/P9REJ9JN", "10.5066/P906QQT8"],
-            source_files=[hirise_raw.name, ctx_raw.name],
+            source_products=source_products,
+            source_files=source_files,
             target_grid=target_grid.name,
             target_resolution_m=target_grid.resolution_m,
-            resampling_method="bilinear (continuous elevation)",
+            resampling_method="bilinear (continuous elevation); cubic (optical orthoimagery)",
             crs=target_grid.crs,
             nodata_value=STANDARD_NODATA_FLOAT,
             output_shape=(target_grid.height, target_grid.width),
@@ -288,6 +353,20 @@ class PreprocessingPipeline:
             mean_value=float(valid_vals.mean()) if valid_vals.size > 0 else None,
             processed_utc=datetime.now(UTC).isoformat(),
             software_versions={"rasterio": rasterio.__version__, "gdal": rasterio.__gdal_version__},
+            source_details=source_details,
+            uncertainty_metadata={
+                "sigma_z_status": "PROVISIONAL_UNVERIFIED_NOMINAL_TIER",
+                "epistemic_class": "HEURISTIC",
+                "hirise_nominal_tier_m": 0.2,
+                "ctx_nominal_tier_m": 2.0,
+                "nodata_sentinel": STANDARD_NODATA_FLOAT,
+                "unquantified_components": [
+                    "absolute_vertical_accuracy_vs_mars_areoid",
+                    "bilinear_resampling_error_1m_to_20m",
+                    "stereo_correlation_decorrelation_in_shadowed_scarps",
+                    "hirise_ctx_coregistration_offset",
+                ],
+            },
         )
 
         catalog_record = self.catalog_dir / f"{target_grid.name}_provenance.json"
@@ -355,6 +434,7 @@ class PreprocessingPipeline:
             height=data.shape[0],
             count=3,
             dtype="uint8",
+            transform=rasterio.transform.from_origin(0, data.shape[0], 1, 1),
         ) as dst:
             dst.write(qc_rgb)
 
@@ -385,5 +465,16 @@ class PreprocessingPipeline:
             height=h,
             count=3,
             dtype="uint8",
+            transform=rasterio.transform.from_origin(0, h, 1, 1),
         ) as dst:
             dst.write(rgb)
+
+    def process_native_hazards_to_20m(self) -> dict[str, Path]:
+        """Compute native hazards on authentic 1.0m HiRISE DTM and aggregate to 20m ARD.
+
+        Complies with AGENTS.md Section 3: Never compute hazards on downsampled DTMs.
+        """
+        from app.terrain.native_hazards import NativeResolutionHazardPipeline
+
+        hazard_pipeline = NativeResolutionHazardPipeline(data_root=self.data_root)
+        return hazard_pipeline.process_and_export()

@@ -42,8 +42,8 @@ export function MarsMap2D({
   const boundsRectRef = useRef<L.Rectangle | null>(null)
   const roverFetchedRef = useRef(false)
 
-  // Aerospace Monochrome vs Scientific Spectrum view mode (default: true = pure dark monochrome)
-  const [isMonoMode, setIsMonoMode] = useState<boolean>(true)
+  // Aerospace Monochrome vs Scientific Spectrum view mode (default: false = spectrum color mode)
+  const [isMonoMode, setIsMonoMode] = useState<boolean>(false)
   const [showCoverageFootprints, setShowCoverageFootprints] = useState<boolean>(true)
   const [regionalFootprints, setRegionalFootprints] = useState<JezeroRegionalFootprintsResponse | null>(null)
 
@@ -79,6 +79,20 @@ export function MarsMap2D({
       maxZoom: 18,
       attributionControl: false,
     })
+
+    // Global Mars MOLA background context tile layer so the terrain context is visible immediately across Jezero
+    L.tileLayer(
+      '/api/v1/atlas/tiles/wmts/mola_color_topography/{z}/{y}/{x}.jpg',
+      {
+        maxNativeZoom: 7,
+        maxZoom: 18,
+        noWrap: false,
+        bounds: [[-90, -180], [90, 180]],
+        opacity: 0.70,
+        updateWhenIdle: true,
+        keepBuffer: 3,
+      }
+    ).addTo(map)
 
     // Study area bounding rectangle boundary
     const boundsRect = L.rectangle(bounds, {
@@ -141,6 +155,17 @@ export function MarsMap2D({
     mapInstanceRef.current = map
 
     return () => {
+      Object.values(rasterOverlaysRef.current).forEach((overlay) => {
+        try {
+          if (map.hasLayer(overlay)) {
+            map.removeLayer(overlay)
+          }
+        } catch {
+          // ignore
+        }
+      })
+      rasterOverlaysRef.current = {}
+      roverFetchedRef.current = false
       map.remove()
       mapInstanceRef.current = null
     }
@@ -156,11 +181,34 @@ export function MarsMap2D({
     metadata.layers.forEach((layer) => {
       if (layer.type !== 'raster') return
 
+      // Explicitly disable optical orthomosaic display (honest handling of unavailable high-res optical imagery)
+      if (layer.id === 'ortho_imagery') {
+        const old = rasterOverlaysRef.current['ortho_imagery']
+        if (old && map.hasLayer(old)) {
+          try {
+            map.removeLayer(old)
+          } catch {
+            // ignore
+          }
+        }
+        delete rasterOverlaysRef.current['ortho_imagery']
+        return
+      }
+
       const isActive = activeLayers[layer.id]
       let overlay = rasterOverlaysRef.current[layer.id]
 
       if (isActive) {
-        if (!overlay) {
+        // If overlay does not exist, was bound to a previously destroyed map, or URL changed, recreate it
+        const urlChanged = overlay && (overlay as any)._url !== layer.url
+        if (!overlay || (overlay as any)._map !== map || urlChanged) {
+          if (overlay && map.hasLayer(overlay)) {
+            try {
+              map.removeLayer(overlay)
+            } catch {
+              // ignore
+            }
+          }
           overlay = L.imageOverlay(layer.url, bounds, {
             opacity: layer.id === 'ortho_imagery' ? 1.0 : 0.75,
             interactive: false,
@@ -526,18 +574,34 @@ export function MarsMap2D({
         <div
           style={{
             fontSize: '0.68rem',
-            color: '#737373',
+            color: '#a1a1aa',
             marginTop: '0.35rem',
             borderTop: '1px solid #262626',
             paddingTop: '0.35rem',
+            lineHeight: 1.35,
           }}
         >
-          Terrain outside boundary is unmapped regional basin (NoData — EVA entry prohibited).
+          High-resolution optical imagery is currently unavailable in this view. Terrain outside boundary is unmapped regional basin (NoData — EVA entry prohibited).
         </div>
       </div>
 
       {/* Layer Control Panel */}
       <div className="layer-control-panel">
+        <div
+          style={{
+            marginBottom: '0.65rem',
+            padding: '0.45rem 0.55rem',
+            background: 'rgba(56, 189, 248, 0.08)',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            borderRadius: '2px',
+            fontSize: '0.65rem',
+            color: '#7dd3fc',
+            lineHeight: 1.35,
+          }}
+        >
+          <strong>Optical Imagery:</strong> High-resolution optical imagery is currently unavailable in this view.
+        </div>
+
         <div style={{ display: 'flex', gap: '4px', marginBottom: '0.65rem', background: '#090909', padding: '2px', border: '1px solid #303030', borderRadius: '2px' }}>
           <button
             type="button"
@@ -587,19 +651,21 @@ export function MarsMap2D({
             OBSERVED
           </span>
         </label>
-        {metadata.layers.map((layer) => (
-          <label key={layer.id} className="layer-checkbox-label">
-            <input
-              type="checkbox"
-              checked={!!activeLayers[layer.id]}
-              onChange={() => onLayerToggle(layer.id)}
-            />
-            <span className="layer-title">{layer.name}</span>
-            <span className={`badge badge-${layer.epistemic_class.toLowerCase()}`}>
-              {layer.epistemic_class}
-            </span>
-          </label>
-        ))}
+        {metadata.layers
+          .filter((l) => l.id !== 'ortho_imagery')
+          .map((layer) => (
+            <label key={layer.id} className="layer-checkbox-label">
+              <input
+                type="checkbox"
+                checked={!!activeLayers[layer.id]}
+                onChange={() => onLayerToggle(layer.id)}
+              />
+              <span className="layer-title">{layer.name}</span>
+              <span className={`badge badge-${layer.epistemic_class.toLowerCase()}`}>
+                {layer.epistemic_class}
+              </span>
+            </label>
+          ))}
         <div className="layer-legend-note">
           CRS: {metadata.study_area.crs_geographic} (Mars 2015 Sphere)
         </div>

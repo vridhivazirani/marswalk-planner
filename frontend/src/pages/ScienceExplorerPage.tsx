@@ -1,57 +1,69 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import type { CandidateTargetFeature, ScientificObjectiveDTO } from '../api/science'
 import { fetchScienceTargets, fetchScientificObjectives } from '../api/science'
+import { useMission } from '../context/useMission.ts'
+import {
+  CANONICAL_MARS_CRS,
+  SCIENCE_TARGETS_DATASET_ID,
+  SCIENCE_TARGETS_PROVENANCE,
+  checkCoordinateOverwrite,
+  featureToMissionTargetRef,
+  featureToSortieWaypoint,
+  formatMarsCoordinate,
+  type CoordinateOverwriteCheck,
+} from '../mission/digitalTwinHelpers.ts'
+import { getBrowserLocalStorage } from '../mission/missionStorage.ts'
+import { getRegionCapabilityProfile } from '../mission/regionCapabilities.ts'
+import {
+  JEZERO_SOURCE_REGION_ID,
+  buildScienceTargetObservation,
+  buildTargetGeologyHandoffRef,
+  inferTargetGeologyThemes,
+  normalizeDatasetEpistemicTag,
+  readLegacyScienceFieldNotes,
+} from '../mission/scienceWorkflowHelpers.ts'
+import type { MissionSortieWaypoint } from '../types/mission.ts'
 
 interface ScienceExplorerPageProps {
   onSelectTargetForRouting: (target: CandidateTargetFeature) => void
-  onSendWaypointsToEVAPlanner?: (waypoints: Array<{ lat: number; lon: number; name: string }>) => void
+  onSendWaypointsToEVAPlanner?: (waypoints: MissionSortieWaypoint[]) => void
 }
-
-interface QueuedWaypoint {
-  id: string
-  name: string
-  lat: number
-  lon: number
-  elevation_m: number
-  notes: string
-  objectiveTitle: string
-}
-
-const RESEARCH_NOTES_KEY = 'marswalk_science_field_notes_v1'
 
 export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
   onSelectTargetForRouting,
   onSendWaypointsToEVAPlanner,
 }) => {
+  const { mission, actions } = useMission()
   const [objectives, setObjectives] = useState<ScientificObjectiveDTO[]>([])
   const [selectedObjectiveId, setSelectedObjectiveId] = useState<string>('all')
   const [targets, setTargets] = useState<CandidateTargetFeature[]>([])
-  const [selectedTarget, setSelectedTarget] = useState<CandidateTargetFeature | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [savedNotice, setSavedNotice] = useState<string | null>(null)
+  const [pendingRouteOverwrite, setPendingRouteOverwrite] = useState<{
+    feature: CandidateTargetFeature
+    overwrite: CoordinateOverwriteCheck
+  } | null>(null)
+  const legacyMigratedRef = useRef(false)
 
-  // Investigation Waypoint Queue
-  const [queuedWaypoints, setQueuedWaypoints] = useState<QueuedWaypoint[]>([])
+  const queuedWaypoints = mission.science.queuedTargets
+  const fieldNotes = mission.science.targetNotes ?? {}
+  const attachedDatasets = mission.science.attachedDatasets ?? []
+  const regionCaps = getRegionCapabilityProfile(mission.geographic.regionId)
 
-  // Field Notes State (target_id -> note)
-  const [fieldNotes, setFieldNotes] = useState<Record<string, string>>(() => {
-    try {
-      const saved = localStorage.getItem(RESEARCH_NOTES_KEY)
-      return saved ? JSON.parse(saved) : {}
-    } catch {
-      return {}
-    }
-  })
-
+  // One-time controlled migration from legacy localStorage field notes into shared MissionContext
   useEffect(() => {
-    try {
-      localStorage.setItem(RESEARCH_NOTES_KEY, JSON.stringify(fieldNotes))
-    } catch {
-      // storage unavailable
+    if (legacyMigratedRef.current) return
+    legacyMigratedRef.current = true
+    const legacy = readLegacyScienceFieldNotes(getBrowserLocalStorage())
+    for (const [tid, note] of Object.entries(legacy)) {
+      if (!mission.science.targetNotes?.[tid]) {
+        actions.setTargetNote(tid, note)
+      }
     }
-  }, [fieldNotes])
+  }, [actions, mission.science.targetNotes])
 
-  // Load backend targets and objectives
+  // Load backend targets and objectives once on mount
   useEffect(() => {
     let cancelled = false
     async function loadData() {
@@ -63,9 +75,6 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
         if (cancelled) return
         setTargets(targetData.features)
         setObjectives(objData.objectives)
-        if (targetData.features.length > 0) {
-          setSelectedTarget(targetData.features[0])
-        }
         setLoading(false)
       } catch (err) {
         if (cancelled) return
@@ -79,27 +88,100 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
     }
   }, [])
 
+  // Derive focused candidate target cleanly from loaded catalog + shared mission context
+  const preferredTargetId =
+    mission.science.selectedTarget?.targetId ??
+    mission.science.selectedGeologicalFeature?.relatedTargetIds?.[0] ??
+    null
+  const selectedTarget =
+    (preferredTargetId
+      ? targets.find((f) => f.properties.target_id === preferredTargetId)
+      : undefined) ??
+    targets[0] ??
+    null
+
+  const handleSelectTargetForInspection = (target: CandidateTargetFeature) => {
+    setSavedNotice(null)
+    const tid = target.properties.target_id
+    const ref = featureToMissionTargetRef(target, JEZERO_SOURCE_REGION_ID, mission.geographic.regionId)
+    actions.selectScienceTarget(
+      fieldNotes[tid] ? { ...ref, notes: fieldNotes[tid] } : ref,
+    )
+  }
+
+  const handleSaveScienceObservation = (target: CandidateTargetFeature) => {
+    const tid = target.properties.target_id
+    const obs = buildScienceTargetObservation(
+      target,
+      mission.geographic.regionId,
+      fieldNotes[tid],
+    )
+    actions.addObservation(obs)
+    setSavedNotice(
+      mission.geographic.regionId !== JEZERO_SOURCE_REGION_ID
+        ? `Saved ${tid} (${obs.epistemicClass}) with source region ${JEZERO_SOURCE_REGION_ID}`
+        : `Saved ${tid} (${obs.epistemicClass}) to Mission Observations`,
+    )
+  }
+
+  const handleInvestigateGeology = (target: CandidateTargetFeature) => {
+    const tid = target.properties.target_id
+    const ref = featureToMissionTargetRef(target, JEZERO_SOURCE_REGION_ID, mission.geographic.regionId)
+    actions.selectScienceTarget(
+      fieldNotes[tid] ? { ...ref, notes: fieldNotes[tid] } : ref,
+    )
+    actions.selectGeologicalFeature(
+      buildTargetGeologyHandoffRef(target, mission.geographic.regionId),
+    )
+    actions.setActivePage('geology')
+  }
+
+  const handleInspectDatasets = (datasetId: string | null) => {
+    actions.setFocusedDataset(datasetId)
+    actions.setActivePage('data-hub')
+  }
+
   const handleQueueWaypoint = (target: CandidateTargetFeature) => {
+    const targetId = target.properties.target_id
     const isAlreadyQueued = queuedWaypoints.some(
-      (w) => w.id === target.properties.target_id
+      (w) => (w.id ?? w.name) === targetId,
     )
     if (isAlreadyQueued) return
 
-    const selectedObj = objectives.find((o) => o.id === selectedObjectiveId)
-    const newWp: QueuedWaypoint = {
-      id: target.properties.target_id,
-      name: target.properties.name,
-      lat: target.geometry.coordinates[1],
-      lon: target.geometry.coordinates[0],
-      elevation_m: target.geometry.coordinates[2],
-      notes: fieldNotes[target.properties.target_id] || '',
-      objectiveTitle: selectedObj?.title || target.properties.primary_science_theme,
-    }
-    setQueuedWaypoints((prev) => [...prev, newWp])
+    const waypoint = featureToSortieWaypoint(
+      target,
+      JEZERO_SOURCE_REGION_ID,
+      fieldNotes[targetId] || undefined,
+    )
+    actions.queueScienceTarget(waypoint)
   }
 
   const handleRemoveQueuedWaypoint = (id: string) => {
-    setQueuedWaypoints((prev) => prev.filter((w) => w.id !== id))
+    actions.unqueueScienceTarget(id)
+  }
+
+  const handleRequestRouteDirectly = (target: CandidateTargetFeature) => {
+    if (!regionCaps.supportsEvaRouting) return
+    const proposed = {
+      lat: target.geometry.coordinates[1],
+      lon: target.geometry.coordinates[0],
+    }
+    const overwrite = checkCoordinateOverwrite('destination', mission.eva.destination, proposed)
+    if (overwrite.willOverwrite) {
+      setPendingRouteOverwrite({ feature: target, overwrite })
+      return
+    }
+    setPendingRouteOverwrite(null)
+    onSelectTargetForRouting(target)
+  }
+
+  const handlePlanQueuedSortie = () => {
+    if (!regionCaps.supportsEvaRouting || queuedWaypoints.length === 0) return
+    if (onSendWaypointsToEVAPlanner) {
+      onSendWaypointsToEVAPlanner(queuedWaypoints)
+    } else {
+      actions.sendWaypointsToEVAPlanner(queuedWaypoints)
+    }
   }
 
   const handleExportSession = () => {
@@ -156,6 +238,60 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
           </span>
         </div>
       </div>
+
+      {mission.geographic.regionId !== JEZERO_SOURCE_REGION_ID && (
+        <div
+          style={{
+            marginBottom: '1rem',
+            padding: '0.65rem 0.9rem',
+            background: 'rgba(234, 179, 8, 0.08)',
+            border: '1px solid rgba(234, 179, 8, 0.35)',
+            borderRadius: '4px',
+            fontSize: '0.78rem',
+            color: '#fbbf24',
+          }}
+        >
+          Active Mission Region is <strong>{regionCaps.displayName}</strong> ({mission.geographic.regionId}). The ranked candidate target catalog below originates strictly from <strong>Jezero Crater Western Delta</strong> ({JEZERO_SOURCE_REGION_ID}); saved observations and targets retain <code>{JEZERO_SOURCE_REGION_ID}</code> provenance.
+        </div>
+      )}
+
+      {mission.science.selectedGeologicalFeature?.relationshipMethod === 'KEYWORD_DISCOVERY_HINT' &&
+        (mission.science.selectedGeologicalFeature.relatedTargetIds?.length ?? 0) > 0 && (
+          <div
+            style={{
+              marginBottom: '1rem',
+              padding: '0.55rem 0.85rem',
+              background: 'rgba(168, 85, 247, 0.08)',
+              border: '1px solid rgba(168, 85, 247, 0.35)',
+              borderRadius: '4px',
+              fontSize: '0.74rem',
+              color: '#d8b4fe',
+            }}
+          >
+            <strong>Discovery Hint Only ({mission.science.selectedGeologicalFeature.relationshipEpistemicClass ?? 'HEURISTIC'}):</strong>{' '}
+            Target focus linked via keyword overlap from{' '}
+            <em>{mission.science.selectedGeologicalFeature.name}</em> — this is an exploratory theme match, not a verified field co-location.
+          </div>
+        )}
+
+      {mission.science.selectedGeologicalFeature?.relationshipMethod === 'CURATED_SOURCE_SUPPORTED' &&
+        (mission.science.selectedGeologicalFeature.relatedTargetIds?.length ?? 0) > 0 && (
+          <div
+            style={{
+              marginBottom: '1rem',
+              padding: '0.55rem 0.85rem',
+              background: 'rgba(234, 179, 8, 0.08)',
+              border: '1px solid rgba(234, 179, 8, 0.35)',
+              borderRadius: '4px',
+              fontSize: '0.74rem',
+              color: '#fde047',
+            }}
+          >
+            <strong>Curated Source Association ({mission.science.selectedGeologicalFeature.relationshipEpistemicClass ?? 'INTERPRETED'}):</strong>{' '}
+            Target focus linked via explicit curated source association from{' '}
+            <em>{mission.science.selectedGeologicalFeature.name}</em>.
+          </div>
+        )}
 
       {/* Objective Filter Pills */}
       <div
@@ -245,6 +381,80 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
         )}
       </div>
 
+      {!regionCaps.supportsEvaRouting && (
+        <div
+          className="notice-warning"
+          style={{
+            marginBottom: '1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.75rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span>
+            Candidate science targets shown below belong to <strong>Jezero Crater (reg-jezero)</strong>. Active
+            mission region is <strong>{regionCaps.displayName}</strong>; EVA routing actions remain disabled until
+            switching back to Jezero Crater.
+          </span>
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem' }}
+            onClick={() => actions.setActiveRegion('reg-jezero')}
+          >
+            Switch Region to Jezero Crater
+          </button>
+        </div>
+      )}
+
+      {pendingRouteOverwrite && (
+        <div
+          className="notice-warning"
+          style={{
+            marginBottom: '1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.75rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span>
+            <strong>Destination Overwrite Confirmation: </strong>
+            Replace current EVA Destination (
+            {pendingRouteOverwrite.overwrite.existingCoordinate
+              ? formatMarsCoordinate(pendingRouteOverwrite.overwrite.existingCoordinate, 4)
+              : 'unset'}
+            ) with <strong>{pendingRouteOverwrite.feature.properties.name}</strong> (
+            {formatMarsCoordinate(pendingRouteOverwrite.overwrite.proposedCoordinate, 4)})?
+          </span>
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ fontSize: '0.75rem', padding: '0.28rem 0.65rem' }}
+              onClick={() => {
+                const targetToRoute = pendingRouteOverwrite.feature
+                setPendingRouteOverwrite(null)
+                onSelectTargetForRouting(targetToRoute)
+              }}
+            >
+              Confirm Overwrite & Route
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ fontSize: '0.75rem', padding: '0.28rem 0.65rem' }}
+              onClick={() => setPendingRouteOverwrite(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading && <div className="card">Loading scientific opportunity candidates from backend…</div>}
       {error && <div className="card status-error">{error}</div>}
 
@@ -256,12 +466,14 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '420px', overflowY: 'auto' }}>
             {filteredTargets.map((tgt) => {
               const isSelected = selectedTarget?.properties.target_id === tgt.properties.target_id
-              const isQueued = queuedWaypoints.some((w) => w.id === tgt.properties.target_id)
+              const isQueued = queuedWaypoints.some(
+                (w) => (w.id ?? w.name) === tgt.properties.target_id,
+              )
               return (
                 <div
                   key={tgt.properties.target_id}
                   className="card"
-                  onClick={() => setSelectedTarget(tgt)}
+                  onClick={() => handleSelectTargetForInspection(tgt)}
                   style={{
                     cursor: 'pointer',
                     padding: '0.8rem',
@@ -313,7 +525,7 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
               {queuedWaypoints.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setQueuedWaypoints([])}
+                  onClick={() => actions.clearQueuedTargets()}
                   style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer' }}
                 >
                   Clear All
@@ -326,48 +538,62 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
                 No targets queued. Select targets and click "+ Add to Sortie Queue" to build a multi-destination EVA sortie.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '200px', overflowY: 'auto' }}>
-                {queuedWaypoints.map((wp, idx) => (
-                  <div
-                    key={wp.id}
-                    style={{
-                      padding: '0.5rem',
-                      background: 'var(--bg-panel-elevated)',
-                      borderRadius: '3px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      fontSize: '0.75rem',
-                    }}
-                  >
-                    <div>
-                      <strong style={{ color: 'var(--text-primary)' }}>
-                        {idx + 1}. {wp.name}
-                      </strong>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                        [{wp.lat.toFixed(4)}°N, {wp.lon.toFixed(4)}°E]
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveQueuedWaypoint(wp.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--accent-danger)', cursor: 'pointer', padding: '0 4px' }}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '240px', overflowY: 'auto' }}>
+                {queuedWaypoints.map((wp, idx) => {
+                  const wpKey = wp.id ?? wp.name
+                  return (
+                    <div
+                      key={wpKey}
+                      style={{
+                        padding: '0.5rem',
+                        background: 'var(--bg-panel-elevated)',
+                        borderRadius: '3px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.75rem',
+                      }}
                     >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                      <div>
+                        <strong style={{ color: 'var(--text-primary)' }}>
+                          {idx + 1}. {wp.name}
+                        </strong>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                          {formatMarsCoordinate({ lat: wp.lat, lon: wp.lon }, 4)}
+                          {typeof wp.elevationM === 'number' ? ` • ${wp.elevationM.toFixed(1)} m` : ''}
+                          {wp.epistemicClass ? ` • ${wp.epistemicClass}` : ''}
+                        </div>
+                        {wp.primaryTheme && (
+                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                            {wp.primaryTheme}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveQueuedWaypoint(wpKey)}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-danger)', cursor: 'pointer', padding: '0 4px' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )
+                })}
 
-                {onSendWaypointsToEVAPlanner && (
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => onSendWaypointsToEVAPlanner(queuedWaypoints)}
-                    style={{ marginTop: '0.6rem', padding: '0.4rem', fontSize: '0.75rem' }}
-                  >
-                    🚀 Plan Multi-Destination Sortie ({queuedWaypoints.length} Stops)
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!regionCaps.supportsEvaRouting}
+                  title={
+                    !regionCaps.supportsEvaRouting
+                      ? 'Switch active region to Jezero Crater to plan an EVA sortie'
+                      : undefined
+                  }
+                  onClick={handlePlanQueuedSortie}
+                  style={{ marginTop: '0.6rem', padding: '0.4rem', fontSize: '0.75rem' }}
+                >
+                  🚀 Plan Multi-Destination Sortie ({queuedWaypoints.length} Stops)
+                </button>
               </div>
             )}
           </div>
@@ -376,34 +602,87 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
         {/* Right Column: Selected Target Deep Dossier */}
         {selectedTarget && (
           <div className="card" style={{ padding: '1.2rem', background: 'var(--bg-panel)', border: '1px solid var(--border-default)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.8rem' }}>
-              <div>
-                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.8rem', gap: '0.8rem', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 280px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                  <span style={{ fontSize: '0.68rem', fontFamily: 'var(--font-mono)', padding: '2px 6px', borderRadius: '3px', border: '1px solid var(--border-default)', color: 'var(--text-secondary)' }}>
+                    {selectedTarget.properties.target_id}
+                  </span>
+                  <span className="epistemic-badge epistemic-interpreted" style={{ fontSize: '0.65rem' }}>
+                    {normalizeDatasetEpistemicTag(selectedTarget.properties.epistemic_class)}
+                  </span>
+                  <span style={{ fontSize: '0.68rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-primary)' }}>
+                    Score {(selectedTarget.properties.composite_score * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.15rem' }}>
                   #{selectedTarget.properties.rank}: {selectedTarget.properties.name}
                 </h3>
-                <small style={{ color: 'var(--text-secondary)' }}>
-                  Theme: {selectedTarget.properties.primary_science_theme} | Epistemic: {selectedTarget.properties.epistemic_class} | Elevation: {selectedTarget.geometry.coordinates[2]} m
-                </small>
+                <div style={{ marginTop: '0.35rem', fontSize: '0.73rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', lineHeight: 1.5 }}>
+                  <div>
+                    Theme: {selectedTarget.properties.primary_science_theme} · Region: {regionCaps.displayName} ({mission.geographic.regionId})
+                  </div>
+                  <div>
+                    Coord: {formatMarsCoordinate({ lat: selectedTarget.geometry.coordinates[1], lon: selectedTarget.geometry.coordinates[0] }, 5)} ({CANONICAL_MARS_CRS}) · Elev: {selectedTarget.geometry.coordinates[2].toFixed(1)} m
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                    Source: {SCIENCE_TARGETS_DATASET_ID} · Provenance: {SCIENCE_TARGETS_PROVENANCE}
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => handleSaveScienceObservation(selectedTarget)}
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.76rem' }}
+                >
+                  {mission.science.savedObservations.some((o) => o.targetId === selectedTarget.properties.target_id)
+                    ? '✓ Logged Observation'
+                    : 'Save Observation to Mission'}
+                </button>
                 <button
                   type="button"
                   className="btn-secondary"
                   onClick={() => handleQueueWaypoint(selectedTarget)}
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.76rem' }}
                 >
-                  + Add to Sortie Queue
+                  {queuedWaypoints.some((w) => (w.id ?? w.name) === selectedTarget.properties.target_id)
+                    ? '✓ Queued in Sortie'
+                    : '+ Add to Sortie Queue'}
                 </button>
                 <button
                   type="button"
                   className="btn-primary"
-                  onClick={() => onSelectTargetForRouting(selectedTarget)}
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                  disabled={!regionCaps.supportsEvaRouting}
+                  title={
+                    !regionCaps.supportsEvaRouting
+                      ? 'Switch active region to Jezero Crater to route directly'
+                      : undefined
+                  }
+                  onClick={() => handleRequestRouteDirectly(selectedTarget)}
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.76rem' }}
                 >
                   🧭 Route Directly
                 </button>
               </div>
             </div>
+
+            {savedNotice && (
+              <div
+                style={{
+                  marginTop: '0.65rem',
+                  padding: '0.45rem 0.7rem',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  borderRadius: '3px',
+                  fontSize: '0.74rem',
+                  color: '#6ee7b7',
+                }}
+              >
+                ✓ {savedNotice}
+              </div>
+            )}
 
             {/* Score Breakdown Grid */}
             <div className="hazard-breakdown-grid" style={{ marginTop: '1rem' }}>
@@ -451,38 +730,90 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
               {selectedTarget.properties.rationale}
             </div>
 
-            {/* Supporting Observations & Available Datasets */}
-            <div
-              style={{
-                marginTop: '1rem',
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.8rem',
-              }}
-            >
-              <div style={{ padding: '0.8rem', background: 'var(--bg-panel-elevated)', borderRadius: '4px', fontSize: '0.75rem' }}>
-                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '0.3rem' }}>
-                  Available Planetary Datasets:
-                </strong>
-                <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-secondary)' }}>
-                  <li>MRO HiRISE TRN 1m Digital Terrain Model</li>
-                  <li>MRO CTX 6m Regional Orthomosaic</li>
-                  <li>USGS SIM-3464 Geologic Map of Jezero</li>
-                  <li>MRO CRISM Targeted Spectral Scenes (FRT00005850)</li>
-                </ul>
-              </div>
+            {/* Supporting Datasets, Geological Cross-Links & Caveats */}
+            {(() => {
+              const hints = inferTargetGeologyThemes(selectedTarget)
+              const datasetChips: Array<{ id: string; label: string }> = [
+                { id: 'product-01', label: 'MRO HiRISE 1m DTM' },
+                { id: 'product-03', label: 'MRO CTX 20m DTM' },
+                { id: 'product-07', label: 'CRISM MTRDR Spectra' },
+                { id: 'product-08', label: 'USGS SIM-3464 Map' },
+              ]
+              if (hints.recommendedDatasetIds.includes('product-09')) {
+                datasetChips.push({ id: 'product-09', label: 'Perseverance MEDA' })
+              }
+              return (
+                <div
+                  style={{
+                    marginTop: '1rem',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '0.8rem',
+                  }}
+                >
+                  <div style={{ padding: '0.8rem', background: 'var(--bg-panel-elevated)', borderRadius: '4px', fontSize: '0.75rem' }}>
+                    <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '0.35rem' }}>
+                      Connected Geological & Dataset Provenance
+                    </strong>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.45rem' }}>
+                      {hints.relationshipMethod === 'CURATED_SOURCE_SUPPORTED'
+                        ? 'Curated source-supported geological associations (INTERPRETED):'
+                        : 'Heuristic discovery hints via keyword/score overlap (HEURISTIC — not verified geological correspondence):'}{' '}
+                      <span style={{ color: 'var(--text-primary)' }}>{hints.keywords.join(', ')}</span>
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontFamily: 'var(--font-mono)' }}>
+                      Units: {hints.recommendedUnitHints.join(', ')} · CRISM: {hints.recommendedCrismHints.join(', ')}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.55rem' }}>
+                      {datasetChips.map((chip) => {
+                        const isPinned = attachedDatasets.some((d) => d.datasetId === chip.id)
+                        return (
+                          <button
+                            key={chip.id}
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => handleInspectDatasets(chip.id)}
+                            style={{ fontSize: '0.68rem', padding: '0.2rem 0.45rem' }}
+                          >
+                            {chip.label}{isPinned ? ' ★' : ''}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => handleInvestigateGeology(selectedTarget)}
+                        style={{ fontSize: '0.72rem', padding: '0.32rem 0.6rem' }}
+                      >
+                        Investigate Geological Context →
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => handleInspectDatasets(hints.recommendedDatasetIds[0] ?? 'product-07')}
+                        style={{ fontSize: '0.72rem', padding: '0.32rem 0.6rem' }}
+                      >
+                        Inspect Supporting Datasets ({attachedDatasets.length} pinned) →
+                      </button>
+                    </div>
+                  </div>
 
-              <div style={{ padding: '0.8rem', background: 'var(--bg-panel-elevated)', borderRadius: '4px', fontSize: '0.75rem' }}>
-                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '0.3rem' }}>
-                  Known Uncertainties & Caveats:
-                </strong>
-                <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-secondary)' }}>
-                  <li>Sub-meter boulder fields unresolvable at 20m ARD grid</li>
-                  <li>Atmospheric dust scattering reduces CRISM IR contrast</li>
-                  <li>Subsurface clay layer thickness requires drill sampling</li>
-                </ul>
-              </div>
-            </div>
+                  <div style={{ padding: '0.8rem', background: 'var(--bg-panel-elevated)', borderRadius: '4px', fontSize: '0.75rem' }}>
+                    <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '0.3rem' }}>
+                      Known Uncertainties & Caveats:
+                    </strong>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-secondary)' }}>
+                      <li>Sub-meter boulder fields unresolvable at 20m ARD grid</li>
+                      <li>Atmospheric dust scattering reduces CRISM IR contrast</li>
+                      <li>Subsurface clay layer thickness requires drill sampling</li>
+                      <li>Candidate target rankings are INTERPRETED multi-criteria indices</li>
+                    </ul>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Field Notes & Investigation Observations */}
             <div
@@ -494,17 +825,13 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
               }}
             >
               <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>
-                Researcher Field Notes & In-Situ Hypotheses:
+                Researcher Field Notes & In-Situ Hypotheses (Persisted in Shared MissionContext):
               </label>
               <textarea
                 rows={3}
                 value={fieldNotes[selectedTarget.properties.target_id] || ''}
                 onChange={(e) => {
-                  const val = e.target.value
-                  setFieldNotes((prev) => ({
-                    ...prev,
-                    [selectedTarget.properties.target_id]: val,
-                  }))
+                  actions.setTargetNote(selectedTarget.properties.target_id, e.target.value)
                 }}
                 placeholder="Enter field notes, sampling priorities, or outcrop observations..."
                 style={{
@@ -519,8 +846,9 @@ export const ScienceExplorerPage: React.FC<ScienceExplorerPageProps> = ({
                   resize: 'vertical',
                 }}
               />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.4rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                ✓ Auto-saved to session workspace
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                <span>Notes carry into queued Sortie Waypoints and Mission Observations</span>
+                <span>✓ Synced to MissionContext draft</span>
               </div>
             </div>
 

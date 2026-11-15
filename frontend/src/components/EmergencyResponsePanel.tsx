@@ -8,6 +8,8 @@ import {
   fetchCuratedEmergencyScenarios,
   simulateEmergencyIncident,
 } from '../api/emergency'
+import { useMission } from '../context/useMission'
+import { getRegionCapabilityProfile } from '../mission/regionCapabilities'
 
 interface EmergencyResponsePanelProps {
   startPoint: { lat: number; lon: number }
@@ -22,6 +24,12 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
   activeProfile = 'BALANCED',
   onPlanUpdated,
 }) => {
+  const { mission, actions } = useMission()
+  const activeRegionId = mission.geographic.regionId
+  const regionProfile = getRegionCapabilityProfile(activeRegionId)
+  const isEvaSupported = regionProfile.supportsEvaRouting
+  const testedContingencies = mission.simulation.testedContingencies ?? []
+
   const [scenarios, setScenarios] = useState<SimulatedHazardDTO[]>([])
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('')
   const [crewProgressPct, setCrewProgressPct] = useState<number>(0.4)
@@ -48,6 +56,13 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
 
   const executeSimulation = useCallback(
     (hazardToSimulate: SimulatedHazardDTO, progress: number) => {
+      if (!isEvaSupported) {
+        setError(
+          `Emergency simulation is disabled for ${regionProfile.displayName} (${activeRegionId}); authoritative high-resolution terrain rasters exist exclusively for Jezero Crater.`,
+        )
+        return
+      }
+
       setIsProcessing(true)
       setError(null)
 
@@ -68,6 +83,25 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
         .then((res) => {
           setPlan(res)
           onPlanUpdated?.(res)
+          actions.logContingencyTest({
+            testedAt: new Date().toISOString(),
+            incidentId: res.hazard_event.event_id,
+            incidentTitle: res.hazard_event.title,
+            incidentType: res.hazard_event.hazard_type,
+            severity: res.hazard_event.severity,
+            incidentLocation: { lat: res.hazard_event.center_lat, lon: res.hazard_event.center_lon },
+            progressAlongRoutePct: progress,
+            isRouteAffected: res.impact.is_route_affected,
+            detourDistanceM: res.rerouted_route?.properties.metrics.total_distance_m ?? 0,
+            deltaDistanceM: res.metrics_delta.distance_delta_m,
+            detourDurationMin: res.rerouted_route?.properties.metrics.estimated_duration_minutes ?? 0,
+            deltaDurationMin: res.metrics_delta.duration_delta_minutes,
+            additionalO2G: res.metrics_delta.o2_consumption_delta_g,
+            additionalBatteryWh: res.metrics_delta.battery_consumption_delta_wh,
+            actionTaken: res.is_return_to_base ? 'ABORT_TO_BASE' : 'REROUTE',
+            isFeasible: res.is_feasible,
+            reasoning: res.reasoning,
+          })
           setIsProcessing(false)
         })
         .catch((err: unknown) => {
@@ -75,12 +109,13 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
           setIsProcessing(false)
         })
     },
-    [startPoint, destPoint, activeProfile, onPlanUpdated],
+    [startPoint, destPoint, activeProfile, onPlanUpdated, isEvaSupported, regionProfile.displayName, activeRegionId, actions],
   )
 
   const handleScenarioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value
     setSelectedScenarioId(id)
+    if (!isEvaSupported) return
 
     if (id === 'CUSTOM') {
       const custom: SimulatedHazardDTO = {
@@ -111,6 +146,13 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
   }
 
   const handleAbort = () => {
+    if (!isEvaSupported) {
+      setError(
+        `Emergency return-to-base abort is disabled for ${regionProfile.displayName} (${activeRegionId}); authoritative high-resolution terrain rasters exist exclusively for Jezero Crater.`,
+      )
+      return
+    }
+
     if (!plan) {
       setError('Please execute an initial simulation to establish current crew position.')
       return
@@ -124,6 +166,25 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
       .then((res) => {
         setPlan(res)
         onPlanUpdated?.(res)
+        actions.logContingencyTest({
+          testedAt: new Date().toISOString(),
+          incidentId: res.hazard_event.event_id,
+          incidentTitle: res.hazard_event.title,
+          incidentType: res.hazard_event.hazard_type,
+          severity: res.hazard_event.severity,
+          incidentLocation: { lat: res.hazard_event.center_lat, lon: res.hazard_event.center_lon },
+          progressAlongRoutePct: crewProgressPct,
+          isRouteAffected: res.impact.is_route_affected,
+          detourDistanceM: res.rerouted_route?.properties.metrics.total_distance_m ?? 0,
+          deltaDistanceM: res.metrics_delta.distance_delta_m,
+          detourDurationMin: res.rerouted_route?.properties.metrics.estimated_duration_minutes ?? 0,
+          deltaDurationMin: res.metrics_delta.duration_delta_minutes,
+          additionalO2G: res.metrics_delta.o2_consumption_delta_g,
+          additionalBatteryWh: res.metrics_delta.battery_consumption_delta_wh,
+          actionTaken: 'ABORT_TO_BASE',
+          isFeasible: res.is_feasible,
+          reasoning: res.reasoning,
+        })
         setIsProcessing(false)
       })
       .catch((err: unknown) => {
@@ -227,6 +288,7 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
           id="emergency-scenario-select"
           value={selectedScenarioId}
           onChange={handleScenarioChange}
+          disabled={!isEvaSupported}
           style={{
             background: 'var(--bg-panel)',
             color: 'var(--text-primary)',
@@ -235,6 +297,8 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
             borderRadius: '3px',
             fontSize: '0.85rem',
             minWidth: '320px',
+            opacity: !isEvaSupported ? 0.6 : 1,
+            cursor: !isEvaSupported ? 'not-allowed' : 'pointer',
           }}
         >
           {scenarios.map((s) => (
@@ -248,7 +312,12 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
         <button
           type="button"
           className="btn-primary"
-          disabled={isProcessing || !currentHazard}
+          disabled={isProcessing || !currentHazard || !isEvaSupported}
+          title={
+            !isEvaSupported
+              ? `Emergency contingency simulation is restricted to Jezero Crater (active region: ${regionProfile.displayName}).`
+              : undefined
+          }
           onClick={() => currentHazard && executeSimulation(currentHazard, crewProgressPct)}
           style={{
             padding: '0.4rem 0.8rem',
@@ -261,7 +330,12 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
         <button
           type="button"
           className="btn-alert"
-          disabled={isProcessing || !plan}
+          disabled={isProcessing || !plan || !isEvaSupported}
+          title={
+            !isEvaSupported
+              ? `Emergency return-to-base abort is restricted to Jezero Crater (active region: ${regionProfile.displayName}).`
+              : undefined
+          }
           onClick={handleAbort}
           style={{
             padding: '0.4rem 0.8rem',
@@ -272,7 +346,22 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
         </button>
       </div>
 
-      {error && (
+      {!isEvaSupported && (
+        <div
+          className="notice-warning"
+          style={{
+            marginTop: '0.8rem',
+            padding: '0.75rem',
+            borderLeftColor: 'var(--status-critical)',
+            fontSize: '0.8rem',
+          }}
+        >
+          <strong>Jezero Crater Emergency Engine Restricted: </strong>
+          In-situ hazard simulation, obstacle avoidance, and return-to-base replanning require high-resolution (1m/20m) elevation and hazard rasters available exclusively in Jezero Crater (<code>reg-jezero</code>). Active region: <strong>{regionProfile.displayName}</strong> (<code>{activeRegionId}</code>). Switch region to Jezero Crater to evaluate emergency protocols.
+        </div>
+      )}
+
+      {isEvaSupported && error && (
         <div className="card status-error" style={{ marginTop: '0.6rem', padding: '0.5rem' }}>
           {error}
         </div>
@@ -551,6 +640,83 @@ export const EmergencyResponsePanel: React.FC<EmergencyResponsePanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* Tested Mission Contingencies Log */}
+      <div
+        style={{
+          marginTop: '1.2rem',
+          background: 'var(--bg-panel-elevated)',
+          border: '1px solid var(--border-default)',
+          borderRadius: '4px',
+          padding: '0.8rem',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <div>
+            <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+              Mission Contingency Audit Log ({testedContingencies.length})
+            </strong>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+              Simulated surface hazards and abort scenarios tested during active mission planning
+            </div>
+          </div>
+          {testedContingencies.length > 0 && (
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
+              onClick={() => actions.clearContingencyTests()}
+            >
+              Clear Log
+            </button>
+          )}
+        </div>
+
+        {testedContingencies.length === 0 ? (
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '0.5rem 0' }}>
+            No contingency scenarios evaluated yet. Simulate a hazard or abort above to record impacts to this mission.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            {testedContingencies.map((test, idx) => (
+              <div
+                key={idx}
+                style={{
+                  background: 'var(--bg-panel)',
+                  border: `1px solid ${test.isFeasible ? 'var(--border-default)' : 'var(--status-critical)'}`,
+                  borderRadius: '3px',
+                  padding: '0.5rem 0.7rem',
+                  fontSize: '0.78rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.3rem' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {test.actionTaken === 'ABORT_TO_BASE' ? '🚨 ABORT TO BASE' : '⚠️ DYNAMIC DETOUR'}: {test.incidentTitle}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '0.68rem',
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      background: test.isFeasible ? '#064e3b' : '#450a0a',
+                      color: test.isFeasible ? '#6ee7b7' : '#fca5a5',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {test.isFeasible ? 'FEASIBLE WITH RESERVES' : 'IMPASSABLE / RESUPPLY NEEDED'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.3rem', fontSize: '0.72rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                  <span>Distance: {test.detourDistanceM.toFixed(0)} m ({test.deltaDistanceM >= 0 ? `+${test.deltaDistanceM.toFixed(0)}` : test.deltaDistanceM.toFixed(0)} m)</span>
+                  <span>Duration: {test.detourDurationMin.toFixed(1)} min ({test.deltaDurationMin >= 0 ? `+${test.deltaDurationMin.toFixed(1)}` : test.deltaDurationMin.toFixed(1)} min)</span>
+                  <span>O₂ Delta: {test.additionalO2G >= 0 ? `+${test.additionalO2G.toFixed(1)}` : test.additionalO2G.toFixed(1)} g</span>
+                  <span>Battery Delta: {test.additionalBatteryWh >= 0 ? `+${test.additionalBatteryWh.toFixed(1)}` : test.additionalBatteryWh.toFixed(1)} Wh</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

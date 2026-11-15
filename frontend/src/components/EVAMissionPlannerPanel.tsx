@@ -10,6 +10,8 @@ import {
   planEVAMission,
   planMultiDestinationMission,
 } from '../api/mission'
+import { useMission } from '../context/useMission.ts'
+import { evaluateEvaConfigCompatibility } from '../mission/regionCapabilities.ts'
 
 interface Props {
   startPoint: LatLon
@@ -24,6 +26,7 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
   onRoutesCalculated,
   initialWaypoints,
 }) => {
+  const { mission, actions } = useMission()
   const [profile, setProfile] = useState<string>('BALANCED')
   const [scienceStops, setScienceStops] = useState<number>(2)
   const [isRoundTrip, setIsRoundTrip] = useState<boolean>(true)
@@ -124,7 +127,29 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
       .catch((err: unknown) => console.error('Failed to reset mission assumptions:', err))
   }
 
+  const simCompatibility = evaluateEvaConfigCompatibility({
+    activeRegionId: mission.geographic.regionId,
+    baseCamp: startPoint,
+    destination: destPoint,
+    waypoints: isMultiDestMode ? multiWaypoints : mission.eva.waypoints,
+  })
+
+  const isEnvCoupled = Boolean(mission.simulation.applyEnvironmentalModifiers)
+  const envSummary = mission.simulation.latestEnvironmental
+  const envModifiers = (isEnvCoupled && envSummary)
+    ? {
+        air_temperature_c: envSummary.airTemperatureC,
+        dust_optical_depth_tau: envSummary.dustOpticalDepthTau,
+        wind_speed_mps: envSummary.windSpeedMps,
+        suitability_score: envSummary.suitabilityScore,
+      }
+    : undefined
+
   const handleSimulateMission = () => {
+    if (!simCompatibility.compatible) {
+      setPlanError(simCompatibility.reason)
+      return
+    }
     setIsPlanning(true)
     setPlanError(null)
 
@@ -139,10 +164,42 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
       assumptions?.timeline,
       'astar',
       true,
+      envModifiers,
     )
       .then((res) => {
         setMissionPlan(res.mission)
         onRoutesCalculated([res.route_feature])
+        actions.recordSimulationResult({
+          simulatedAt: new Date().toISOString(),
+          routeId: res.mission.mission_id,
+          profileName: res.mission.selected_route_profile,
+          isRoundTrip: isRoundTrip,
+          isMultiDestination: false,
+          totalDistanceKm: res.mission.round_trip_distance_km,
+          totalDurationHours: res.mission.timeline.total_eva_duration_hours,
+          walkingMinutes: res.mission.timeline.total_walking_minutes,
+          scienceMinutes: res.mission.timeline.planned_science_minutes,
+          restMinutes: res.mission.timeline.rest_pauses_minutes,
+          reserveMinutes: res.mission.timeline.contingency_reserve_minutes,
+          o2ConsumedG: res.mission.consumables.o2_consumed_per_crew_g,
+          o2RemainingG: res.mission.consumables.o2_remaining_per_suit_g,
+          o2MarginPct: res.mission.consumables.o2_margin_pct,
+          batteryConsumedWh: res.mission.consumables.battery_energy_consumed_wh,
+          batteryRemainingWh: res.mission.consumables.battery_remaining_wh,
+          batteryMarginPct: res.mission.consumables.battery_margin_pct,
+          metabolicKcal: res.mission.consumables.metabolic_energy_expended_kcal,
+          averageMetabolicWatts: res.mission.consumables.average_metabolic_power_w,
+          isFeasible: res.mission.is_feasible,
+          warningsCount: res.mission.warnings.length,
+          warnings: res.mission.warnings.map((w) => ({
+            severity: w.severity,
+            code: w.code,
+            message: w.message,
+            remediation: w.remediation,
+          })),
+          environmentalModifierApplied: Boolean(res.mission.environmental_modifiers_applied),
+          environmentalStressFactor: res.mission.environmental_factors?.suitability_score,
+        })
         setIsPlanning(false)
       })
       .catch((err: unknown) => {
@@ -152,6 +209,10 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
   }
 
   const handleSimulateMultiDestination = () => {
+    if (!simCompatibility.compatible) {
+      setPlanError(simCompatibility.reason)
+      return
+    }
     if (multiWaypoints.length === 0) return
     setIsPlanning(true)
     setPlanError(null)
@@ -165,11 +226,44 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
       crewAssumptions: assumptions?.crew,
       equipmentAssumptions: assumptions?.equipment,
       timelineAssumptions: assumptions?.timeline,
+      environmentalModifiers: envModifiers,
     })
       .then((res) => {
         setMultiPlanResult(res)
         const allLegRoutes = res.legs.map((l) => l.route_feature)
         onRoutesCalculated(allLegRoutes)
+        const totalDurationHours = res.total_duration_hours
+        actions.recordSimulationResult({
+          simulatedAt: new Date().toISOString(),
+          routeId: `MULTI-SORTIE-${res.legs.length}-LEGS`,
+          profileName: res.profile_name,
+          isRoundTrip: res.return_to_origin,
+          isMultiDestination: true,
+          totalDistanceKm: res.total_distance_m / 1000.0,
+          totalDurationHours: totalDurationHours,
+          walkingMinutes: res.total_walk_time_minutes,
+          scienceMinutes: res.total_science_time_minutes,
+          restMinutes: res.total_rest_time_minutes,
+          reserveMinutes: 0,
+          o2ConsumedG: res.total_o2_consumed_g,
+          o2RemainingG: Math.max(0, 1200.0 - res.total_o2_consumed_g),
+          o2MarginPct: res.remaining_o2_reserve_pct,
+          batteryConsumedWh: res.total_battery_consumed_wh,
+          batteryRemainingWh: Math.max(0, 1800.0 - res.total_battery_consumed_wh),
+          batteryMarginPct: res.remaining_battery_reserve_pct,
+          metabolicKcal: res.total_metabolic_energy_kwh * 860.421,
+          averageMetabolicWatts:
+            (res.total_metabolic_energy_kwh * 1000.0) / Math.max(0.1, totalDurationHours),
+          isFeasible: res.feasibility_status === 'FEASIBLE',
+          warningsCount: res.flight_warnings.length,
+          warnings: res.flight_warnings.map((w) => ({
+            severity: 'WARNING',
+            code: 'MULTI_SORTIE_ALERT',
+            message: w,
+          })),
+          environmentalModifierApplied: Boolean(isEnvCoupled && envSummary),
+          environmentalStressFactor: envSummary?.suitabilityScore,
+        })
         setIsPlanning(false)
       })
       .catch((err: unknown) => {
@@ -255,7 +349,8 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
             type="button"
             className="btn-primary"
             onClick={isMultiDestMode ? handleSimulateMultiDestination : handleSimulateMission}
-            disabled={isPlanning}
+            disabled={isPlanning || !simCompatibility.compatible}
+            title={!simCompatibility.compatible ? (simCompatibility.reason ?? undefined) : undefined}
           >
             {isPlanning
               ? 'Simulating EVA Operations…'
@@ -266,7 +361,126 @@ export const EVAMissionPlannerPanel: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Mission Simulation Controls */}
+      {!simCompatibility.compatible && (
+        <div
+          className="notice-warning"
+          style={{
+            marginTop: '0.7rem',
+            fontSize: '0.75rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span>{simCompatibility.reason}</span>
+          {mission.geographic.regionId !== 'reg-jezero' && (
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ fontSize: '0.72rem', padding: '0.24rem 0.6rem' }}
+              onClick={() => actions.setActiveRegion('reg-jezero')}
+            >
+              Switch Region to Jezero Crater
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Committed Mission Decision Badge */}
+      {mission.eva.selectedRouteDecision && (
+        <div
+          style={{
+            marginTop: '0.7rem',
+            padding: '0.5rem 0.75rem',
+            background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: '4px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span
+              style={{
+                background: '#064e3b',
+                color: '#6ee7b7',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: '3px',
+              }}
+            >
+              COMMITTED ROUTE
+            </span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+              <strong>{mission.eva.selectedRouteDecision.profileName}</strong> ({mission.eva.selectedRouteDecision.metricsSummary.totalDistanceM.toFixed(0)} m, {mission.eva.selectedRouteDecision.metricsSummary.estimatedDurationMin.toFixed(0)} min, {mission.eva.selectedRouteDecision.scientificTargetsCount} scientific stop(s))
+            </span>
+          </div>
+          {profile !== mission.eva.selectedRouteDecision.profileName && (
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
+              onClick={() => setProfile(mission.eva.selectedRouteDecision!.profileName)}
+            >
+              Sync Profile with Committed Route
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Atmospheric Coupling Control Bar */}
+      <div
+        style={{
+          marginTop: '0.7rem',
+          padding: '0.5rem 0.75rem',
+          background: isEnvCoupled ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-panel-elevated)',
+          border: `1px solid ${isEnvCoupled ? 'rgba(59, 130, 246, 0.35)' : 'var(--border-default)'}`,
+          borderRadius: '4px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <span
+            style={{
+              background: isEnvCoupled ? '#1e3a8a' : '#262626',
+              color: isEnvCoupled ? '#93c5fd' : '#a3a3a3',
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: '3px',
+            }}
+          >
+            {isEnvCoupled ? 'ENVIRONMENTALLY COUPLED' : 'BASELINE BIOPHYSICS'}
+          </span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)' }}>
+            {envSummary ? (
+              <>
+                Scenario: <strong>{envSummary.title}</strong> (Score: {(envSummary.suitabilityScore * 100).toFixed(0)}%, {envSummary.airTemperatureC}°C, Tau {envSummary.dustOpticalDepthTau})
+              </>
+            ) : (
+              'No evaluated environmental scenario loaded in mission.'
+            )}
+          </span>
+        </div>
+        <button
+          type="button"
+          className={isEnvCoupled ? 'btn-primary' : 'btn-secondary'}
+          style={{ fontSize: '0.72rem', padding: '0.25rem 0.6rem' }}
+          onClick={() => actions.toggleEnvironmentalModifiers()}
+        >
+          {isEnvCoupled ? 'Coupled Modifiers [Active]' : 'Enable Environmental Coupling'}
+        </button>
+      </div>
       <div
         style={{
           marginTop: '0.8rem',

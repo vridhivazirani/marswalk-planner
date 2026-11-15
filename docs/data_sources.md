@@ -31,8 +31,8 @@ In compliance with `AGENTS.md`:
 - **File Format:** Cloud-Optimized GeoTIFF / ISIS cube / VICAR formats with detached XML metadata.
 - **Data Availability & Access:** Public domain (USGS / NASA Open Data). No authentication or export restrictions.
 - **Suitability for Analysis:** **PRIMARY HIGH-RES TOPOGRAPHY.** Essential for computing slopes at astronaut footstep scale, micro-roughness, terrain curvature, and hard slope limits ($>25^\circ$).
-- **Known Limitations:** Edge gaps where stereo HiRISE pairs did not exist; steep crater walls in deep shadow occasionally suffer from stereo-correlation decorrelation artifacts (addressed via our uncertainty layer).
-- **Decision:** **ACCEPT** (Tier 1 Core Elevation Product).
+- **Known Limitations:** Edge gaps where stereo HiRISE pairs did not exist; steep crater walls in deep shadow occasionally suffer from stereo-correlation decorrelation artifacts (addressed via our uncertainty layer). Epistemically classified as `DERIVED` (stereo photogrammetric DTM extracted via ISIS3 / SOCET SET from observed HiRISE image pairs) while stored locally under `LOCAL_RAW` as an unmodified upstream USGS TRN GeoTIFF (`data/raw/usgs_trn/HiRISE_DTM_Delta_Jezero_DL_1m.tif`).
+- **Decision:** **ACCEPT** (Tier 1 Core Elevation Product; Epistemic: `DERIVED`).
 
 ---
 
@@ -65,8 +65,8 @@ In compliance with `AGENTS.md`:
 - **File Format:** GeoTIFF / ISIS cube.
 - **Data Availability & Access:** Public domain. No restrictions.
 - **Suitability for Analysis:** **REGIONAL TOPOGRAPHY & CRATER-WIDE ROUTING.** Serves as ARD Level 2 grid for coarse-scale A* and Dijkstra crater-scale cost maps.
-- **Known Limitations:** At 20 m/pixel, dangerous individual boulders, small gully drop-offs, and localized steep steps ($<20\text{ m}$) are smoothed out. Cannot be used alone for human-scale safety.
-- **Decision:** **ACCEPT** (Tier 2 Regional Topography Product).
+- **Known Limitations:** At 20 m/pixel, dangerous individual boulders, small gully drop-offs, and localized steep steps ($<20\text{ m}$) are smoothed out. Cannot be used alone for human-scale safety. Epistemically classified as `DERIVED` (SOCET SET photogrammetric stereo extraction from observed CTX image pairs) while stored locally under `LOCAL_RAW` as an unmodified upstream USGS TRN GeoTIFF (`data/raw/usgs_trn/JEZ_ctx_B_soc_008_DTM_20m.tif`).
+- **Decision:** **ACCEPT** (Tier 2 Regional Topography Product; Epistemic: `DERIVED`).
 
 ---
 
@@ -89,18 +89,18 @@ In compliance with `AGENTS.md`:
 
 ### Product 5: MOLA MEGDR (Mars Global Surveyor)
 - **Product Title:** Mars Orbiter Laser Altimeter Mission Experiment Gridded Data Record (MEGDR)
-- **Product Identifier:** `MGS-M-MOLA-5-MEGDR-L3-V1.0` (specifically tile `megt_16n_044_128`)
+- **Product Identifier:** `MGS-M-MOLA-5-MEGDR-L3-V1.0` (local global C-grid `MEGT90N000CB.IMG` stored at `data/raw/mola/megt90n000cb.img`; regional archive tiles such as `megt_16n_044_128` are not stored locally)
 - **Originating Organization:** NASA Goddard Space Flight Center / PDS Geosciences Node
 - **Official Download Portal:** PDS Geosciences Node / ODE (`https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1.0/`)
 - **Geographic Coverage:** Global Mars ($180^\circ\text{ W}$ to $180^\circ\text{ E}$, $-90^\circ$ to $+90^\circ$).
-- **Spatial Resolution:** 128 pixels/degree ($\approx 463\text{ m/pixel}$ at the equator).
+- **Spatial Resolution:** **4.0 pixels/degree** ($14.818\text{ km/pixel}$ at the equator, $720 \times 1,440$ samples, $0.25^\circ \times 0.25^\circ$ grid) for the locally ingested file `data/raw/mola/megt90n000cb.img` (`MEGT90N000CB.LBL`). Note: the broader PDS `MGS-M-MOLA-5-MEGDR-L3-V1.0` archive also publishes regional tiles up to $128\text{ pixels/degree}$ ($\approx 463\text{ m/pixel}$ at the equator), which are not ingested in `data/raw/`.
 - **Coordinate Reference System (CRS):** Planetocentric latitude, east-positive longitude.
 - **Vertical Datum:** Mars Areoid.
 - **File Format:** PDS3 binary grid (`.IMG`) with detached label (`.LBL`).
 - **Data Availability & Access:** Public archive.
 - **Suitability for Analysis:** **GLOBAL GEODETIC BACKBONE & FALLBACK.** Serves strictly as the datum reference to verify absolute vertical offsets and as the ultimate fallback in ARD Level 3.
-- **Known Limitations:** **INADEQUATE FOR HUMAN HAZARDS.** At ~463 m post spacing, human obstacles (cliffs, ravines, boulder fields) are completely invisible. Any cell relying solely on MOLA will be heavily penalized and flagged `LOW_CONFIDENCE_FALLBACK`.
-- **Decision:** **ACCEPT_WITH_CAVEATS** (Global Reference only; never safe alone).
+- **Known Limitations:** **INADEQUATE FOR HUMAN HAZARDS.** At $14.818\text{ km/pixel}$ local C-grid spacing (and even at the $463\text{ m/pixel}$ maximum PDS MEGDR archive resolution), human obstacles (cliffs, ravines, boulder fields) are completely invisible. Any cell relying solely on MOLA will be heavily penalized and flagged `LOW_CONFIDENCE_FALLBACK`.
+- **Decision:** **ACCEPT_WITH_CAVEATS** (Global Reference only; never safe alone; Epistemic: `OBSERVED`).
 
 ---
 
@@ -196,17 +196,99 @@ In compliance with `AGENTS.md`:
 
 ---
 
-## 3. Summary of Approved Initial Product Catalog
+## 3. Summary of Approved Initial Product Catalog & API Reconciliation
 
-| # | Product Name | Identifier | Sensor | Native Res | Role | Decision |
+| # | Dossier Product Name | Identifier | Core API ID (`catalog/datasets`) | Raw `data/raw/` Ingested? | Role | Decision |
 |---|---|---|---|---|---|---|
-| 1 | TRN HiRISE DTM Mosaic | `10.5066/P9REJ9JN` | HiRISE | 1.0 m | Primary Topography / Slopes | **ACCEPT** |
-| 2 | TRN HiRISE Orthomosaic | `10.5066/P9QJDP48` | HiRISE | 0.25 m | Primary Basemap / CV Hazards | **ACCEPT** |
-| 3 | TRN CTX DTM Mosaic | `10.5066/P906QQT8` | CTX | 20.0 m | Regional Topography / Base Grid | **ACCEPT** |
-| 4 | TRN CTX Orthomosaic | `10.5066/P9GV1ND3` | CTX | 6.0 m | Regional Context Basemap | **ACCEPT** |
-| 5 | MOLA MEGDR Altimetry | `MGS-M-MOLA-5-MEGDR-L3-V1.0` | MOLA | 463 m | Global Geodetic Datum Check | **ACCEPT_WITH_CAVEATS** |
-| 6 | CRISM Targeted Scene | `FRT000047A3_MTRDR` | CRISM | 18 m | Astrobiology Science Value | **ACCEPT** |
-| 7 | USGS Geologic Map | `10.3133/sim3464` | Multi | 1:75,000 | Stratigraphic Science Value | **ACCEPT** |
-| 8 | Perseverance Traverse | `mars2020_places` | Rover | In-situ | Ground-Truth Route Validation | **ACCEPT** |
-| 9 | Perseverance MEDA In-Situ | `mars2020_meda` | MEDA | In-situ (1 Hz) | Historical Weather & Dust Baseline | **ACCEPT** |
-| 10 | Mars Climate Database (MCD) | `MCD_v6.1_LMD` | Model | GCM / Diurnal | Macro Climatology & Diurnal Scenarios | **ACCEPT** |
+| 1 | TRN HiRISE DTM Mosaic | `10.5066/P9REJ9JN` | `product-01` | Yes (`HiRISE_DTM_Delta_Jezero_DL_1m.tif`, `LOCAL_RAW`, `DERIVED`) | Primary Topography / Slopes | **ACCEPT** |
+| 2 | TRN HiRISE Orthomosaic | `10.5066/P9QJDP48` | `product-02` | No (`STATIC_METADATA` dossier only, `OBSERVED`) | Primary Basemap / CV Reference | **ACCEPT** |
+| 3 | TRN CTX DTM Mosaic | `10.5066/P906QQT8` | `product-03` | Yes (`JEZ_ctx_B_soc_008_DTM_20m.tif`, `LOCAL_RAW`, `DERIVED`) | Regional Topography / Base Grid | **ACCEPT** |
+| 4 | TRN CTX Orthomosaic | `10.5066/P9GV1ND3` | `product-04` | Yes (`JEZ_ctx_B_soc_008_orthoMosaic_6m.tif`, `LOCAL_RAW`, `OBSERVED`) | Regional Context Basemap | **ACCEPT** |
+| — | ESA Mars Express HRSC | `ESA-PSA-HRSC-V1.0` | `product-05` | No (`STATIC_METADATA` regional ref, `DERIVED`) | Regional Elevation Benchmark | **ACCEPT_WITH_CAVEATS** |
+| 5 | MOLA MEGDR Altimetry | `MGS-M-MOLA-5-MEGDR-L3-V1.0` | `product-06` | Yes (`megt90n000cb.img`, `4 px/deg` / `14.818 km/px`, `LOCAL_RAW`, `OBSERVED`) | Global Geodetic Datum Check | **ACCEPT_WITH_CAVEATS** |
+| 6 | CRISM Targeted Scene | `FRT000047A3_MTRDR` / `frt00005850` | `product-07` | No (`STATIC_METADATA`, `INTERPRETED` curated summaries) | Astrobiology Science Value | **ACCEPT** |
+| 7 | USGS Geologic Map | `10.3133/sim3464` | `product-08` | No (`STATIC_METADATA`, `INTERPRETED` unit summaries) | Stratigraphic Science Value | **ACCEPT** |
+| 8 | Perseverance Traverse | `mars2020_places` | Referenced under `product-09` & Atlas `PLN-VEC-04` | Raw JSON (`data/raw/perseverance/M20_traverse.json`, `M20_waypoints.json`) | Ground-Truth Route Validation | **ACCEPT** |
+| 9 | Perseverance MEDA In-Situ | `mars2020_meda` | `product-09` | No (`STATIC_METADATA`; curated historical scenarios) | Historical Weather & Dust Baseline | **ACCEPT** |
+| 10 | Mars Climate Database (MCD) | `MCD_v6.1_LMD` | `product-10` | No (`MODEL_SIMULATED`, `reg-jezero` regional scope) | Macro Climatology & Diurnal Scenarios | **ACCEPT** |
+
+> [!NOTE]
+> `is_ingested = True` in `backend/app/catalog/datasets.py` tracks the four primary orbital/altimetric raw archive dossiers (`product-01`, `product-03`, `product-04`, `product-06`) stored under `data/raw/`. Perseverance traverse telemetry JSONs (`M20_traverse.json` and `M20_waypoints.json`) are stored locally under `data/raw/perseverance/` and indexed via Atlas `PLN-VEC-04`, whereas `product-09` (MEDA sensor time-series archive) and curated CRISM/SIM-3464 metadata tables report `is_ingested = False`.
+
+---
+
+## 4. Authoritative Resampling & Aggregation Policy (M0.2-GEO / MW-DATA-02)
+
+To ensure scientific integrity and eliminate documentation drift, the following resampling methods are codified across the ingestion, analysis, and routing pipelines:
+
+| Data Layer Category | Source Product Example | Reprojection / Warping Method | Downsampling / Aggregation Method | Scientific Justification |
+|---|---|---|---|---|
+| **Continuous Elevation (DTM)** | HiRISE 1m, CTX 20m DTM | `Resampling.bilinear` | Conservative Mean / Bilinear | Avoids artificial overshoots and ringing artifacts (Runge's phenomenon) on steep delta cliffs that occur with bicubic interpolation on step discontinuities. |
+| **Visual Imagery / Orthophoto** | CTX 6m Ortho, HiRISE 0.25m ORI | `Resampling.cubic` | Cubic Convolution | Preserves high-frequency visual edge contrast and visual clarity for orbital basemap visualization. |
+| **High-Resolution Hazards & Obstacles** | Boulders, Scarps, Hard Obstacles | **Native 1.0m Detection** (`native_hazards.py`) | **Conservative Maximum / Any-Hit OR** | In compliance with `AGENTS.md` §3, terrain hazards are computed at native 1.0m resolution *prior* to downsampling; isolated 1–3m boulders or cliff breaks are preserved via any-hit logical OR and block maximum pooling into the 20m ARD grid. |
+| **Categorical / Geological Units** | USGS Jezero Geologic Map, Epistemic Source ID | `Resampling.nearest` | Nearest Neighbor / Mode | Prevents inventing artificial non-existent intermediate class IDs between distinct geologic or epistemic classifications. |
+| **NoData / Coverage Masks** | Data Presence Masks, Shadow Keep-Out | `Resampling.nearest` | Any-Hit Unknown (`any(nodata) → impassable`) | Guarantees unknown terrain is never diluted into safe terrain. |
+
+---
+
+## 5. Authoritative Multi-Source Hazard Fusion & Obstacle Policy (M0.2.1)
+
+### 5.1 Source-Resolution Hierarchy
+Marswalk Planner strictly enforces a source-resolution hierarchy:
+1. **Tier L0 / High-Resolution Orbital (1.0 m/pixel HiRISE):** Sufficient to detect metre-scale rocks, isolated boulders, micro-roughness, and steep cliff scarps.
+2. **Tier L2 / Regional Context Orbital (20.0 m/pixel CTX):** Sufficient for macro-topography, regional valley slopes, and large craters, but **blind to metre-scale hazards** (Apollo-class spacesuit trip obstacles).
+3. **Tier L3 / Global Altimetry (14.818 km/pixel local MOLA C-grid `megt90n000cb.img`; 463 m/pixel PDS archive max):** Regional geodetic datum check only; strictly prohibited as a sole basis for human traversability.
+
+### 5.2 Four-Case Authoritative Fusion Policy
+Every $20\text{ m} \times 20\text{ m}$ analysis grid cell is classified under one of four non-overlapping cases:
+
+* **Case A — Authentic Native HiRISE Coverage (`source_id == 2`):**
+  * Evaluated directly from 1.0 m native DTM Horn slope, TRI, morphological top-hat rock peaks, and scarp breaks via conservative aggregation (`NativeResolutionHazardPipeline`).
+  * If native 1m detector flags an obstacle (slope $\ge 25^\circ$, boulder score $\ge 0.50$, scarp $\ge 0.50$): cell is marked **HARD IMPASSABLE** (`NATIVE_HIRISE_OBSTACLE`).
+  * If sub-critical: cell is passable with ordinal Data Reliability Index `0.95` (uncalibrated relative index over 1m DTM; note that 20m CV optical boulder/sand/crater heuristics still consume the 20m-warped 6m CTX orthomosaic, NOT 0.25m HiRISE ortho).
+  * **Nominal Precision Tier:** `0.20 m` provisional unverified relative tier (`HEURISTIC`; excludes unquantified absolute areoid bias, bilinear resampling attenuation, and local stereo decorrelation). Never report as a validated $\pm 1\sigma$ physical error bar.
+
+* **Case B — HiRISE NoData, Valid CTX Coverage (`source_id == 1`):**
+  * Observed at 20 m spacing, but metre-scale hazards are unresolved.
+  * **Nominal Precision Tier:** `2.00 m` provisional unverified relative tier (`HEURISTIC`).
+  * Macro-hazards from CTX (slope $\ge 25^\circ$, TRI $\ge 8.0\text{ m}$) are marked **HARD IMPASSABLE** (`CTX_SLOPE_GT_MAX` / `CTX_TRI_GT_MAX`).
+  * Sub-critical CTX slopes: **Unresolved High-Resolution Hazard Uncertainty**.
+    * **Default Conservative Safety Policy (`forbid_resolution_uncertainty=True`):** In compliance with `AGENTS.md` Rule 7 ("Unknown terrain is never safe"), unverified CTX-only terrain outside the HiRISE swath is marked **HARD IMPASSABLE** (`UNRESOLVED_RESOLUTION_HAZARD`).
+    * **Permissive Risk Policy:** Exposes CTX-only terrain as passable with maximum uncertainty cost ($c_{\text{unc}} = 1.0$), explicitly flagged in the `resolution_uncertainty_mask` with an epistemic warning that safety is unverified.
+
+* **Case C — Neither Sensor Valid / Unmapped (`source_id == 0`):**
+  * Cell is marked **HARD IMPASSABLE** (`NO_DATA_UNKNOWN`).
+  * **NoData & Reliability Semantics:** Continuous float32 uncertainty/reliability layers use `STANDARD_NODATA_FLOAT = -9999.0` (never `999.0` or `0.0`); uint8 binary masks use `nodata = 255` so valid `0` and `1` states remain distinct; API inspection returns `null` (`N/A`) with `epistemic_class = "UNKNOWN"`.
+
+* **Case D — Conflicting Source Information:**
+  * Strict conservative preservation: an obstacle detected by any valid sensor is preserved and never cleared or averaged away.
+
+### 5.3 Authoritative Product Ownership Matrix
+
+| Product Filename | Generating Engine | Epistemic Class | Downstream Consumer |
+|---|---|---|---|
+| `jezero_western_delta_20m_elevation.tif` | `PreprocessingPipeline` | `DERIVED` | All terrain, hazard & costmap pipelines |
+| `jezero_western_delta_20m_source_id.tif` | `PreprocessingPipeline` (`nodata=255`; `0`=unmapped, `1`=CTX, `2`=HiRISE) | `OBSERVED` | Hazard & terrain intelligence engines |
+| `jezero_western_delta_20m_ortho_imagery.tif` | `PreprocessingPipeline` (from `JEZ_ctx_B_soc_008_orthoMosaic_6m.tif`, DOI `10.5066/P9GV1ND3`, warped to 20 m) | `DERIVED` | `TerrainIntelligenceEngine` CV optical detectors, UI Atlas |
+| `jezero_western_delta_20m_hirise_coverage.tif` | **`PreprocessingPipeline` (Sole Owner)** (`nodata=255`) | `OBSERVED` | `NativeResolutionHazardPipeline`, `HazardIntelligenceEngine`, UI Atlas |
+| `jezero_western_delta_20m_ctx_coverage.tif` | **`PreprocessingPipeline` (Sole Owner)** (`nodata=255`) | `OBSERVED` | `HazardIntelligenceEngine`, UI Atlas |
+| `jezero_western_delta_20m_uncertainty_sigma_z.tif` | **`PreprocessingPipeline` (Sole Owner)** (`nodata=-9999.0`) | `HEURISTIC` | `HazardIntelligenceEngine`, `CostmapEngine`, `/hazards/inspect` |
+| `jezero_western_delta_20m_slope_deg.tif` | **`TerrainIntelligenceEngine` (Sole Owner)** | `DERIVED` | `HazardIntelligenceEngine`, `CostmapEngine`, Routing |
+| `jezero_western_delta_20m_tri_roughness_m.tif` | **`TerrainIntelligenceEngine` (Sole Owner)** | `DERIVED` | `HazardIntelligenceEngine`, `CostmapEngine`, Routing |
+| `jezero_western_delta_20m_surface_roughness_m.tif` | **`TerrainIntelligenceEngine` (Sole Owner)** | `DERIVED` | `CostmapEngine`, Routing |
+| `jezero_western_delta_20m_boulder_hazard_score.tif` | **`TerrainIntelligenceEngine` (Sole Owner, from 20m CTX ortho, `nodata=-9999.0`)** | `HEURISTIC` | `HazardIntelligenceEngine`, `/hazards/inspect` |
+| `jezero_western_delta_20m_sand_hazard_score.tif` | **`TerrainIntelligenceEngine` (Sole Owner, from 20m CTX ortho, `nodata=-9999.0`)** | `HEURISTIC` | `HazardIntelligenceEngine`, `/hazards/inspect` |
+| `jezero_western_delta_20m_crater_hazard_score.tif` | **`TerrainIntelligenceEngine` (Sole Owner, from 20m CTX ortho, `nodata=-9999.0`)** | `HEURISTIC` | `HazardIntelligenceEngine`, `/hazards/inspect` |
+| `jezero_western_delta_20m_terrain_confidence.tif` | **`TerrainIntelligenceEngine` (Sole Owner)** (`nodata=-9999.0`) | `HEURISTIC` | `MultiResolutionTerrainInspector`, UI Atlas |
+| `jezero_western_delta_20m_hirise_hazard_obstacles.tif` | **`NativeResolutionHazardPipeline` (Sole Owner)** (`nodata=255`) | `HEURISTIC` | `HazardIntelligenceEngine`, `/hazards/inspect` |
+| `jezero_western_delta_20m_hirise_boulder_score.tif` | **`NativeResolutionHazardPipeline` (Sole Owner)** (`nodata=-9999.0`) | `HEURISTIC` | UI Atlas, QC Inspection |
+| `jezero_western_delta_20m_hirise_slope_deg.tif` | **`NativeResolutionHazardPipeline` (Sole Owner)** | `DERIVED` | UI Atlas, QC Inspection |
+| `jezero_western_delta_20m_hirise_surface_roughness_m.tif` | **`NativeResolutionHazardPipeline` (Sole Owner)** | `DERIVED` | UI Atlas, QC Inspection |
+| `jezero_western_delta_20m_hazard_resolution_uncertainty.tif` | **`HazardIntelligenceEngine` (Sole Owner)** | `DERIVED` | `CostmapEngine`, UI Inspection |
+| `jezero_western_delta_20m_hazard_unknown_mask.tif` | **`HazardIntelligenceEngine` (Sole Owner)** | `UNKNOWN` | `CostmapEngine`, UI Inspection |
+| `jezero_western_delta_20m_hazard_data_confidence.tif` | **`HazardIntelligenceEngine` (Sole Owner)** (`nodata=-9999.0`) | `HEURISTIC` | `RouteOptimizationEngine`, UI Inspection |
+| `jezero_western_delta_20m_hazard_detection_confidence.tif` | **`HazardIntelligenceEngine` (Sole Owner)** (`nodata=-9999.0`) | `HEURISTIC` | `RouteOptimizationEngine`, UI Inspection |
+| `jezero_western_delta_20m_hazard_spatial_uncertainty_m.tif` | **`HazardIntelligenceEngine` (Sole Owner)** (`nodata=-9999.0`) | `HEURISTIC` | UI Inspection, Costmap Audit |
+| `jezero_western_delta_20m_hazard_overall_score.tif` | **`HazardIntelligenceEngine` (Sole Owner)** | `HEURISTIC` | `CostmapEngine`, API `/hazards` |
+| `jezero_western_delta_20m_hazard_hard_impassable.tif` | **`HazardIntelligenceEngine` (Sole Owner)** | `HEURISTIC` | **`RouteOptimizationEngine`**, **`CostmapEngine`** |
+| `jezero_western_delta_20m_costmap_*.tif` | **`CostmapEngine` (Sole Owner)** | `HEURISTIC` | `RouteOptimizationEngine`, API `/costmap` |

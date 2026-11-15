@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useMission } from '../context/useMission.ts'
+import { getRegionCapabilityProfile } from '../mission/regionCapabilities.ts'
 import type { RouteFeature } from '../api/routing'
 import type { DynamicReroutePlanDTO } from '../api/emergency'
 import type { CandidateTargetFeature } from '../api/science'
@@ -65,6 +67,7 @@ export const MissionReportsPage: React.FC<MissionReportsPageProps> = ({
   selectedTarget,
   onRestoreBookmark,
 }) => {
+  const { mission } = useMission()
   const [missionTitle, setMissionTitle] = useState<string>(
     'Jezero Western Delta Reconnaissance Sortie 1'
   )
@@ -117,19 +120,34 @@ export const MissionReportsPage: React.FC<MissionReportsPageProps> = ({
     'RESEARCH DECISION-SUPPORT PROTOTYPE ONLY. Marswalk Planner is not NASA software. ' +
     'Models are illustrative and do not guarantee operational astronaut safety or life-support survival.'
 
+  const regionProfile = getRegionCapabilityProfile(mission.geographic.regionId)
+
   const markdownContent = generateMarkdownReport({
     reportId,
     generatedAt,
     missionTitle,
+    missionStatus: mission.status,
     crewCount,
+    regionId: mission.geographic.regionId,
+    regionName: regionProfile.displayName,
     startCoordinate: startPoint,
     destCoordinate: destPoint,
+    waypoints: mission.eva.waypoints,
     profileName: activeProfile,
     activeRoute,
+    selectedRouteDecision: mission.eva.selectedRouteDecision,
+    simulationRecord: mission.simulation.latestSimulation,
+    environmentalReport: mission.simulation.latestEnvironmental,
+    contingencyAudit: mission.simulation.testedContingencies,
     emergencyPlan,
     selectedTarget,
+    savedObservations: mission.science.savedObservations,
     disclaimer,
   })
+
+  const handlePrintPDF = () => {
+    window.print()
+  }
 
   const handleDownloadMarkdown = () => {
     const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8;' })
@@ -156,6 +174,9 @@ export const MissionReportsPage: React.FC<MissionReportsPageProps> = ({
       activeRoute: activeRoute ? activeRoute.properties : null,
       emergencyPlan: emergencyPlan ? emergencyPlan.event_id : null,
       selectedTarget: selectedTarget ? selectedTarget.properties : null,
+      simulationRecord: mission.simulation.latestSimulation ?? null,
+      environmentalScenario: mission.simulation.latestEnvironmental ?? null,
+      testedContingencies: mission.simulation.testedContingencies ?? [],
       bookmarks,
       epistemic_classes: {
         route: 'HEURISTIC',
@@ -269,6 +290,14 @@ export const MissionReportsPage: React.FC<MissionReportsPageProps> = ({
           </button>
           <button type="button" className="btn-secondary" onClick={handleDownloadJSON}>
             💾 Export Telemetry (.json)
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handlePrintPDF}
+            title="Print or save complete 19-section dossier as PDF"
+          >
+            🖨️ Print / PDF Dossier
           </button>
         </div>
       </div>

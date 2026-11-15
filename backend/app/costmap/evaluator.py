@@ -52,10 +52,23 @@ def normalize_uncertainty(
     min_sigma_m: float = 0.20,
     max_sigma_m: float = 2.00,
 ) -> np.ndarray:
-    """Normalize elevation vertical uncertainty into a penalty in [0.0, 1.0]."""
+    """Normalize provisional nominal elevation uncertainty into a heuristic penalty in [0.0, 1.0].
+
+    Note: ``sigma_z`` reflects provisional unverified nominal precision tiers
+    (HiRISE vs CTX), not calibrated Gaussian standard deviations. Any NoData
+    (<= -9000.0), legacy sentinel (== 999.0), or non-finite cell is penalized at 1.0.
+    """
     span = max(0.1, max_sigma_m - min_sigma_m)
-    c_unc = np.clip((sigma_z - min_sigma_m) / span, 0.0, 1.0)
-    c_unc = np.where(valid_mask, c_unc, 1.0)
+    sigma_f = sigma_z.astype(np.float64)
+    effective_valid = (
+        valid_mask
+        & np.isfinite(sigma_f)
+        & (sigma_f > -9000.0)
+        & (np.abs(sigma_f - 999.0) > 1e-3)
+    )
+    safe_sigma = np.where(effective_valid, sigma_f, max_sigma_m)
+    c_unc = np.clip((safe_sigma - min_sigma_m) / span, 0.0, 1.0)
+    c_unc = np.where(effective_valid, c_unc, 1.0)
     return np.clip(c_unc, 0.0, 1.0).astype(np.float32)
 
 

@@ -56,6 +56,7 @@ export interface AtlasMapEntry {
   layer_id: string | null
   default_enabled: boolean
   tags: string[]
+  supports_regions?: string[]
 }
 
 export interface AtlasCatalogueResponse {

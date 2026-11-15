@@ -28,6 +28,12 @@ class HazardProfile:
     forbid_unknown: bool = True
     """Missing or unmapped elevation data is strictly impassable ('NO_DATA_UNKNOWN')."""
 
+    forbid_resolution_uncertainty: bool = True
+    """When True, lower-resolution CTX-only coverage where metre-scale hazards are
+    unresolved is treated as impassable under the default conservative safety policy
+    ('UNRESOLVED_RESOLUTION_HAZARD'). When False, CTX-only coverage is passable with
+    maximum resolution uncertainty penalty."""
+
     # --- Soft Hazard Normalization Bounds (Normalized to 0.0 -> 1.0) ---
     slope_safe_deg: float = 8.0
     """Slopes below this angle have 0.0 slope hazard penalty."""

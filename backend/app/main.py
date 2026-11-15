@@ -26,12 +26,17 @@ def create_app() -> FastAPI:
         ),
         debug=settings.debug,
     )
-    # Enable CORS for local development and mission control frontend integration
+    # Explicit CORS configuration for local development and authorized mission control origins.
+    # Disallow wildcard origins when allow_credentials=True (resolves MW-SEC-01).
+    allowed_origins = [orig for orig in settings.allowed_cors_origins if orig != "*"]
+    if not allowed_origins and settings.environment == "development":
+        allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
         allow_headers=["*"],
     )
     app.include_router(api_router, prefix=settings.api_prefix)

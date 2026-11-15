@@ -9,7 +9,7 @@ Enforces:
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from app.costmap.profiles import CostmapWeights
@@ -81,12 +81,23 @@ class RouteComparisonSummary:
     length_km: float
     estimated_duration_min: float
     mean_hazard_exposure_pct: float
-    mean_uncertainty_m: float
+    mean_uncertainty_m: float | None
     accumulated_science_score: float
     mean_science_score: float
     accumulated_cost: float
     preference_utility_score: float  # [0.0, 1.0] higher means better alignment with preferences
     rank_under_preferences: int
+    mean_data_confidence: float | None = None
+    mean_detection_confidence: float | None = None
+    max_uncertainty_m: float | None = None
+    p95_uncertainty_m: float | None = None
+    resolution_uncertainty_km: float = 0.0
+    terrain_characterization: str = "UNKNOWN"
+    hazard_classification: str = "UNKNOWN"
+    observation_reliability_tier: str = "UNKNOWN"
+    uncertainty_notes: str = ""
+    visited_target_ids: list[str] = field(default_factory=list)
+    scientific_targets_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         """Convert summary to dictionary."""
@@ -138,6 +149,7 @@ class RouteComparisonService:
         preferences: MissionPreferences | None = None,
         algorithm: str = "astar",
         simplify: bool = True,
+        waypoints: list[tuple[float, float]] | None = None,
     ) -> tuple[MultiObjectiveComparison, dict[str, RoutePlan]]:
         """Compute the suite of routes, analyze multi-objective trade-offs, and rank options."""
         if preferences is None:
@@ -153,6 +165,7 @@ class RouteComparisonService:
             dest_lon=dest_lon,
             algorithm=algorithm,
             simplify=simplify,
+            waypoints=waypoints,
         )
 
         # Objective descriptions and trade-off summaries
@@ -179,7 +192,7 @@ class RouteComparisonService:
         costs = [p.metrics.accumulated_cost for p in suite.values()]
         durations = [p.metrics.estimated_duration_minutes for p in suite.values()]
         hazards = [p.metrics.mean_hazard_exposure for p in suite.values()]
-        sciences = [p.metrics.accumulated_science_opportunity for p in suite.values()]
+        sciences = [p.metrics.mean_science_opportunity for p in suite.values()]
 
         min_cost, max_cost = min(costs), max(costs)
         min_dur, max_dur = min(durations), max(durations)
@@ -189,7 +202,7 @@ class RouteComparisonService:
         span_cost = max(1.0, max_cost - min_cost)
         span_dur = max(0.1, max_dur - min_dur)
         span_haz = max(0.001, max_haz - min_haz)
-        span_sci = max(0.01, max_sci - min_sci)
+        span_sci = max(0.001, max_sci - min_sci)
 
         for prof_key, plan in suite.items():
             m = plan.metrics
@@ -204,8 +217,8 @@ class RouteComparisonService:
             u_risk = 1.0 - ((m.accumulated_cost - min_cost) / span_cost)
             u_haz = 1.0 - ((m.mean_hazard_exposure - min_haz) / span_haz)
             u_saf = 0.60 * u_risk + 0.40 * u_haz
-            # Higher science is better -> [0, 1]
-            u_sci = (m.accumulated_science_opportunity - min_sci) / span_sci
+            # Higher science density is better -> [0, 1]
+            u_sci = (m.mean_science_opportunity - min_sci) / span_sci
 
             utility = (
                 pref_norm.safety_importance * u_saf
@@ -222,12 +235,41 @@ class RouteComparisonService:
                     "length_km": round(m.total_distance_m / 1000.0, 3),
                     "estimated_duration_min": round(m.estimated_duration_minutes, 1),
                     "mean_hazard_exposure_pct": round(m.mean_hazard_exposure * 100.0, 2),
-                    "mean_uncertainty_m": round(m.mean_uncertainty_exposure, 2),
+                    "mean_uncertainty_m": (
+                        round(m.mean_uncertainty_exposure, 2)
+                        if m.mean_uncertainty_exposure is not None
+                        else None
+                    ),
+                    "max_uncertainty_m": (
+                        round(m.max_uncertainty_m, 2) if m.max_uncertainty_m is not None else None
+                    ),
+                    "p95_uncertainty_m": (
+                        round(m.p95_uncertainty_m, 2) if m.p95_uncertainty_m is not None else None
+                    ),
                     "accumulated_science_score": round(m.accumulated_science_opportunity, 2),
                     "mean_science_score": round(m.mean_science_opportunity, 3),
                     "accumulated_cost": round(m.accumulated_cost, 2),
                     "preference_utility_score": round(utility, 3),
                     "raw_utility": utility,
+                    "mean_data_confidence": (
+                        round(m.mean_data_confidence, 4)
+                        if m.mean_data_confidence is not None
+                        else None
+                    ),
+                    "mean_detection_confidence": (
+                        round(m.mean_detection_confidence, 4)
+                        if m.mean_detection_confidence is not None
+                        else None
+                    ),
+                    "resolution_uncertainty_km": round(
+                        m.resolution_uncertainty_distance_m / 1000.0, 3
+                    ),
+                    "terrain_characterization": m.terrain_characterization,
+                    "hazard_classification": m.hazard_classification,
+                    "observation_reliability_tier": m.observation_reliability_tier,
+                    "uncertainty_notes": m.uncertainty_explanation,
+                    "visited_target_ids": list(m.visited_target_ids),
+                    "scientific_targets_count": m.scientific_targets_count,
                 }
             )
 
@@ -251,32 +293,43 @@ class RouteComparisonService:
         plan_sci = suite["SCIENCE_FIRST"].metrics
         plan_bal = suite["BALANCED"].metrics
 
-        # Trade-off 1: Science vs Safety
+        # Trade-off 1: Science yield & density vs Safety duration
         sci_gain_pct = (
             (plan_sci.accumulated_science_opportunity - plan_saf.accumulated_science_opportunity)
             / max(0.01, plan_saf.accumulated_science_opportunity)
         ) * 100.0
         dur_diff_min = plan_sci.estimated_duration_minutes - plan_saf.estimated_duration_minutes
         trade_offs.append(
-            f"Science-First yields +{sci_gain_pct:.1f}% more science than Safety-First, "
+            f"Science-First yields {sci_gain_pct:+.1f}% integrated science opportunity "
+            f"(mean density: {plan_sci.mean_science_opportunity:.3f} vs "
+            f"{plan_saf.mean_science_opportunity:.3f}) relative to Safety-First, "
             f"with a duration difference of {dur_diff_min:+.1f} minutes."
         )
 
         # Trade-off 2: Hazard exposure
         haz_diff_pct = (plan_sci.mean_hazard_exposure - plan_saf.mean_hazard_exposure) * 100.0
         trade_offs.append(
-            f"Safety-First reduces mean hazard exposure by {abs(haz_diff_pct):.1f}% "
-            f"relative to Science-First by avoiding steep slopes and rough boulder terrain."
+            f"Safety-First changes mean hazard exposure by {-haz_diff_pct:+.1f}% "
+            f"relative to Science-First by routing around steep slopes and rough terrain."
         )
 
-        # Trade-off 3: Balanced compromise
-        dist_diff_m = plan_bal.total_distance_m - min(
-            plan_saf.total_distance_m, plan_sci.total_distance_m
+        # Trade-off 3: Resolution coverage & nominal precision exposure
+        max_ctx_km = max(
+            p.metrics.resolution_uncertainty_distance_m / 1000.0 for p in suite.values()
         )
-        trade_offs.append(
-            f"Balanced Profile achieves {plan_bal.accumulated_science_opportunity:.1f} science "
-            f"return within {dist_diff_m:+.0f}m of the shortest traversal distance."
-        )
+        if max_ctx_km > 0.0:
+            trade_offs.append(
+                f"Observation resolution check: up to {max_ctx_km:.2f} km of lower-resolution "
+                "CTX 20m terrain is crossed where metre-scale boulders/cracks are unresolved."
+            )
+        else:
+            shortest_m = min(plan_saf.total_distance_m, plan_sci.total_distance_m)
+            trade_offs.append(
+                "Balanced Profile achieves "
+                f"{plan_bal.accumulated_science_opportunity:.1f} integrated science return "
+                f"within {plan_bal.total_distance_m - shortest_m:+.0f}m "
+                "of the shortest traversal distance within 100% HiRISE 1m DTM coverage."
+            )
 
         comparison = MultiObjectiveComparison(
             start={"lat": start_lat, "lon": start_lon},

@@ -12,7 +12,8 @@ In human planetary surface operations (EVA), path planning cannot be reduced to 
 
 ### Epistemic Status (per `AGENTS.md`)
 - **Topography & Orthoimagery:** `OBSERVED` (authentic HiRISE/CTX rasters from NASA PDS).
-- **Slope, Roughness, Hazards:** `DERIVED` (computed via local gradient, TRI, and multi-hazard thresholds).
+- **Slope & Roughness Geometry:** `DERIVED` (computed via local gradient and TRI from orbital DTMs).
+- **Hazard Scores, Reliability Indices & Nominal Precision Tiers:** `HEURISTIC` (uncalibrated ordinal indices and provisional relative tiers; not validated physical probabilities or $\pm 1\sigma$ error bars).
 - **Mineralogical & Geological Context:** `INTERPRETED` (derived from CRISM hyperspectral data and USGS geologic maps).
 - **Human EVA Physiology & Speeds:** `HEURISTIC` (illustrative placeholder walk velocity \(v_0 = 1.0\text{ m/s}\), modulated by local terrain cost).
 - **Exploration Scenarios:** `SIMULATED` (decision-support prototype trajectories; never claim certified operational astronaut safety).
@@ -27,9 +28,10 @@ For every computed trajectory, the comparison engine calculates and reports seve
 | :--- | :--- | :--- | :--- |
 | **Route Length** (\(\text{km}\)) | `DERIVED` | \(\sum_i \sqrt{\Delta x_i^2 + \Delta y_i^2}\) (projected Mars sphere) | Total ground distance traversed. |
 | **Estimated Duration** (\(\text{min}\)) | `HEURISTIC` | \(\sum_i \frac{\Delta d_i}{v_i}\) where \(v_i = \frac{v_0}{\sqrt{\text{cost}_i}}\) | Suit oxygen & battery consumable budget impact. |
-| **Mean Hazard Exposure** (\(\%\)) | `DERIVED` | \(\frac{1}{N}\sum_i H(r_i, c_i) \times 100\) | Direct exposure to slopes, boulders, and sand traps. |
-| **Elevation Uncertainty** (\(\text{m}\)) | `DERIVED` | \(\frac{1}{N}\sum_i \sigma_z(r_i, c_i)\) | Metric precision of underlying terrain model. |
-| **Accumulated Science Score** | `INTERPRETED` | \(\sum_i S(r_i, c_i)\) | Total scientific opportunity encountered along route. |
+| **Mean Hazard Exposure** (\(\%\)) | `HEURISTIC` | \(\frac{1}{L}\sum_i \Delta s_i \frac{H_i + H_{i-1}}{2} \times 100\) | Arc-length weighted exposure to terrain hazards. |
+| **Nominal Precision Tier** (\(\text{m}\)) | `HEURISTIC` | \(\frac{1}{L_{\text{valid}}}\sum_i w_i \sigma_{\text{nom}, i}\) (+ max & p95) | Provisional relative DTM precision tier (unverified; not \(\pm 1\sigma\)). |
+| **Data & Evidence Reliability** | `HEURISTIC` | Arc-length weighted mean ordinal indices \([0, 1]\) | Uncalibrated sensor coverage & detector evidence quality indices. |
+| **Accumulated Science Score** | `INTERPRETED` | \(\sum_i S(r_i, c_i)\) (with path-averaged density) | Integrated waypoint score along route (alongside arc-length mean density). |
 | **Accumulated Path Cost** | `DERIVED` | Accumulated costmap line integral | Graph search traversal friction metric. |
 | **Preference Utility Score** | `HEURISTIC` | Weighted multi-criteria utility \(U \in [0.0, 1.0]\) | Alignment of route metrics with active mission preferences. |
 

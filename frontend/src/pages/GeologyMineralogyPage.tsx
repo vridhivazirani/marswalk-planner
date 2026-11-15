@@ -1,15 +1,57 @@
 import React, { useState, useEffect } from 'react'
-import type { CRISMIndexDTO, CRISMTargetedSceneDTO, GeologicUnitDTO } from '../api/atlas'
-import { fetchCRISMIndices, fetchCRISMScenes, fetchGeologyUnits } from '../api/atlas'
+import type {
+  CRISMIndexDTO,
+  CRISMTargetedSceneDTO,
+  GeologicUnitDTO,
+  GlobalGeologicUnitDTO,
+} from '../api/atlas'
+import {
+  fetchCRISMIndices,
+  fetchCRISMScenes,
+  fetchGeologyUnits,
+  fetchGlobalGeology,
+} from '../api/atlas'
 import type { DiurnalHourProfileDTO, DustClimatologyPointDTO, ThermalInertiaDTO } from '../api/environmental'
 import { fetchDiurnalCycle, fetchDustClimatology, fetchThermalInertia } from '../api/environmental'
+import type { CandidateTargetFeature } from '../api/science'
+import { fetchScienceTargets } from '../api/science'
 import type { CVCandidatesResponse } from '../api/terrain'
 import { fetchCVCandidates } from '../api/terrain'
+import { useMission } from '../context/useMission.ts'
+import {
+  CV_SYNTHETIC_DEMO_DISCLOSURE,
+  featureToMissionTargetRef,
+  formatMarsCoordinate,
+} from '../mission/digitalTwinHelpers.ts'
+import { getRegionCapabilityProfile } from '../mission/regionCapabilities.ts'
+import {
+  GLOBAL_SIM3292_BOUNDS,
+  GLOBAL_SIM3292_EXTENT_LABEL,
+  GLOBAL_SCOPE_REGION_ID,
+  JEZERO_SOURCE_REGION_ID,
+  buildCrismIndexObservation,
+  buildGeologicUnitObservation,
+  buildGeologyObservation,
+  crismIndexToMissionRef,
+  crismSceneToMissionRef,
+  geologyUnitToMissionRef,
+  globalGeologyUnitToMissionRef,
+  normalizeDatasetEpistemicTag,
+  resolveGeologicalTargetMatches,
+} from '../mission/scienceWorkflowHelpers.ts'
 
 export const GeologyMineralogyPage: React.FC = () => {
+  const { mission, actions } = useMission()
+  const regionCaps = getRegionCapabilityProfile(mission.geographic.regionId)
+  const regionCenterLat =
+    mission.geographic.mapCenter?.lat ??
+    (regionCaps.studyBounds
+      ? (regionCaps.studyBounds[0][0] + regionCaps.studyBounds[1][0]) / 2
+      : 18.45)
   const [activeTab, setActiveTab] = useState<'CRISM' | 'STRATIGRAPHY' | 'PHYSICS_CV'>('CRISM')
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [loggedNotice, setLoggedNotice] = useState<string | null>(null)
 
   // Data states
   const [crismScenes, setCrismScenes] = useState<CRISMTargetedSceneDTO[]>([])
@@ -18,12 +60,17 @@ export const GeologyMineralogyPage: React.FC = () => {
   const [selectedIdx, setSelectedIdx] = useState<CRISMIndexDTO | null>(null)
   const [geologyUnits, setGeologyUnits] = useState<GeologicUnitDTO[]>([])
   const [selectedUnit, setSelectedUnit] = useState<GeologicUnitDTO | null>(null)
+  const [globalUnits, setGlobalUnits] = useState<GlobalGeologicUnitDTO[]>([])
+  const [jezeroTargets, setJezeroTargets] = useState<CandidateTargetFeature[]>([])
 
   // Environmental Physics states
   const [diurnalProfiles, setDiurnalProfiles] = useState<DiurnalHourProfileDTO[]>([])
   const [dustPoints, setDustPoints] = useState<DustClimatologyPointDTO[]>([])
   const [thermalInertia, setThermalInertia] = useState<ThermalInertiaDTO | null>(null)
   const [cvCandidates, setCvCandidates] = useState<CVCandidatesResponse | null>(null)
+
+  const geoFocus = mission.science.selectedGeologicalFeature
+  const activeTarget = mission.science.selectedTarget
 
   useEffect(() => {
     let cancelled = false
@@ -32,24 +79,44 @@ export const GeologyMineralogyPage: React.FC = () => {
       fetchCRISMScenes().catch(() => ({ scenes: [] })),
       fetchCRISMIndices().catch(() => ({ indices: [] })),
       fetchGeologyUnits().catch(() => ({ units: [] })),
-      fetchDiurnalCycle(18.45, 180.0, 320.0, 0.4).catch(() => null),
+      fetchGlobalGeology().catch(() => ({ units: [] })),
+      fetchDiurnalCycle(regionCenterLat, 180.0, 320.0, 0.4).catch(() => null),
       fetchDustClimatology().catch(() => null),
       fetchThermalInertia(320.0, 0.22).catch(() => null),
       fetchCVCandidates(15).catch(() => null),
+      fetchScienceTargets().catch(() => ({ features: [] as CandidateTargetFeature[] })),
     ])
-      .then(([scenesRes, indicesRes, geoRes, diurnalRes, dustRes, tiRes, cvRes]) => {
+      .then(([scenesRes, indicesRes, geoRes, globalGeoRes, diurnalRes, dustRes, tiRes, cvRes, sciTargetsRes]) => {
         if (cancelled) return
+        if (sciTargetsRes?.features) {
+          setJezeroTargets(sciTargetsRes.features)
+        }
         if (scenesRes.scenes && scenesRes.scenes.length > 0) {
           setCrismScenes(scenesRes.scenes)
-          setSelectedScene(scenesRes.scenes[0])
+          const matchedScene = geoFocus?.featureId
+            ? scenesRes.scenes.find((s) => `crism-${s.scene_id}` === geoFocus.featureId)
+            : undefined
+          setSelectedScene(matchedScene ?? scenesRes.scenes[0])
         }
         if (indicesRes.indices && indicesRes.indices.length > 0) {
           setCrismIndices(indicesRes.indices)
-          setSelectedIdx(indicesRes.indices[0])
+          const matchedIdx = geoFocus?.unitCode
+            ? indicesRes.indices.find((i) => i.index_code === geoFocus.unitCode)
+            : undefined
+          setSelectedIdx(matchedIdx ?? indicesRes.indices[0])
         }
         if (geoRes.units && geoRes.units.length > 0) {
           setGeologyUnits(geoRes.units)
-          setSelectedUnit(geoRes.units[0])
+          const matchedUnit = geoFocus?.unitCode
+            ? geoRes.units.find((u) => u.symbol === geoFocus.unitCode)
+            : undefined
+          setSelectedUnit(matchedUnit ?? geoRes.units[0])
+          if (matchedUnit && geoFocus?.featureType === 'STRATIGRAPHIC_UNIT') {
+            setActiveTab('STRATIGRAPHY')
+          }
+        }
+        if (globalGeoRes.units && globalGeoRes.units.length > 0) {
+          setGlobalUnits(globalGeoRes.units)
         }
         if (diurnalRes) setDiurnalProfiles(diurnalRes.profiles)
         if (dustRes) setDustPoints(dustRes.cycle_points)
@@ -66,7 +133,138 @@ export const GeologyMineralogyPage: React.FC = () => {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [regionCenterLat, geoFocus?.featureId, geoFocus?.unitCode, geoFocus?.featureType])
+
+  const relatedTargetIds = activeTarget
+    ? [activeTarget.targetId]
+    : geoFocus?.relatedTargetIds ?? []
+
+  const handleSelectScene = (scene: CRISMTargetedSceneDTO) => {
+    setSelectedScene(scene)
+    setLoggedNotice(null)
+    actions.selectGeologicalFeature(
+      crismSceneToMissionRef(scene, mission.geographic.regionId, relatedTargetIds),
+    )
+  }
+
+  const handleSelectIndex = (idx: CRISMIndexDTO) => {
+    setSelectedIdx(idx)
+    setLoggedNotice(null)
+    actions.selectGeologicalFeature(
+      crismIndexToMissionRef(idx, mission.geographic.regionId, relatedTargetIds),
+    )
+  }
+
+  const handleSelectUnit = (unit: GeologicUnitDTO) => {
+    setSelectedUnit(unit)
+    setLoggedNotice(null)
+    actions.selectGeologicalFeature(
+      geologyUnitToMissionRef(unit, mission.geographic.regionId, relatedTargetIds),
+    )
+  }
+
+  const handleSelectGlobalUnit = (gu: GlobalGeologicUnitDTO) => {
+    setLoggedNotice(null)
+    actions.selectGeologicalFeature(
+      globalGeologyUnitToMissionRef(gu, mission.geographic.regionId),
+    )
+  }
+
+  const handleLogSceneObservation = (scene: CRISMTargetedSceneDTO) => {
+    const obs = buildGeologyObservation({
+      featureId: scene.scene_id,
+      label: `CRISM ${scene.scene_id}: ${scene.target_description}`,
+      coordinate: { lat: scene.center_lat, lon: scene.center_lon },
+      spatialCoverage: `Jezero Crater CRISM targeted swath (${scene.scene_id})`,
+      coverageBounds: [
+        [18.3918, 77.3437],
+        [18.58953, 77.46584],
+      ],
+      regionId: JEZERO_SOURCE_REGION_ID,
+      activeMissionRegionId: mission.geographic.regionId,
+      derivedSummary: `Minerals: ${scene.primary_minerals_detected.join(', ')} · Ls ${scene.solar_longitude_ls.toFixed(1)}°`,
+      epistemicRaw: scene.epistemic_class || 'INTERPRETED',
+      sourceDataset: scene.pds_archive_id || 'MRO CRISM MTRDR Metadata Summary',
+      provenance: 'PDS Geosciences Node CRISM targeted observation summary (not full hyperspectral pixel cube)',
+    })
+    actions.addObservation(obs)
+    setLoggedNotice(`Logged ${obs.label} (${obs.epistemicClass}, ${JEZERO_SOURCE_REGION_ID}) to MissionContext`)
+  }
+
+  const handleLogIndexObservation = (idx: CRISMIndexDTO) => {
+    const obs = buildCrismIndexObservation(idx, mission.geographic.regionId)
+    actions.addObservation(obs)
+    setLoggedNotice(`Logged ${obs.label} (${obs.epistemicClass}, ${JEZERO_SOURCE_REGION_ID}) to MissionContext`)
+  }
+
+  const handleLogUnitObservation = (unit: GeologicUnitDTO) => {
+    const obs = buildGeologicUnitObservation(unit, mission.geographic.regionId)
+    actions.addObservation(obs)
+    setLoggedNotice(`Logged ${obs.label} (${obs.epistemicClass}, ${JEZERO_SOURCE_REGION_ID}) to MissionContext`)
+  }
+
+  const handleLogGlobalUnitObservation = (gu: GlobalGeologicUnitDTO) => {
+    const obs = buildGeologyObservation({
+      featureId: `sim3292-${gu.symbol}`,
+      label: `USGS SIM-3292 [${gu.symbol}] ${gu.name}`,
+      coordinate: null,
+      spatialCoverage: GLOBAL_SIM3292_EXTENT_LABEL,
+      coverageBounds: GLOBAL_SIM3292_BOUNDS,
+      regionId: GLOBAL_SCOPE_REGION_ID,
+      activeMissionRegionId: mission.geographic.regionId,
+      derivedSummary: `${gu.epoch} · ${gu.area_percentage.toFixed(1)}% Mars surface (${gu.description})`,
+      epistemicRaw: 'INTERPRETED',
+      sourceDataset: 'USGS SIM-3292 (Tanaka et al., 2014)',
+      provenance: 'Global 1:20,000,000 planetary geologic unit summary',
+    })
+    actions.addObservation(obs)
+    setLoggedNotice(`Logged ${obs.label} (${obs.epistemicClass}, global) to MissionContext`)
+  }
+
+  const handleMatchTargetsAndExplore = (
+    featureType: 'CRISM_SCENE' | 'CRISM_INDEX' | 'STRATIGRAPHIC_UNIT',
+    featureCode: string,
+    keywords: string[],
+    featureBuilder: (
+      matchedIds: string[],
+      relationshipMeta: {
+        method: 'CURATED_SOURCE_SUPPORTED' | 'KEYWORD_DISCOVERY_HINT'
+        epistemicClass: 'INTERPRETED' | 'HEURISTIC'
+      },
+    ) => ReturnType<typeof geologyUnitToMissionRef>,
+  ) => {
+    const resolved = resolveGeologicalTargetMatches({
+      targets: jezeroTargets,
+      featureType,
+      featureCode,
+      keywords,
+    })
+    const matchedIds = resolved.matchedTargets.map((t) => t.properties.target_id)
+    actions.selectGeologicalFeature(
+      featureBuilder(matchedIds, {
+        method: resolved.relationshipMethod,
+        epistemicClass: resolved.relationshipEpistemicClass,
+      }),
+    )
+    if (
+      resolved.matchedTargets.length > 0 &&
+      (!activeTarget || !matchedIds.includes(activeTarget.targetId))
+    ) {
+      actions.selectScienceTarget(
+        featureToMissionTargetRef(
+          resolved.matchedTargets[0],
+          JEZERO_SOURCE_REGION_ID,
+          mission.geographic.regionId,
+        ),
+      )
+    }
+    actions.setActivePage('science')
+  }
+
+  const handleInspectDatasetInHub = (datasetId: string) => {
+    actions.setFocusedDataset(datasetId)
+    actions.setActivePage('data-hub')
+  }
 
   return (
     <div className="page-container" style={{ padding: '1.25rem', maxWidth: '1440px', margin: '0 auto' }}>
@@ -91,12 +289,28 @@ export const GeologyMineralogyPage: React.FC = () => {
             </h1>
           </div>
           <p style={{ margin: 0, fontSize: '0.8rem', color: '#a1a1aa' }}>
-            Authentic MRO CRISM Targeted Spectral Scenes • USGS SIM-3464 Stratigraphic Units • Thermophysical Cycles
+            CRISM Metadata Summaries • USGS SIM-3464 / SIM-3292 Stratigraphy • Modeled Thermophysics & Synthetic CV Demo
           </p>
         </div>
 
-        {/* Epistemic Badges */}
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        {/* Epistemic Badges & Workflow Shortcuts */}
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => actions.setActivePage('science')}
+            style={{ fontSize: '0.72rem', padding: '0.3rem 0.65rem' }}
+          >
+            {activeTarget ? `← Target: ${activeTarget.targetId}` : 'Explore Science Targets →'}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => handleInspectDatasetInHub('product-07')}
+            style={{ fontSize: '0.72rem', padding: '0.3rem 0.65rem' }}
+          >
+            Inspect Provenance in Data Hub →
+          </button>
           <span
             style={{
               fontSize: '0.68rem',
@@ -108,7 +322,7 @@ export const GeologyMineralogyPage: React.FC = () => {
               borderRadius: '2px',
             }}
           >
-            OBSERVED: CRISM Spectra
+            INTERPRETED: CRISM Summary Metadata
           </span>
           <span
             style={{
@@ -134,10 +348,91 @@ export const GeologyMineralogyPage: React.FC = () => {
               borderRadius: '2px',
             }}
           >
-            HEURISTIC: CV Detectors
+            HEURISTIC: CV Demo
           </span>
         </div>
       </div>
+
+      {/* Mission Context & Regional Honesty Strip */}
+      <div
+        style={{
+          marginBottom: '1rem',
+          padding: '0.7rem 0.9rem',
+          background: '#111113',
+          border: '1px solid #27272a',
+          borderRadius: '3px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '0.75rem',
+          flexWrap: 'wrap',
+          fontSize: '0.74rem',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', color: '#d4d4d8' }}>
+          <span>
+            Active Region: <strong style={{ color: '#ffffff' }}>{regionCaps.displayName}</strong> ({mission.geographic.regionId})
+          </span>
+          {activeTarget && (
+            <span>
+              Focused Target: <strong style={{ color: '#38bdf8' }}>{activeTarget.targetId}</strong>{' '}
+              ({formatMarsCoordinate(activeTarget.coordinate, 3)})
+            </span>
+          )}
+          {geoFocus && (
+            <span>
+              Geological Focus: <strong style={{ color: '#eab308' }}>{geoFocus.name}</strong>{' '}
+              [{normalizeDatasetEpistemicTag(geoFocus.epistemicClass)}]
+              {geoFocus.relationshipMethod && (
+                <span
+                  style={{
+                    marginLeft: '0.35rem',
+                    color:
+                      geoFocus.relationshipMethod === 'CURATED_SOURCE_SUPPORTED'
+                        ? '#fde047'
+                        : '#d8b4fe',
+                  }}
+                >
+                  ({geoFocus.relationshipMethod === 'CURATED_SOURCE_SUPPORTED'
+                    ? `Curated Relation · ${geoFocus.relationshipEpistemicClass ?? 'INTERPRETED'}`
+                    : `Discovery Hint · ${geoFocus.relationshipEpistemicClass ?? 'HEURISTIC'}`})
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+        {mission.geographic.regionId !== 'reg-jezero' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#fbbf24' }}>
+            <span>
+              CRISM FRT & USGS SIM-3464 records below are Jezero Crater only — USGS SIM-3292 global units loaded for regional context.
+            </span>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => actions.setActiveRegion('reg-jezero')}
+              style={{ fontSize: '0.72rem', padding: '0.25rem 0.6rem' }}
+            >
+              Switch to Jezero Crater
+            </button>
+          </div>
+        )}
+      </div>
+
+      {loggedNotice && (
+        <div
+          style={{
+            marginBottom: '1rem',
+            padding: '0.55rem 0.85rem',
+            background: 'rgba(16, 185, 129, 0.12)',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+            borderRadius: '3px',
+            fontSize: '0.75rem',
+            color: '#6ee7b7',
+          }}
+        >
+          ✓ {loggedNotice}
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #27272a', marginBottom: '1.25rem' }}>
@@ -196,7 +491,7 @@ export const GeologyMineralogyPage: React.FC = () => {
                 return (
                   <div
                     key={scene.scene_id}
-                    onClick={() => setSelectedScene(scene)}
+                    onClick={() => handleSelectScene(scene)}
                     style={{
                       background: isSelected ? '#1c1917' : '#121212',
                       border: isSelected ? '1px solid #00e5ff' : '1px solid #27272a',
@@ -242,6 +537,69 @@ export const GeologyMineralogyPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Active Scene Workflow Bar */}
+          {selectedScene && (
+            <div
+              style={{
+                marginBottom: '1rem',
+                padding: '0.7rem 0.9rem',
+                background: '#0f0f11',
+                border: '1px solid #27272a',
+                borderRadius: '3px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ fontSize: '0.74rem', color: '#d4d4d8' }}>
+                <strong style={{ color: '#00e5ff' }}>{selectedScene.scene_id}</strong> ({selectedScene.product_type}) ·{' '}
+                {formatMarsCoordinate({ lat: selectedScene.center_lat, lon: selectedScene.center_lon }, 4)} ·{' '}
+                <span style={{ color: '#a1a1aa' }}>
+                  Curated scene summary only (full PDS ENVI cube not ingested locally)
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => handleLogSceneObservation(selectedScene)}
+                  style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem' }}
+                >
+                  Save Scene Observation to Mission
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    handleMatchTargetsAndExplore(
+                      'CRISM_SCENE',
+                      selectedScene.scene_id,
+                      [
+                        selectedScene.target_description,
+                        ...selectedScene.primary_minerals_detected,
+                      ],
+                      (matchedIds, relMeta) =>
+                        crismSceneToMissionRef(selectedScene, mission.geographic.regionId, matchedIds, relMeta),
+                    )
+                  }
+                  style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem' }}
+                >
+                  Explore Related Science Targets →
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => handleInspectDatasetInHub('product-07')}
+                  style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem' }}
+                >
+                  CRISM Dossier in Data Hub →
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Two-Column Explorer: Indices List vs Diagnostic Spectrum */}
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(420px, 1.4fr)', gap: '1.25rem' }}>
             {/* Left: CRISM Spectral Absorption Indices */}
@@ -254,7 +612,7 @@ export const GeologyMineralogyPage: React.FC = () => {
                 return (
                   <div
                     key={idx.index_code}
-                    onClick={() => setSelectedIdx(idx)}
+                    onClick={() => handleSelectIndex(idx)}
                     style={{
                       background: isSelected ? '#18181b' : '#0d0d0d',
                       border: isSelected ? '1px solid #38bdf8' : '1px solid #27272a',
@@ -319,7 +677,7 @@ export const GeologyMineralogyPage: React.FC = () => {
 
                 {/* SVG Absorption Curve Visualization */}
                 <h4 style={{ fontSize: '0.76rem', color: '#a1a1aa', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                  Diagnostic Continuum-Removed Absorption Profile (Near-Infrared λ: 0.8–2.6 µm)
+                  Illustrative Continuum-Removed Band Reference Curve (Schematic λ Center, 0.8–2.6 µm)
                 </h4>
                 <div style={{ background: '#09090b', border: '1px solid #27272a', padding: '0.75rem', borderRadius: '2px' }}>
                   <svg viewBox="0 0 450 160" style={{ width: '100%', height: 'auto', display: 'block' }}>
@@ -363,14 +721,44 @@ export const GeologyMineralogyPage: React.FC = () => {
                     })()}
                   </svg>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: '#71717a', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-                    <span>Continuum-Normalized Relative Reflectance R/Rc</span>
+                    <span>Schematic R/Rc Gaussian Dip (Reference λ Visualization Only — Not Measured I/F Cube)</span>
                     <span>Wavelength (micrometres)</span>
                   </div>
                 </div>
 
-                {/* Epistemic Guardrail Note */}
+                {/* Epistemic Guardrail Note & Workflow Action */}
                 <div style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: '#a1a1aa', borderLeft: '2px solid #eab308', paddingLeft: '0.6rem' }}>
-                  <strong>Scientific Epistemics Note:</strong> CRISM summary parameters quantify band depth absorption ratios (e.g. <code>1 - R(λ_band) / R(λ_continuum)</code>). A high parameter score represents an <em>observed spectroscopic band</em>, whereas lithological naming (e.g. &quot;Nontronite Clay Unit&quot;) is an <em>interpreted</em> mineralogical attribution subject to mixed-pixel deconvolution uncertainties.
+                  <strong>Scientific Epistemics Note:</strong> CRISM summary parameters quantify band depth absorption ratios (e.g. <code>1 - R(λ_band) / R(λ_continuum)</code>). This chart renders the canonical index center wavelength λ as an illustrative visual aid rather than an ingested CRISM I/F spectrum. Lithological naming remains <em>INTERPRETED</em>.
+                </div>
+                <div style={{ marginTop: '0.8rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => handleLogIndexObservation(selectedIdx)}
+                    style={{ fontSize: '0.72rem', padding: '0.3rem 0.65rem' }}
+                  >
+                    Log Spectral Index Observation to Mission
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() =>
+                      handleMatchTargetsAndExplore(
+                        'CRISM_INDEX',
+                        selectedIdx.index_code,
+                        [
+                          selectedIdx.target_mineral,
+                          selectedIdx.name,
+                          selectedIdx.geological_significance,
+                        ],
+                        (matchedIds, relMeta) =>
+                          crismIndexToMissionRef(selectedIdx, mission.geographic.regionId, matchedIds, relMeta),
+                      )
+                    }
+                    style={{ fontSize: '0.72rem', padding: '0.3rem 0.65rem' }}
+                  >
+                    Match to Candidate Science Targets →
+                  </button>
                 </div>
               </div>
             )}
@@ -390,7 +778,7 @@ export const GeologyMineralogyPage: React.FC = () => {
               return (
                 <div
                   key={u.symbol}
-                  onClick={() => setSelectedUnit(u)}
+                  onClick={() => handleSelectUnit(u)}
                   style={{
                     background: isSelected ? '#18181b' : '#0d0d0d',
                     border: isSelected ? `1px solid ${u.color_hex}` : '1px solid #27272a',
@@ -527,6 +915,117 @@ export const GeologyMineralogyPage: React.FC = () => {
                   <span style={{ fontSize: '0.72rem', color: '#71717a' }}>No rover drill cores acquired in this specific stratigraphic member.</span>
                 )}
               </div>
+
+              <div
+                style={{
+                  marginTop: '1rem',
+                  paddingTop: '0.75rem',
+                  borderTop: '1px solid #27272a',
+                  display: 'flex',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => handleLogUnitObservation(selectedUnit)}
+                  style={{ fontSize: '0.72rem', padding: '0.3rem 0.65rem' }}
+                >
+                  Log Geological Observation to Mission
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    handleMatchTargetsAndExplore(
+                      'STRATIGRAPHIC_UNIT',
+                      selectedUnit.symbol,
+                      [
+                        selectedUnit.name,
+                        selectedUnit.dominant_lithology,
+                        ...selectedUnit.key_minerals,
+                        selectedUnit.description,
+                      ],
+                      (matchedIds, relMeta) =>
+                        geologyUnitToMissionRef(selectedUnit, mission.geographic.regionId, matchedIds, relMeta),
+                    )
+                  }
+                  style={{ fontSize: '0.72rem', padding: '0.3rem 0.65rem' }}
+                >
+                  Inspect Related Science Targets →
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => handleInspectDatasetInHub('product-08')}
+                  style={{ fontSize: '0.72rem', padding: '0.3rem 0.65rem' }}
+                >
+                  USGS SIM-3464 Dossier in Data Hub →
+                </button>
+                <span style={{ fontSize: '0.68rem', color: '#71717a', fontFamily: 'var(--font-mono)' }}>
+                  Epistemic: INTERPRETED · Full shapefile not ingested locally
+                </span>
+              </div>
+            </div>
+          )}
+
+          {globalUnits.length > 0 && (
+            <div style={{ gridColumn: '1 / -1', background: '#0f0f11', border: '1px solid #27272a', padding: '1rem', borderRadius: '3px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.84rem', color: '#f4f4f5' }}>
+                    USGS SIM-3292 Global Stratigraphic Units (Planetary Context Reference)
+                  </h4>
+                  <div style={{ fontSize: '0.7rem', color: '#a1a1aa' }}>
+                    Applies globally across all 12 Mars regions (Tanaka et al., 2014 · 1:20,000,000 scale · Epistemic: INTERPRETED). Not suitable for local EVA traversability.
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.68rem', fontFamily: 'var(--font-mono)', color: '#eab308' }}>
+                  {globalUnits.length} Global Epochs
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.5rem' }}>
+                {globalUnits.slice(0, 6).map((gu) => (
+                  <div
+                    key={gu.symbol}
+                    style={{
+                      background: '#141416',
+                      border: '1px solid #27272a',
+                      borderLeft: `3px solid ${gu.color_hex}`,
+                      padding: '0.5rem 0.65rem',
+                      borderRadius: '2px',
+                      fontSize: '0.7rem',
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: '#f4f4f5' }}>
+                      [{gu.symbol}] {gu.name}
+                    </div>
+                    <div style={{ color: '#a1a1aa', marginTop: '0.15rem' }}>
+                      {gu.epoch} · {gu.area_percentage.toFixed(1)}% Mars surface
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem' }}>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ fontSize: '0.64rem', padding: '0.15rem 0.4rem' }}
+                        onClick={() => handleSelectGlobalUnit(gu)}
+                      >
+                        Focus Unit
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ fontSize: '0.64rem', padding: '0.15rem 0.4rem' }}
+                        onClick={() => handleLogGlobalUnitObservation(gu)}
+                      >
+                        + Log Global Obs
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -538,12 +1037,12 @@ export const GeologyMineralogyPage: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.4fr) minmax(280px, 1fr)', gap: '1.25rem' }}>
             {/* Diurnal Cycle Chart */}
             <div style={{ background: '#0f0f11', border: '1px solid #27272a', padding: '1rem', borderRadius: '3px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                 <h3 style={{ margin: 0, fontSize: '0.88rem', color: '#f4f4f5' }}>
                   24-Hour Diurnal Surface & Air Temperature Harmonic Cycle
                 </h3>
-                <span style={{ fontSize: '0.68rem', color: '#a1a1aa', fontFamily: 'var(--font-mono)' }}>
-                  Jezero 18.45°N • Ls = 180°
+                <span style={{ fontSize: '0.68rem', color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                  {regionCaps.displayName} ({regionCenterLat.toFixed(2)}°) • Ls = 180° • SIMULATED
                 </span>
               </div>
               <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.72rem', color: '#71717a' }}>
@@ -672,10 +1171,27 @@ export const GeologyMineralogyPage: React.FC = () => {
           {/* Bottom: Explainable Computer Vision Feature Candidate Detection Panel */}
           {cvCandidates && (
             <div style={{ background: '#0f0f11', border: '1px solid #27272a', padding: '1.25rem', borderRadius: '3px' }}>
+              <div
+                style={{
+                  background: '#1c1509',
+                  border: '1px solid #78350f',
+                  borderLeft: '3px solid #d97706',
+                  color: '#fef3c7',
+                  padding: '0.55rem 0.75rem',
+                  fontSize: '0.74rem',
+                  marginBottom: '0.85rem',
+                  borderRadius: '2px',
+                }}
+              >
+                <span className="badge badge-unknown" style={{ marginRight: '0.45rem' }}>
+                  {cvCandidates.data_origin ?? 'SYNTHETIC_DEMO_WINDOW'}
+                </span>
+                {cvCandidates.disclosure || CV_SYNTHETIC_DEMO_DISCLOSURE}
+              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '0.95rem', color: '#ffffff' }}>
-                    Computer Vision Geomorphic Candidate Detectors (Strictly HEURISTIC)
+                    Computer Vision Geomorphic Candidate Detectors (HEURISTIC + SYNTHETIC TEST PATCH)
                   </h3>
                   <div style={{ fontSize: '0.72rem', color: '#71717a', marginTop: '0.2rem' }}>
                     Physics-based edge filters, shadow-length trigonometry h = L·tan(θ), and Hessian ridge detection.

@@ -1,6 +1,20 @@
 {
   "grid_name": "jezero_western_delta_20m",
-  "processed_utc": "2026-11-11T00:18:19.390843+00:00",
+  "processed_utc": "2026-11-12T21:15:20.243089+00:00",
+  "cv_optical_imagery_input": {
+    "processed_file": "jezero_western_delta_20m_ortho_imagery.tif",
+    "raw_source_product": "JEZ_ctx_B_soc_008_orthoMosaic_6m.tif",
+    "source_doi": "10.5066/P9GV1ND3",
+    "native_resolution_m": 6.0,
+    "analysis_grid_resolution_m": 20.0,
+    "consumed_by": [
+      "detect_boulder_candidates_advanced",
+      "detect_sand_dune_candidates",
+      "detect_crater_depression_candidates"
+    ],
+    "epistemic_class": "HEURISTIC",
+    "notes": "20 m grid optical feature detectors consume CTX orthomosaic warped to 20 m, not native 0.25 m HiRISE imagery."
+  },
   "layers": [
     {
       "layer_id": "slope",

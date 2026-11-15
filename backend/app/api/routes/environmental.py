@@ -181,7 +181,8 @@ def get_dust_climatology_endpoint() -> dict[str, Any]:
     return {
         "cycle_points": [p.to_dict() for p in points],
         "storm_season_range_ls": [180.0, 330.0],
-        "epistemic_class": "CLIMATE_MODELED",
+        "epistemic_class": EpistemicClass.SIMULATED.value,
+        "data_origin": DataOriginCategory.CLIMATE_MODELED.value,
     }
 
 

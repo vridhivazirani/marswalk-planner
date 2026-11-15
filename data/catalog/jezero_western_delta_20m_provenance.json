@@ -2,15 +2,17 @@
   "layer_id": "jezero_western_delta_20m_elevation",
   "source_products": [
     "10.5066/P9REJ9JN",
-    "10.5066/P906QQT8"
+    "10.5066/P906QQT8",
+    "10.5066/P9GV1ND3"
   ],
   "source_files": [
     "HiRISE_DTM_Delta_Jezero_DL_1m.tif",
-    "JEZ_ctx_B_soc_008_DTM_20m.tif"
+    "JEZ_ctx_B_soc_008_DTM_20m.tif",
+    "JEZ_ctx_B_soc_008_orthoMosaic_6m.tif"
   ],
   "target_grid": "jezero_western_delta_20m",
   "target_resolution_m": 20.0,
-  "resampling_method": "bilinear (continuous elevation)",
+  "resampling_method": "bilinear (continuous elevation); cubic (optical orthoimagery)",
   "crs": "ESRI:103885",
   "nodata_value": -9999.0,
   "output_shape": [
@@ -23,9 +25,52 @@
   "min_value": -2598.9443359375,
   "max_value": -2240.466796875,
   "mean_value": -2481.738037109375,
-  "processed_utc": "2026-11-11T21:08:26.311770+00:00",
+  "processed_utc": "2026-11-12T21:15:19.048768+00:00",
   "software_versions": {
     "rasterio": "1.5.2",
     "gdal": "3.12.2"
+  },
+  "source_details": [
+    {
+      "role": "primary_dtm",
+      "product_doi": "10.5066/P9REJ9JN",
+      "filename": "HiRISE_DTM_Delta_Jezero_DL_1m.tif",
+      "native_resolution_m": 1.0,
+      "resampling_method": "Resampling.bilinear",
+      "raw_nodata": -32768.0,
+      "epistemic_class": "OBSERVED"
+    },
+    {
+      "role": "regional_dtm",
+      "product_doi": "10.5066/P906QQT8",
+      "filename": "JEZ_ctx_B_soc_008_DTM_20m.tif",
+      "native_resolution_m": 20.0,
+      "resampling_method": "Resampling.bilinear",
+      "raw_nodata": -3.4028226550889045e+38,
+      "epistemic_class": "OBSERVED"
+    },
+    {
+      "role": "optical_imagery_for_cv_hazards",
+      "product_doi": "10.5066/P9GV1ND3",
+      "filename": "JEZ_ctx_B_soc_008_orthoMosaic_6m.tif",
+      "native_resolution_m": 6.0,
+      "target_resolution_m": 20.0,
+      "resampling_method": "Resampling.cubic",
+      "raw_nodata": 0,
+      "epistemic_class": "OBSERVED"
+    }
+  ],
+  "uncertainty_metadata": {
+    "sigma_z_status": "PROVISIONAL_UNVERIFIED_NOMINAL_TIER",
+    "epistemic_class": "HEURISTIC",
+    "hirise_nominal_tier_m": 0.2,
+    "ctx_nominal_tier_m": 2.0,
+    "nodata_sentinel": -9999.0,
+    "unquantified_components": [
+      "absolute_vertical_accuracy_vs_mars_areoid",
+      "bilinear_resampling_error_1m_to_20m",
+      "stereo_correlation_decorrelation_in_shadowed_scarps",
+      "hirise_ctx_coregistration_offset"
+    ]
   }
 }

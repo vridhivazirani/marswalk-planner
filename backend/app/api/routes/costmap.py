@@ -136,14 +136,21 @@ def inspect_location_cost(
     else:
         weights = DEFAULT_PROFILES[MissionProfileType.BALANCED.value].weights
 
+    is_elev_valid = np.isfinite(elev_val) and elev_val > -9000.0
+    sigma_clean = (
+        sigma_val
+        if (np.isfinite(sigma_val) and sigma_val > -9000.0 and abs(sigma_val - 999.0) > 1e-3)
+        else -9999.0
+    )
+
     # Single cell evaluation
     bundle = compute_unified_costmap(
         slope=np.array([[slope_val]]),
         tri=np.array([[tri_val]]),
         hazard_score=np.array([[haz_val]]),
-        sigma_z=np.array([[sigma_val]]),
+        sigma_z=np.array([[sigma_clean]]),
         science_opportunity=np.array([[sci_val]]),
-        data_coverage_mask=np.array([[elev_val != -9999.0]]),
+        data_coverage_mask=np.array([[is_elev_valid]]),
         hard_impassable_mask=np.array([[imp_val]]),
         weights=weights,
     )
@@ -153,7 +160,7 @@ def inspect_location_cost(
 
     reasons: list[str] = []
     if is_blocked:
-        if elev_val == -9999.0:
+        if not is_elev_valid:
             reasons.append("Location is unmapped/NoData (strictly forbidden).")
         if slope_val >= 25.0:
             reasons.append(f"Slope {slope_val:.1f}° exceeds maximum safe traversability limit 25°.")
@@ -169,7 +176,7 @@ def inspect_location_cost(
 
     return {
         "coordinate": {"lat": lat, "lon": lon},
-        "elevation_m": elev_val if elev_val != -9999.0 else None,
+        "elevation_m": elev_val if is_elev_valid else None,
         "is_blocked": is_blocked,
         "combined_cost": None if np.isinf(cost_val) else cost_val,
         "cost_multiplier_scale": "1.0 to 10.0",

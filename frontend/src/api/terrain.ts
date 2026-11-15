@@ -321,6 +321,10 @@ export interface CVCandidatesResponse {
     crater_depressions: string
   }
   epistemic_class: string
+  data_origin?: string
+  is_synthetic_input?: boolean
+  source_imagery?: string | null
+  disclosure?: string
 }
 
 export async function fetchCVCandidates(limit = 50): Promise<CVCandidatesResponse> {

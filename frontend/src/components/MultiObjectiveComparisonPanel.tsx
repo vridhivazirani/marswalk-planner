@@ -6,6 +6,8 @@ import type {
   RouteFeature,
 } from '../api/routing'
 import { compareRoutes, fetchExplorationScenarios } from '../api/routing'
+import { useMission } from '../context/useMission'
+import { getRegionCapabilityProfile } from '../mission/regionCapabilities'
 
 interface Props {
   startPoint: { lat: number; lon: number }
@@ -20,6 +22,11 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
   onUpdateCoordinates,
   onRoutesCalculated,
 }) => {
+  const { mission, actions } = useMission()
+  const activeRegionId = mission.geographic.regionId
+  const regionProfile = getRegionCapabilityProfile(activeRegionId)
+  const isEvaSupported = regionProfile.supportsEvaRouting
+
   const [scenarios, setScenarios] = useState<ExplorationScenarioDTO[]>([])
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('')
   const [preferences, setPreferences] = useState<MissionPreferencesDTO>({
@@ -30,6 +37,9 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
   const [comparison, setComparison] = useState<MultiObjectiveComparisonDTO | null>(null)
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false)
   const [evalError, setEvalError] = useState<string | null>(null)
+
+  const activeComparison = isEvaSupported ? comparison : null
+  const activeEvalError = isEvaSupported ? evalError : null
 
   useEffect(() => {
     fetchExplorationScenarios()
@@ -50,10 +60,18 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
     dest = destPoint,
     prefs = preferences,
   ) => {
+    if (!isEvaSupported) {
+      setEvalError(
+        `Route comparison is disabled for ${regionProfile.displayName} (${activeRegionId}); authoritative high-resolution terrain rasters exist exclusively for Jezero Crater.`,
+      )
+      return
+    }
+
     setIsEvaluating(true)
     setEvalError(null)
 
-    compareRoutes(start, dest, prefs, 'astar', true)
+    const waypoints = mission.eva.waypoints.map((w) => ({ lat: w.lat, lon: w.lon }))
+    compareRoutes(start, dest, prefs, 'astar', true, waypoints)
       .then((res) => {
         setComparison(res.comparison)
         onRoutesCalculated(res.features)
@@ -68,6 +86,8 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
   const handleScenarioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value
     setSelectedScenarioId(id)
+    if (!isEvaSupported) return
+
     const found = scenarios.find((s) => s.scenario_id === id)
     if (found) {
       const newStart = { lat: found.start.lat, lon: found.start.lon }
@@ -111,11 +131,31 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
           type="button"
           className="btn-primary"
           onClick={() => runComparison()}
-          disabled={isEvaluating}
+          disabled={isEvaluating || !isEvaSupported}
+          title={
+            !isEvaSupported
+              ? `Route comparison is restricted to Jezero Crater (active region: ${regionProfile.displayName}).`
+              : undefined
+          }
         >
           {isEvaluating ? 'Evaluating Alternatives…' : 'Recalculate Trade-Offs'}
         </button>
       </div>
+
+      {!isEvaSupported && (
+        <div
+          className="notice-warning"
+          style={{
+            marginTop: '0.8rem',
+            padding: '0.75rem',
+            borderLeftColor: 'var(--status-critical)',
+            fontSize: '0.8rem',
+          }}
+        >
+          <strong>Jezero Crater Route Engine Restricted: </strong>
+          Multi-objective Pareto comparison and curated exploration scenarios require high-resolution (1m/20m) elevation and hazard rasters available exclusively in Jezero Crater (<code>reg-jezero</code>). Active region: <strong>{regionProfile.displayName}</strong> (<code>{activeRegionId}</code>). Switch region to Jezero Crater to evaluate EVA trade-offs.
+        </div>
+      )}
 
       {/* Scenario Selection */}
       <div style={{ marginTop: '0.8rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -126,6 +166,7 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
           id="scenario-select"
           value={selectedScenarioId}
           onChange={handleScenarioChange}
+          disabled={!isEvaSupported}
           style={{
             background: 'var(--bg-panel-elevated)',
             color: 'var(--text-primary)',
@@ -134,6 +175,8 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
             borderRadius: '3px',
             fontSize: '0.85rem',
             minWidth: '280px',
+            opacity: !isEvaSupported ? 0.6 : 1,
+            cursor: !isEvaSupported ? 'not-allowed' : 'pointer',
           }}
         >
           {scenarios.map((s) => (
@@ -200,14 +243,14 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
         </div>
       </div>
 
-      {evalError && (
+      {activeEvalError && (
         <div className="card status-error" style={{ marginTop: '0.75rem', padding: '0.5rem' }}>
-          {evalError}
+          {activeEvalError}
         </div>
       )}
 
       {/* Comparison Results */}
-      {comparison && (
+      {activeComparison && (
         <div style={{ marginTop: '1rem' }}>
           {/* Universal Optimal Disclaimer Banner */}
           <div
@@ -223,21 +266,24 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
             }}
           >
             <strong>Decision Support Note: </strong>
-            {comparison.no_universal_optimal_notice}
+            {activeComparison.no_universal_optimal_notice}
           </div>
 
           {/* Route Cards */}
           <div className="route-comparison-grid">
-            {comparison.routes.map((r) => {
+            {activeComparison.routes.map((r) => {
               const color = getProfileColor(r.profile_name)
+              const isCommitted = mission.eva.selectedRouteDecision?.routeId === r.route_id
+              const targetCount =
+                r.scientific_targets_count ?? (r.visited_target_ids ? r.visited_target_ids.length : 0)
               return (
                 <div
                   key={r.route_id}
                   className="route-card"
                   style={{
                     borderTop: `3px solid ${color}`,
-                    background: 'var(--bg-panel)',
-                    border: '1px solid var(--border-default)',
+                    background: isCommitted ? 'var(--bg-panel-elevated)' : 'var(--bg-panel)',
+                    border: isCommitted ? '2px solid var(--accent-primary)' : '1px solid var(--border-default)',
                     padding: '0.75rem',
                     borderRadius: '3px',
                     display: 'flex',
@@ -288,14 +334,57 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Elevation Uncertainty:</span>
-                    <strong>±{r.mean_uncertainty_m.toFixed(1)} m</strong>
+                    <span style={{ color: 'var(--text-secondary)' }}>Nominal Precision Tier:</span>
+                    <strong>
+                      {r.mean_uncertainty_m !== null && r.mean_uncertainty_m !== undefined
+                        ? `${r.mean_uncertainty_m.toFixed(2)} m${r.max_uncertainty_m !== null && r.max_uncertainty_m !== undefined ? ` (max ${r.max_uncertainty_m.toFixed(2)}m)` : ''}`
+                        : 'N/A'}
+                    </strong>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Data Reliability [0–1]:</span>
+                    <strong>
+                      {r.mean_data_confidence !== null && r.mean_data_confidence !== undefined
+                        ? r.mean_data_confidence.toFixed(3)
+                        : 'N/A'}
+                    </strong>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>CTX-Only Exposure:</span>
+                    <strong>{(r.resolution_uncertainty_km ?? 0).toFixed(2)} km</strong>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Science Opportunity Score:</span>
                     <strong style={{ color: 'var(--accent-secondary)' }}>{r.accumulated_science_score.toFixed(1)}</strong>
                   </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Visited Science Targets:</span>
+                    <strong style={{ color: 'var(--accent-secondary)' }}>{targetCount}</strong>
+                  </div>
+
+                  {r.visited_target_ids && r.visited_target_ids.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.15rem' }}>
+                      {r.visited_target_ids.map((tid) => (
+                        <span
+                          key={tid}
+                          style={{
+                            background: 'var(--bg-panel-elevated)',
+                            color: 'var(--text-primary)',
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '2px',
+                            fontSize: '0.68rem',
+                            border: '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          🎯 {tid}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Accumulated Cost:</span>
@@ -316,13 +405,67 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
                     <strong>Trade-off: </strong>
                     {r.key_trade_off}
                   </div>
+
+                  {/* Route Selection Commit Button */}
+                  <div style={{ marginTop: '0.5rem' }}>
+                    {isCommitted ? (
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0.35rem 0.55rem',
+                          background: 'rgba(34, 197, 94, 0.12)',
+                          border: '1px solid #22c55e',
+                          borderRadius: '3px',
+                          fontSize: '0.75rem',
+                          color: '#22c55e',
+                          fontWeight: 700,
+                        }}
+                      >
+                        <span>✓ Selected for Mission</span>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{ fontSize: '0.68rem', padding: '0.12rem 0.35rem' }}
+                          onClick={() => actions.clearSelectedRoute()}
+                        >
+                          Deselect
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        style={{ width: '100%', fontSize: '0.75rem', padding: '0.32rem 0.5rem' }}
+                        onClick={() => {
+                          actions.selectRoute({
+                            routeId: r.route_id,
+                            profileName: r.profile_name,
+                            metricsSummary: {
+                              totalDistanceM: r.length_km * 1000.0,
+                              estimatedDurationMin: r.estimated_duration_min,
+                              meanHazardPct: r.mean_hazard_exposure_pct,
+                              meanScienceScore: r.mean_science_score,
+                              preferenceUtilityScore: r.preference_utility_score,
+                              rankUnderPreferences: r.rank_under_preferences,
+                            },
+                            visitedTargetIds: r.visited_target_ids ?? [],
+                            scientificTargetsCount: targetCount,
+                          })
+                        }}
+                      >
+                        Select this Route for Mission Plan
+                      </button>
+                    )}
+                  </div>
                 </div>
               )
             })}
           </div>
 
           {/* Trade-Off Commentary */}
-          {comparison.trade_off_analysis && comparison.trade_off_analysis.length > 0 && (
+          {activeComparison.trade_off_analysis && activeComparison.trade_off_analysis.length > 0 && (
             <div
               style={{
                 marginTop: '1rem',
@@ -336,7 +479,7 @@ export const MultiObjectiveComparisonPanel: React.FC<Props> = ({
                 Comparative Trade-Off Synthesis
               </h4>
               <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.5' }}>
-                {comparison.trade_off_analysis.map((item, idx) => (
+                {activeComparison.trade_off_analysis.map((item, idx) => (
                   <li key={idx} style={{ marginBottom: '0.25rem' }}>
                     {item}
                   </li>

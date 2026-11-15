@@ -8,11 +8,32 @@ export interface RouteMetricsDTO {
   accumulated_cost: number
   estimated_duration_minutes: number
   mean_hazard_exposure: number
-  mean_uncertainty_exposure: number
+  mean_uncertainty_exposure: number | null
+  max_uncertainty_m?: number | null
+  p95_uncertainty_m?: number | null
+  nominal_vertical_precision_mean_m?: number | null
+  nominal_vertical_precision_max_m?: number | null
+  nominal_vertical_precision_p95_m?: number | null
   accumulated_science_opportunity: number
   mean_science_opportunity: number
   restricted_cells_crossed: number
   unknown_cells_crossed: number
+  mean_data_confidence?: number | null
+  mean_detection_confidence?: number | null
+  mean_data_reliability_index?: number | null
+  mean_detection_reliability_index?: number | null
+  resolution_uncertainty_distance_m?: number
+  resolution_uncertainty_fraction?: number
+  unknown_terrain_distance_m?: number
+  unknown_terrain_fraction?: number
+  terrain_characterization?: string
+  hazard_classification?: string
+  observation_reliability_tier?: string
+  uncertainty_precision_status?: string
+  metric_averaging_method?: string
+  uncertainty_explanation?: string
+  visited_target_ids?: string[]
+  scientific_targets_count?: number
 }
 
 export interface RouteFeature {
@@ -54,12 +75,23 @@ export interface RouteComparisonSummaryDTO {
   length_km: number
   estimated_duration_min: number
   mean_hazard_exposure_pct: number
-  mean_uncertainty_m: number
+  mean_uncertainty_m: number | null
+  max_uncertainty_m?: number | null
+  p95_uncertainty_m?: number | null
   accumulated_science_score: number
   mean_science_score: number
   accumulated_cost: number
   preference_utility_score: number
   rank_under_preferences: number
+  mean_data_confidence?: number | null
+  mean_detection_confidence?: number | null
+  resolution_uncertainty_km?: number
+  terrain_characterization?: string
+  hazard_classification?: string
+  observation_reliability_tier?: string
+  uncertainty_notes?: string
+  visited_target_ids?: string[]
+  scientific_targets_count?: number
 }
 
 export interface MultiObjectiveComparisonDTO {
@@ -97,11 +129,16 @@ export async function planRoute(
   profile: string = 'BALANCED',
   algorithm: string = 'astar',
   simplify: boolean = true,
+  waypoints?: LatLon[],
 ): Promise<RouteFeature> {
+  const payload: Record<string, unknown> = { start, destination, profile, algorithm, simplify }
+  if (waypoints && waypoints.length > 0) {
+    payload.waypoints = waypoints
+  }
   const res = await fetch('/api/v1/routing/plan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ start, destination, profile, algorithm, simplify }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({ detail: res.statusText }))
@@ -115,11 +152,16 @@ export async function planRouteSuite(
   destination: LatLon,
   algorithm: string = 'astar',
   simplify: boolean = true,
+  waypoints?: LatLon[],
 ): Promise<RouteSuiteResponse> {
+  const payload: Record<string, unknown> = { start, destination, algorithm, simplify }
+  if (waypoints && waypoints.length > 0) {
+    payload.waypoints = waypoints
+  }
   const res = await fetch('/api/v1/routing/suite', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ start, destination, algorithm, simplify }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({ detail: res.statusText }))
@@ -134,11 +176,22 @@ export async function compareRoutes(
   preferences?: MissionPreferencesDTO,
   algorithm: string = 'astar',
   simplify: boolean = true,
+  waypoints?: LatLon[],
 ): Promise<MultiObjectiveResponse> {
+  const payload: Record<string, unknown> = {
+    start,
+    destination,
+    preferences,
+    algorithm,
+    simplify,
+  }
+  if (waypoints && waypoints.length > 0) {
+    payload.waypoints = waypoints
+  }
   const res = await fetch('/api/v1/routing/compare', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ start, destination, preferences, algorithm, simplify }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({ detail: res.statusText }))

@@ -57,7 +57,13 @@ def find_path(
     if start == goal:
         return [start], 0.0, 0.0
 
-    is_astar = algorithm.lower() == "astar"
+    algo = algorithm.strip().lower()
+    if algo not in ("astar", "dijkstra"):
+        raise ValueError(
+            f"Unsupported routing algorithm '{algorithm}'. Must be 'astar' or 'dijkstra'."
+        )
+
+    is_astar = algo == "astar"
 
     # Priority queue holds: (priority, accumulated_cost, (row, col))
     frontier: list[tuple[float, float, tuple[int, int]]] = []

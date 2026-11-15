@@ -1,6 +1,14 @@
 """Planetary datasets catalog and metadata records for Marswalk Planner.
 
 Sourced from verified official dossiers in docs/data_sources.md.
+
+Storage & Ingestion Semantics:
+- ``is_ingested = True`` strictly when authentic raw archive source payloads exist
+  locally under ``data/raw/`` (``product-01``, ``product-03``, ``product-04``,
+  ``product-06``).
+- ``is_ingested = False`` covers metadata-only dossiers (``STATIC_METADATA``) and
+  parametric model definitions (``MODEL_SIMULATED``), even when derived overlays
+  such as Perseverance ``M20_traverse.json`` exist under ``data/processed/``.
 """
 
 from __future__ import annotations
@@ -31,6 +39,14 @@ class PlanetaryDatasetRecord:
     official_url: str
     is_ingested: bool
     epistemic_class: str = EpistemicClass.OBSERVED.value
+    storage_category: str = "STATIC_METADATA"
+    data_origin: str = "CURATED_METADATA"
+    temporal_coverage: str = "Static archival mission compilation"
+    availability_status: str = "Metadata reference only"
+    supports_regions: tuple[str, ...] = ("reg-jezero",)
+    supports_layers: tuple[str, ...] = ()
+    supports_geology: bool = False
+    supports_science_targets: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -50,6 +66,15 @@ class PlanetaryDatasetRecord:
             "officialUrl": self.official_url,
             "isIngested": self.is_ingested,
             "epistemic_class": self.epistemic_class,
+            "epistemicClass": self.epistemic_class,
+            "storageCategory": self.storage_category,
+            "dataOrigin": self.data_origin,
+            "temporalCoverage": self.temporal_coverage,
+            "availabilityStatus": self.availability_status,
+            "supportsRegions": list(self.supports_regions),
+            "supportsLayers": list(self.supports_layers),
+            "supportsGeology": self.supports_geology,
+            "supportsScienceTargets": self.supports_science_targets,
         }
 
 
@@ -69,10 +94,23 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         role="Primary High-Resolution Topography (Slopes, TRI, Boulders, Hard Limits)",
         caveats=(
             "Stereo HiRISE coverage footprints have narrow margins; deep shadow areas contain "
-            "stereo decorrelation artifacts."
+            "stereo decorrelation artifacts. Epistemically DERIVED via SOCET SET stereo "
+            "photogrammetry from observed HiRISE image pairs (stored locally as unmodified "
+            "USGS archive GeoTIFF in data/raw/usgs_trn/)."
         ),
         official_url="https://astrogeology.usgs.gov/search/map/Mars/Mars2020/TRN/HiRISE_DTM_Mosaic",
         is_ingested=True,
+        epistemic_class=EpistemicClass.DERIVED.value,
+        storage_category="LOCAL_RAW",
+        data_origin="LOCAL_GEOTIFF_RAW",
+        temporal_coverage="2020 Mars 2020 TRN release (multi-orbit MRO HiRISE stereo pairs)",
+        availability_status=(
+            "Ingested locally (data/raw/usgs_trn/HiRISE_DTM_Delta_Jezero_DL_1m.tif)"
+        ),
+        supports_regions=("reg-jezero",),
+        supports_layers=("elevation", "slope", "hazards", "costmap"),
+        supports_geology=False,
+        supports_science_targets=True,
     ),
     PlanetaryDatasetRecord(
         id="product-02",
@@ -89,10 +127,22 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         role="Primary Visual Basemap, Computer Vision Boulder Shadows, Dune Bedforms",
         caveats=(
             "Single-band visible reflectance; fixed solar illumination azimuth requires "
-            "directional shadow handling."
+            "directional shadow handling. Full GeoTIFF not stored in data/raw/ and no "
+            "local HiRISE WMTS/tile proxy is bundled."
         ),
         official_url="https://astrogeology.usgs.gov/search/map/Mars/Mars2020/TRN/HiRISE_Mosaic",
-        is_ingested=True,
+        is_ingested=False,
+        storage_category="STATIC_METADATA",
+        data_origin="CURATED_METADATA",
+        temporal_coverage="2020 Mars 2020 TRN release (MRO HiRISE RED mosaic)",
+        availability_status=(
+            "Curated metadata dossier only; GeoTIFF not in data/raw/ and no "
+            "HiRISE tile proxy or cache exists locally"
+        ),
+        supports_regions=("reg-jezero",),
+        supports_layers=(),
+        supports_geology=False,
+        supports_science_targets=True,
     ),
     PlanetaryDatasetRecord(
         id="product-03",
@@ -109,17 +159,28 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         role="Regional Topography & Crater-Scale Route Cost Map Analysis",
         caveats=(
             "Smooths micro-topography below 20m; cannot be used alone for human footstep "
-            "traversability safety."
+            "traversability safety. Epistemically DERIVED via SOCET SET stereo photogrammetry "
+            "from observed CTX stereo pairs (stored locally as unmodified USGS archive GeoTIFF "
+            "in data/raw/usgs_trn/)."
         ),
         official_url="https://astrogeology.usgs.gov/search/map/Mars/Mars2020/TRN/CTX_DTM_Mosaic",
         is_ingested=True,
+        epistemic_class=EpistemicClass.DERIVED.value,
+        storage_category="LOCAL_RAW",
+        data_origin="LOCAL_GEOTIFF_RAW",
+        temporal_coverage="2020 Mars 2020 TRN release (MRO CTX stereo pairs)",
+        availability_status="Ingested locally (data/raw/usgs_trn/JEZ_ctx_B_soc_008_DTM_20m.tif)",
+        supports_regions=("reg-jezero",),
+        supports_layers=("elevation", "slope", "hazards", "costmap"),
+        supports_geology=False,
+        supports_science_targets=True,
     ),
     PlanetaryDatasetRecord(
         id="product-04",
         title="USGS Mars 2020 TRN CTX Controlled Orthoimage Mosaic",
         agency="USGS Astrogeology Science Center",
         instrument="CTX Panchromatic Radiance (500–800 nm)",
-        doi_or_urn="10.5066/P906QQT8",
+        doi_or_urn="10.5066/P9GV1ND3",
         resolution="6.0 m/pixel",
         coverage="Jezero Crater & Regional Surrounds",
         crs="Equirectangular (IAU Mars 2015 Sphere)",
@@ -130,6 +191,16 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         caveats="Sub-meter boulders and narrow crevices unresolvable.",
         official_url="https://astrogeology.usgs.gov/search/map/Mars/Mars2020/TRN/CTX_Mosaic",
         is_ingested=True,
+        storage_category="LOCAL_RAW",
+        data_origin="LOCAL_GEOTIFF_RAW",
+        temporal_coverage="2020 Mars 2020 TRN release (MRO CTX controlled orthoimage)",
+        availability_status=(
+            "Ingested locally (data/raw/usgs_trn/JEZ_ctx_B_soc_008_orthoMosaic_6m.tif)"
+        ),
+        supports_regions=("reg-jezero",),
+        supports_layers=("basemap", "hazards"),
+        supports_geology=True,
+        supports_science_targets=True,
     ),
     PlanetaryDatasetRecord(
         id="product-05",
@@ -150,6 +221,15 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         ),
         official_url="https://psa.esa.int/psa/#/pages/search?mission=Mars%20Express",
         is_ingested=False,
+        epistemic_class=EpistemicClass.DERIVED.value,
+        storage_category="STATIC_METADATA",
+        data_origin="CURATED_METADATA",
+        temporal_coverage="Mars Express nominal mission regional archive",
+        availability_status="Dossier reference only (not ingested locally)",
+        supports_regions=("reg-jezero",),
+        supports_layers=(),
+        supports_geology=False,
+        supports_science_targets=False,
     ),
     PlanetaryDatasetRecord(
         id="product-06",
@@ -157,16 +237,30 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         agency="NASA PDS Geosciences Node / GSFC",
         instrument="Mars Orbiter Laser Altimeter (MOLA)",
         doi_or_urn="MGS-M-MOLA-5-MEGDR-L3-V1.0",
-        resolution="128 pixels/degree (~463 m/pixel at equator)",
+        resolution=(
+            "4 pixels/degree (14.818 km/pixel local grid MEGT90N000CB.IMG; "
+            "PDS archive up to 128 px/deg ~463 m/pixel)"
+        ),
         coverage="Global Mars (-90° to +90° Lat, 0° to 360° Lon)",
         crs="Planetocentric Equirectangular",
         vertical_datum="Mars Areoid (Fundamental Geodetic Zero Definition)",
         file_format="PDS3 IMG / GeoTIFF",
         decision="ACCEPT_WITH_CAVEATS",
         role="Geodetic Elevation Datum Reference for all derived DTMs",
-        caveats="Global scale only. Completely inadequate for local slope or route planning.",
+        caveats=(
+            "Global scale only (local 720x1440 C-grid at 14.818 km/pixel; 128 px/deg regional "
+            "tiles not ingested locally). Completely inadequate for local slope or route planning."
+        ),
         official_url="https://pds-geosciences.wustl.edu/missions/mgs/mola.html",
         is_ingested=True,
+        storage_category="LOCAL_RAW",
+        data_origin="LOCAL_PDS3_IMG",
+        temporal_coverage="1997–2001 Mars Global Surveyor primary altimetry mission",
+        availability_status="Ingested locally (data/raw/mola/megt90n000cb.img)",
+        supports_regions=("all",),
+        supports_layers=("atlas_basemap", "elevation"),
+        supports_geology=False,
+        supports_science_targets=False,
     ),
     PlanetaryDatasetRecord(
         id="product-07",
@@ -182,11 +276,23 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         decision="ACCEPT",
         role="Science Opportunity Layer: Carbonate, Smectite, and Hydrated Silica Signatures",
         caveats=(
-            "High detector noise in cryocooled IR detector past 2012; must utilize "
-            "pre-2012 FRT cubes."
+            "High detector noise in cryocooled IR detector past 2012; raw ENVI cube not "
+            "stored locally (curated index summaries and derived science layer only; "
+            "see docs/data_sources.md Product 6 FRT000047A3 alongside MTRDR metadata FRT00005850)."
         ),
         official_url="https://pds-geosciences.wustl.edu/missions/mro/crism.htm",
-        is_ingested=True,
+        is_ingested=False,
+        epistemic_class=EpistemicClass.INTERPRETED.value,
+        storage_category="STATIC_METADATA",
+        data_origin="CURATED_METADATA",
+        temporal_coverage="Pre-2012 MRO CRISM targeted observations (FRT/HRL)",
+        availability_status=(
+            "Curated scene/index summaries only; raw PDS ENVI cube not ingested locally"
+        ),
+        supports_regions=("reg-jezero",),
+        supports_layers=("science_opportunity",),
+        supports_geology=True,
+        supports_science_targets=True,
     ),
     PlanetaryDatasetRecord(
         id="product-08",
@@ -194,7 +300,7 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         agency="USGS Astrogeology (Sun & Stack, 2020)",
         instrument="Stratigraphic & Morphology Cartographic Synthesis",
         doi_or_urn="10.3133/sim3464",
-        resolution="Vector GIS shapefile / GeoPackage (nominal 1:5,000 scale)",
+        resolution="Vector GIS shapefile / GeoPackage (published 1:75,000 scale)",
         coverage="Jezero Crater Floor & Western Delta Deposit",
         crs="Equirectangular (IAU Mars 2015 Sphere)",
         vertical_datum="N/A (Stratigraphic Layer Vector Boundaries)",
@@ -203,10 +309,21 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         role="Geological Diversity Scoring & Formation Contact Transition Costing",
         caveats=(
             "Cartographic interpretation (epistemic: INTERPRETED); contact boundaries have "
-            "inherent human delineation fuzziness."
+            "inherent human delineation fuzziness. Full vector shapefile not ingested locally."
         ),
         official_url="https://pubs.er.usgs.gov/publication/sim3464",
-        is_ingested=True,
+        is_ingested=False,
+        epistemic_class=EpistemicClass.INTERPRETED.value,
+        storage_category="STATIC_METADATA",
+        data_origin="CURATED_METADATA",
+        temporal_coverage="2020 USGS Scientific Investigations Map 3464 publication",
+        availability_status=(
+            "Curated stratigraphic unit attributes only; full GIS vector archive not ingested"
+        ),
+        supports_regions=("reg-jezero",),
+        supports_layers=("science_opportunity",),
+        supports_geology=True,
+        supports_science_targets=True,
     ),
     PlanetaryDatasetRecord(
         id="product-09",
@@ -221,9 +338,22 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         file_format="PDS4 XML + CSV / Parquet time series tables",
         decision="ACCEPT",
         role="Ground-Truth Historical Martian Weather Baseline (Temperature, Dust Tau, Winds)",
-        caveats="Local spot measurements along rover path; not a crater-wide future forecast.",
+        caveats=(
+            "Local spot measurements along rover path; raw PDS4 MEDA tables not ingested "
+            "(separate M20_traverse.json and M20_waypoints.json traverse geometry ingested)."
+        ),
         official_url="https://pds-geosciences.wustl.edu/missions/mars2020/meda.htm",
-        is_ingested=True,
+        is_ingested=False,
+        storage_category="STATIC_METADATA",
+        data_origin="CURATED_METADATA",
+        temporal_coverage="Mars 2020 Sols 1–1000+ archival reference",
+        availability_status=(
+            "Metadata reference only (Perseverance M20 traverse JSON ingested separately)"
+        ),
+        supports_regions=("reg-jezero",),
+        supports_layers=(),
+        supports_geology=False,
+        supports_science_targets=True,
     ),
     PlanetaryDatasetRecord(
         id="product-10",
@@ -239,11 +369,20 @@ AUTHENTIC_DATASETS: list[PlanetaryDatasetRecord] = [
         decision="ACCEPT",
         role="Seasonal Diurnal Environmental Suitability Modeling & Scenario Generation",
         caveats=(
-            "Numerical climate model simulation (epistemic: CLIMATE_MODELED); does not replace "
-            "in-situ monitoring."
+            "Numerical climate model simulation (epistemic: SIMULATED; origin: CLIMATE_MODELED); "
+            "does not replace in-situ monitoring. Uses parametric Jezero diurnal approximations."
         ),
         official_url="http://www-mars.lmd.jussieu.fr/mcd_python/",
-        is_ingested=True,
+        is_ingested=False,
+        epistemic_class=EpistemicClass.SIMULATED.value,
+        storage_category="MODEL_SIMULATED",
+        data_origin="PARAMETRIC_SIMULATION",
+        temporal_coverage="Solar Longitude Ls 0°–360° (parametric diurnal & seasonal)",
+        availability_status="Parametric model approximation active; full MCD NetCDF4 not ingested",
+        supports_regions=("reg-jezero",),
+        supports_layers=(),
+        supports_geology=True,
+        supports_science_targets=False,
     ),
 ]
 

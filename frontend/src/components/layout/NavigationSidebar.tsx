@@ -1,26 +1,21 @@
 import React from 'react'
+import {
+  DEFAULT_REGION_ID,
+  EXPERIENCE_ROUTES,
+  NAV_SECTION_ORDER,
+  getRegionBadgeLabel,
+} from '../../navigation/routes.ts'
+import type { PageId } from '../../types/mission.ts'
 
-export type PageId =
-  | 'overview'
-  | 'digital-twin'
-  | 'map-explorer'
-  | 'data-hub'
-  | 'terrain'
-  | 'hazards'
-  | 'geology'
-  | 'science'
-  | 'route-planner'
-  | 'route-comparison'
-  | 'simulation'
-  | 'emergency'
-  | 'reports'
-  | 'settings'
+export type { PageId }
 
 interface NavigationSidebarProps {
   activePage: PageId
   onSelectPage: (page: PageId) => void
   hasActiveRoute: boolean
   hasEmergencyPlan: boolean
+  activeRegionId?: string
+  activeRegionName?: string | null
 }
 
 interface NavItem {
@@ -40,48 +35,30 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
   onSelectPage,
   hasActiveRoute,
   hasEmergencyPlan,
+  activeRegionId = DEFAULT_REGION_ID,
+  activeRegionName,
 }) => {
-  const sections: NavSection[] = [
-    {
-      title: 'OPERATIONS CENTER',
-      items: [
-        { id: 'overview', label: 'Mission Overview', icon: '🌐' },
-        { id: 'digital-twin', label: 'Mars Digital Twin', icon: '🪐' },
-      ],
-    },
-    {
-      title: 'DATA & INTELLIGENCE',
-      items: [
-        { id: 'map-explorer', label: 'Map Explorer', icon: '🗺️', badge: '11' },
-        { id: 'data-hub', label: 'NASA Data Hub', icon: '🛰️', badge: '10' },
-        { id: 'terrain', label: 'Terrain Intelligence', icon: '⛰️' },
-        { id: 'hazards', label: 'Hazard Assessment', icon: '⚠️' },
-        { id: 'geology', label: 'Geology & Mineralogy', icon: '💎', badge: 'CRISM' },
-        { id: 'science', label: 'Science Explorer', icon: '🔬', badge: '6' },
-      ],
-    },
-    {
-      title: 'TRAVERSAL PLANNING',
-      items: [
-        { id: 'route-planner', label: 'EVA Route Planner', icon: '🧭', badge: hasActiveRoute ? 'Active' : undefined },
-        { id: 'route-comparison', label: 'Route Comparison', icon: '⚖️' },
-      ],
-    },
-    {
-      title: 'SIMULATION & CONTINGENCY',
-      items: [
-        { id: 'simulation', label: 'Mission Simulation', icon: '🧑‍🚀' },
-        { id: 'emergency', label: 'Emergency Operations', icon: '🚨', badge: hasEmergencyPlan ? 'Alert' : undefined },
-      ],
-    },
-    {
-      title: 'ANALYSIS & SYSTEM',
-      items: [
-        { id: 'reports', label: 'Mission Reports', icon: '📋' },
-        { id: 'settings', label: 'System Settings', icon: '⚙️' },
-      ],
-    },
-  ]
+  const sections: NavSection[] = NAV_SECTION_ORDER.map((sectionTitle) => ({
+    title: sectionTitle,
+    items: EXPERIENCE_ROUTES.filter(
+      (route) => route.section === sectionTitle && route.id !== 'digital-twin',
+    ).map((route) => {
+      let badge = route.staticBadge
+      if (route.id === 'route-planner') {
+        badge = hasActiveRoute ? 'Active' : (route.staticBadge ?? '03')
+      } else if (route.id === 'emergency') {
+        badge = hasEmergencyPlan ? 'Alert' : undefined
+      }
+      return {
+        id: route.id,
+        label: route.navLabel,
+        icon: route.icon,
+        badge,
+      }
+    }),
+  }))
+
+  const regionBadgeText = getRegionBadgeLabel(activeRegionId, activeRegionName)
 
   return (
     <aside className="mission-sidebar">
@@ -92,7 +69,7 @@ export const NavigationSidebar: React.FC<NavigationSidebarProps> = ({
           <span className="brand-name">MARSWALK</span>
         </div>
         <div className="brand-tagline">PLANETARY DECISION SUPPORT</div>
-        <div className="brand-region-badge">JEZERO CRATER • MARS</div>
+        <div className="brand-region-badge">{regionBadgeText}</div>
       </div>
 
       {/* Navigation Sections */}

@@ -169,9 +169,15 @@ class MultiResolutionTerrainInspector:
         tri = self._read_pixel_safely(self.regional_tri_path, c, r)
         class_id = int(self._read_pixel_safely(self.regional_classes_path, c, r) or 0)
         confidence = self._read_pixel_safely(self.regional_conf_path, c, r)
-        src_id = int(self._read_pixel_safely(self.regional_source_path, c, r) or 1)
+        raw_src = self._read_pixel_safely(self.regional_source_path, c, r)
+        src_id = int(raw_src) if raw_src in (1.0, 2.0) else 0
 
         class_details = TERRAIN_CLASS_DETAILS.get(class_id, TERRAIN_CLASS_DETAILS[0])
+        source_label = (
+            "HiRISE 1m (fused)"
+            if src_id == 2
+            else ("CTX 20m (native)" if src_id == 1 else "Unmapped / Unknown")
+        )
 
         return {
             "is_valid": True,
@@ -187,8 +193,8 @@ class MultiResolutionTerrainInspector:
                 "speed_factor": class_details["speed_factor"],
                 "hazard_risk": class_details["hazard_risk"],
             },
-            "confidence_score": round(confidence, 3) if confidence is not None else 0.70,
-            "source_product": "HiRISE 1m (fused)" if src_id == 2 else "CTX 20m (native)",
+            "confidence_score": round(confidence, 3) if confidence is not None else None,
+            "source_product": source_label,
             "source_resolution_m": 20.0,
             "cell_size_m": 20.0,
         }

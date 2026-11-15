@@ -119,6 +119,13 @@ def get_cv_candidates(
             "crater_depressions": "Radial gradient convergence and Local Elevation Variation (LEV)",
         },
         "epistemic_class": "HEURISTIC",
+        "data_origin": "SYNTHETIC_DEMO_WINDOW",
+        "is_synthetic_input": True,
+        "source_imagery": None,
+        "disclosure": (
+            "HEURISTIC CV demonstration executed on a deterministic synthetic 100x100 "
+            "reflectance and elevation patch; outputs are not detections on real HiRISE imagery."
+        ),
     }
 
 

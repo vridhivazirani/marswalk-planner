@@ -23,6 +23,9 @@ export interface CandidateTargetFeature {
     rationale: string
     safety_caveat: string
     life_inference_warning: string
+    curated_unit_symbols?: string[]
+    curated_crism_scenes?: string[]
+    curated_crism_indices?: string[]
   }
 }
 

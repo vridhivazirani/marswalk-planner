@@ -430,8 +430,11 @@ def get_layer_coverage(
     tiers.append(
         {
             "scale_tier": "GLOBAL",
-            "name": "MOLA 463m Topography & Viking MDIM 2.1 Imagery",
-            "resolution": "463 m/pixel (MOLA) / 232 m/pixel (Viking)",
+            "name": "MOLA Global Topography & Viking MDIM 2.1 Imagery",
+            "resolution": (
+                "463 m/pixel (MOLA 128 ppd archive / 14.818 km/px local 4 ppd baseline) / "
+                "232 m/pixel (Viking)"
+            ),
             "source": "NASA PDS Geosciences & USGS Astrogeology",
             "epistemic_class": "OBSERVED / DERIVED",
         }

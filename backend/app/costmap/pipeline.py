@@ -160,9 +160,13 @@ class CostmapEngine:
                 },
                 {
                     "id": "c_uncertainty",
-                    "name": "Normalized Topographic Uncertainty",
+                    "name": "Normalized Topographic Uncertainty (Nominal Tier)",
                     "range": [0.0, 1.0],
-                    "epistemic": "DERIVED",
+                    "epistemic": "HEURISTIC",
+                    "notes": (
+                        "Normalized from unverified provisional nominal precision tiers "
+                        "(0.20m HiRISE / 2.00m CTX); missing/sentinel cells mapped to 1.0."
+                    ),
                 },
                 {
                     "id": "c_science_opportunity",

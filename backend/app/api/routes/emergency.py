@@ -12,6 +12,11 @@ from app.routing.emergency import (
     SimulatedHazardEvent,
     SimulatedHazardType,
 )
+from app.routing.exceptions import (
+    BlockedDestinationError,
+    BlockedStartError,
+    OutOfBoundsCoordinateError,
+)
 from app.services.emergency_response import EmergencyResponseService
 
 router = APIRouter(prefix="/emergency", tags=["emergency-response"])
@@ -132,6 +137,13 @@ def simulate_incident(req: EmergencySimulationRequest) -> dict[str, Any]:
             custom_crew_lat=req.custom_crew_lat,
             custom_crew_lon=req.custom_crew_lon,
         )
+    except (
+        BlockedStartError,
+        BlockedDestinationError,
+        OutOfBoundsCoordinateError,
+        ValueError,
+    ) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Emergency dynamic rerouting simulation failed: {e}"
@@ -170,6 +182,13 @@ def abort_to_base(req: EmergencyAbortRequest) -> dict[str, Any]:
             custom_crew_lat=req.crew_lat,
             custom_crew_lon=req.crew_lon,
         )
+    except (
+        BlockedStartError,
+        BlockedDestinationError,
+        OutOfBoundsCoordinateError,
+        ValueError,
+    ) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Emergency abort planning failed: {e}") from e
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useMission } from '../context/useMission.ts'
 import type {
   DataSourceProvenanceDTO,
   EnvironmentalAssessmentReportDTO,
@@ -27,8 +28,27 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
   })
   const [showWeights, setShowWeights] = useState<boolean>(false)
   const [isAssessing, setIsAssessing] = useState<boolean>(false)
+  const { mission, actions } = useMission()
+  const isEnvCoupled = Boolean(mission.simulation.applyEnvironmentalModifiers)
   const [showSources, setShowSources] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+
+  const recordToMission = useCallback(
+    (rep: EnvironmentalAssessmentReportDTO) => {
+      actions.recordEnvironmentalReport({
+        evaluatedAt: new Date().toISOString(),
+        scenarioId: rep.scenario.scenario_id,
+        title: rep.scenario.title,
+        suitabilityScore: rep.suitability.overall_suitability_score,
+        suitabilityCategory: rep.suitability.suitability_category,
+        airTemperatureC: rep.scenario.air_temperature_c,
+        dustOpticalDepthTau: rep.scenario.dust_optical_depth_tau,
+        windSpeedMps: rep.scenario.wind_speed_mps,
+        warnings: rep.warnings,
+      })
+    },
+    [actions],
+  )
 
   const evaluateScenario = useCallback(
     (
@@ -40,6 +60,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
       assessEnvironmentalScenario(scen, w)
         .then((rep) => {
           setAssessment(rep)
+          recordToMission(rep)
           setIsAssessing(false)
         })
         .catch((err: unknown) => {
@@ -47,7 +68,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
           setIsAssessing(false)
         })
     },
-    [weights],
+    [weights, recordToMission],
   )
 
   useEffect(() => {
@@ -68,6 +89,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
           })
             .then((rep) => {
               setAssessment(rep)
+              recordToMission(rep)
               setIsAssessing(false)
             })
             .catch((err: unknown) => {
@@ -79,7 +101,7 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
       .catch((err: unknown) => {
         console.error('Failed to initialize environmental module:', err)
       })
-  }, [])
+  }, [recordToMission])
 
   const handleScenarioSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value
@@ -172,6 +194,53 @@ export const EnvironmentalScenarioPanel: React.FC = () => {
             Compare All Scenarios
           </button>
         </div>
+      </div>
+
+      {/* Atmospheric-to-EVA Coupling Banner */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.8rem',
+          padding: '0.6rem 0.8rem',
+          background: isEnvCoupled ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-panel-elevated)',
+          border: `1px solid ${isEnvCoupled ? 'rgba(59, 130, 246, 0.4)' : 'var(--border-default)'}`,
+          borderRadius: '4px',
+          marginTop: '0.75rem',
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <strong style={{ fontSize: '0.82rem', color: isEnvCoupled ? '#60a5fa' : 'var(--text-primary)' }}>
+              Atmospheric-to-EVA Consumables Coupling: {isEnvCoupled ? 'ACTIVE' : 'OFF (Baseline Biophysics)'}
+            </strong>
+            <span
+              style={{
+                fontSize: '0.65rem',
+                padding: '2px 6px',
+                borderRadius: '3px',
+                background: '#181818',
+                color: '#d4d4d4',
+                border: '1px solid #404040',
+              }}
+            >
+              SIMULATED + HEURISTIC
+            </span>
+          </div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            {isEnvCoupled
+              ? 'Active environmental conditions scale walking speed, suit life support battery demand, and metabolic expenditure.'
+              : 'EVA Traversal simulations use nominal baseline biophysics. Enable to test environmental stress penalties.'}
+          </div>
+        </div>
+        <button
+          type="button"
+          className={isEnvCoupled ? 'btn-primary' : 'btn-secondary'}
+          style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+          onClick={() => actions.toggleEnvironmentalModifiers()}
+        >
+          {isEnvCoupled ? 'Coupled to EVA [Disable]' : 'Couple with EVA [Enable]'}
+        </button>
       </div>
 
       {/* Scenario Selection Header */}

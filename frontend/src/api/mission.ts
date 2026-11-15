@@ -89,6 +89,8 @@ export interface MissionPlanSummaryDTO {
   warnings: MissionFeasibilityWarningDTO[]
   is_feasible: boolean
   epistemic_class: string
+  environmental_modifiers_applied?: boolean
+  environmental_factors?: Record<string, number> | null
   assumptions_used: Record<string, unknown>
   disclaimer: string
 }
@@ -127,6 +129,7 @@ export async function planEVAMission(
   timelineAssumptions?: Partial<TimelineAssumptionsDTO>,
   algorithm: string = 'astar',
   simplify: boolean = true,
+  environmentalModifiers?: Record<string, number>,
 ): Promise<MissionPlanResponse> {
   const payload = {
     start,
@@ -139,6 +142,7 @@ export async function planEVAMission(
     timeline_assumptions: timelineAssumptions,
     algorithm,
     simplify,
+    environmental_modifiers: environmentalModifiers,
   }
   const res = await fetch('/api/v1/mission/plan', {
     method: 'POST',
@@ -210,6 +214,7 @@ export async function planMultiDestinationMission(params: {
   crewAssumptions?: Partial<CrewAssumptionsDTO>
   equipmentAssumptions?: Partial<EquipmentAssumptionsDTO>
   timelineAssumptions?: Partial<TimelineAssumptionsDTO>
+  environmentalModifiers?: Record<string, number>
 }): Promise<MultiDestinationMissionResponse> {
   const payload = {
     origin: params.origin,
@@ -220,6 +225,7 @@ export async function planMultiDestinationMission(params: {
     crew_assumptions: params.crewAssumptions,
     equipment_assumptions: params.equipmentAssumptions,
     timeline_assumptions: params.timelineAssumptions,
+    environmental_modifiers: params.environmentalModifiers,
   }
   const res = await fetch('/api/v1/mission/multi-destination', {
     method: 'POST',
@@ -240,6 +246,7 @@ export async function compareMissionProfiles(
   isRoundTrip: boolean = true,
   algorithm: string = 'astar',
   simplify: boolean = true,
+  environmentalModifiers?: Record<string, number>,
 ): Promise<MissionCompareResponse> {
   const payload = {
     start,
@@ -248,6 +255,7 @@ export async function compareMissionProfiles(
     is_round_trip: isRoundTrip,
     algorithm,
     simplify,
+    environmental_modifiers: environmentalModifiers,
   }
   const res = await fetch('/api/v1/mission/compare', {
     method: 'POST',

@@ -516,6 +516,10 @@ input[type="range"] {
   background: #090909 !important;
 }
 
+.ortho-base-raster {
+  image-rendering: auto;
+}
+
 /* Grayscale Monochrome Map Mode: Apply strictly to base orthophoto, preserving scientific spectrums */
 .mono-map-mode .ortho-base-raster,
 .mono-map-mode .leaflet-tile-pane {
@@ -615,28 +619,45 @@ input[type="range"] {
 }
 
 .badge-observed {
-  color: var(--text-primary);
-  border-color: #525252;
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.12);
 }
 
 .badge-derived {
-  color: var(--text-secondary);
-  border-color: var(--border-default);
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.12);
 }
 
 .badge-heuristic {
-  color: #a3a3a3;
-  border-color: #383838;
+  color: #d8b4fe;
+  border-color: rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.12);
 }
 
 .badge-interpreted {
-  color: #d4d4d4;
-  border-color: #404040;
+  color: #fde047;
+  border-color: rgba(234, 179, 8, 0.45);
+  background: rgba(234, 179, 8, 0.12);
+}
+
+.badge-predicted {
+  color: #fdba74;
+  border-color: rgba(249, 115, 22, 0.45);
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.badge-simulated {
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(59, 130, 246, 0.12);
 }
 
 .badge-unknown {
   color: var(--status-critical);
   border-color: #5c1414;
+  background: rgba(220, 38, 38, 0.12);
 }
 
 .layer-legend-note {
