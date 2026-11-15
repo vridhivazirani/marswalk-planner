@@ -269,7 +269,8 @@ class EmergencyResponseService:
 
         for r in range(r_min, r_max):
             for c in range(c_min, c_max):
-                cell_x, cell_y = rasterio.transform.xy(transform, r, c)
+                cell_x = transform.c + transform.a * (c + 0.5)
+                cell_y = transform.f + transform.e * (r + 0.5)
                 dist = math.hypot(cell_x - c_x, cell_y - c_y)
                 if dist <= hazard.radius_m:
                     if hazard.is_hard_restriction:

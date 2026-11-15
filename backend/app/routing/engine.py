@@ -192,13 +192,16 @@ class RouteOptimizationEngine:
                 f"Coordinate ({lat:.5f}°N, {lon:.5f}°E) is outside the Jezero study footprint."
             )
 
-        row, col = rasterio.transform.rowcol(self._transform, x, y)
+        col_f = (x - self._transform.c) / self._transform.a
+        row_f = (y - self._transform.f) / self._transform.e
+        row, col = int(math.floor(row_f)), int(math.floor(col_f))
         return int(row), int(col), x, y
 
     def grid_to_latlon(self, row: int, col: int) -> tuple[float, float, float, float]:
         """Convert grid (row, col) into projected (x, y) and geographic (lat, lon)."""
         self._ensure_data_loaded()
-        x, y = rasterio.transform.xy(self._transform, row, col)
+        x = self._transform.c + self._transform.a * (col + 0.5)
+        y = self._transform.f + self._transform.e * (row + 0.5)
         lon, lat = self.mars_sys.to_geographic(x, y)
         return lat, lon, x, y
 
