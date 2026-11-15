@@ -44,6 +44,23 @@ def create_app() -> FastAPI:
     # Also mount with "/v1" for cloud proxies or serverless platforms that strip the "/api" prefix
     if settings.api_prefix != "/v1":
         app.include_router(api_router, prefix="/v1")
+
+    import traceback
+
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": str(exc),
+                "type": type(exc).__name__,
+                "traceback": traceback.format_exc().splitlines(),
+            },
+        )
+
     return app
 
 
